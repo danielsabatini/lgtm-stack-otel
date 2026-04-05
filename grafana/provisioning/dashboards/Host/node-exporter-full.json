@@ -2,37 +2,37 @@
   "__requires": [
     {
       "type": "panel",
-      "id":null "bargauge",
+      "id": "bargauge",
       "name": "Bar gauge",
       "version": ""
     },
     {
       "type": "panel",
-      "id":null "gauge",
+      "id": "gauge",
       "name": "Gauge",
       "version": ""
     },
     {
       "type": "grafana",
-      "id":null "grafana",
+      "id": "grafana",
       "name": "Grafana",
       "version": "11.6.1"
     },
     {
       "type": "datasource",
-      "id":null "prometheus",
+      "id": "prometheus",
       "name": "Prometheus",
       "version": "1.0.0"
     },
     {
       "type": "panel",
-      "id":null "stat",
+      "id": "stat",
       "name": "Stat",
       "version": ""
     },
     {
       "type": "panel",
-      "id":null "timeseries",
+      "id": "timeseries",
       "name": "Time series",
       "version": ""
     }
@@ -62,7 +62,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id":null null,
+  "id": null,
   "links": [
     {
       "icon": "external link",
@@ -90,7 +90,7 @@
         "x": 0,
         "y": 0
       },
-      "id":null 261,
+      "id": 261,
       "panels": [],
       "title": "Quick CPU / Mem / Disk",
       "type": "row"
@@ -98,7 +98,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Resource pressure via PSI",
       "fieldConfig": {
@@ -137,7 +137,7 @@
         "x": 0,
         "y": 1
       },
-      "id":null 323,
+      "id": 323,
       "options": {
         "displayMode": "basic",
         "legend": {
@@ -216,7 +216,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Overall CPU busy percentage (averaged across all cores)",
       "fieldConfig": {
@@ -264,7 +264,7 @@
         "x": 3,
         "y": 1
       },
-      "id":null 20,
+      "id": 20,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -299,7 +299,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "System load over all CPU cores together",
       "fieldConfig": {
@@ -347,7 +347,7 @@
         "x": 6,
         "y": 1
       },
-      "id":null 155,
+      "id": 155,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -382,7 +382,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Real RAM usage excluding cache and reclaimable memory",
       "fieldConfig": {
@@ -420,7 +420,7 @@
         "x": 9,
         "y": 1
       },
-      "id":null 16,
+      "id": 16,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -455,7 +455,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Percentage of swap space currently used by the system",
       "fieldConfig": {
@@ -503,7 +503,7 @@
         "x": 12,
         "y": 1
       },
-      "id":null 21,
+      "id": 21,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -537,7 +537,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Used Root FS",
       "fieldConfig": {
@@ -585,7 +585,7 @@
         "x": 15,
         "y": 1
       },
-      "id":null 154,
+      "id": 154,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -620,7 +620,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "",
       "fieldConfig": {
@@ -657,7 +657,7 @@
         "x": 18,
         "y": 1
       },
-      "id":null 14,
+      "id": 14,
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -694,7 +694,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "",
       "fieldConfig": {
@@ -736,7 +736,7 @@
         "x": 20,
         "y": 1
       },
-      "id":null 75,
+      "id": 75,
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -773,7 +773,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "",
       "fieldConfig": {
@@ -815,7 +815,7 @@
         "x": 22,
         "y": 1
       },
-      "id":null 18,
+      "id": 18,
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -852,7 +852,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "",
       "fieldConfig": {
@@ -898,7 +898,7 @@
         "x": 18,
         "y": 3
       },
-      "id":null 23,
+      "id": 23,
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -936,7 +936,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "",
       "fieldConfig": {
@@ -978,7 +978,7 @@
         "x": 20,
         "y": 3
       },
-      "id":null 15,
+      "id": 15,
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -1020,7 +1020,7 @@
         "x": 0,
         "y": 5
       },
-      "id":null 263,
+      "id": 263,
       "panels": [],
       "title": "Basic CPU / Mem / Net / Disk",
       "type": "row"
@@ -1028,7 +1028,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "CPU time spent busy vs idle, split by activity type",
       "fieldConfig": {
@@ -1085,12 +1085,12 @@
         "overrides": [
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Busy Iowait"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#890F02",
                   "mode": "fixed"
@@ -1100,12 +1100,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Idle"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#052B51",
                   "mode": "fixed"
@@ -1115,12 +1115,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Busy System"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#EAB839",
                   "mode": "fixed"
@@ -1130,12 +1130,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Busy User"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#0A437C",
                   "mode": "fixed"
@@ -1145,12 +1145,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Busy Other"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#6D1F62",
                   "mode": "fixed"
@@ -1166,7 +1166,7 @@
         "x": 0,
         "y": 6
       },
-      "id":null 77,
+      "id": 77,
       "options": {
         "legend": {
           "calcs": [],
@@ -1246,7 +1246,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "RAM and swap usage overview, including caches",
       "fieldConfig": {
@@ -1303,12 +1303,12 @@
         "overrides": [
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Swap used"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#BF1B00",
                   "mode": "fixed"
@@ -1318,23 +1318,23 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Total"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#E0F9D7",
                   "mode": "fixed"
                 }
               },
               {
-                "id":null "custom.fillOpacity",
+                "id": "custom.fillOpacity",
                 "value": 0
               },
               {
-                "id":null "custom.stacking",
+                "id": "custom.stacking",
                 "value": {
                   "group": false,
                   "mode": "normal"
@@ -1344,12 +1344,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Cache + Buffer"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#052B51",
                   "mode": "fixed"
@@ -1359,12 +1359,12 @@
           },
           {
             "matcher": {
-              "id":null "byName",
+              "id": "byName",
               "options": "Free"
             },
             "properties": [
               {
-                "id":null "color",
+                "id": "color",
                 "value": {
                   "fixedColor": "#7EB26D",
                   "mode": "fixed"
@@ -1380,7 +1380,7 @@
         "x": 12,
         "y": 6
       },
-      "id":null 78,
+      "id": 78,
       "options": {
         "legend": {
           "calcs": [],
@@ -1449,7 +1449,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Per-interface network traffic (receive and transmit) in bits per second",
       "fieldConfig": {
@@ -1505,12 +1505,12 @@
         "overrides": [
           {
             "matcher": {
-              "id":null "byRegexp",
+              "id": "byRegexp",
               "options": "/.*Tx.*/"
             },
             "properties": [
               {
-                "id":null "custom.transform",
+                "id": "custom.transform",
                 "value": "negative-Y"
               }
             ]
@@ -1523,7 +1523,7 @@
         "x": 0,
         "y": 13
       },
-      "id":null 74,
+      "id": 74,
       "options": {
         "legend": {
           "calcs": [],
@@ -1564,7 +1564,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "mimir"
+        "uid": "${ds_prometheus}"
       },
       "description": "Percentage of filesystem space used for each mounted device",
       "fieldConfig": {
@@ -1627,7 +1627,7 @@
         "x": 12,
         "y": 13
       },
-      "id":null 152,
+      "id": 152,
       "options": {
         "legend": {
           "calcs": [],
@@ -1664,12 +1664,12 @@
         "x": 0,
         "y": 20
       },
-      "id":null 265,
+      "id": 265,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "CPU time usage split by state, normalized across all CPU cores",
           "fieldConfig": {
@@ -1726,12 +1726,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Idle - Waiting for something to happen"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#052B51",
                       "mode": "fixed"
@@ -1741,12 +1741,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Iowait - Waiting for I/O to complete"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EAB839",
                       "mode": "fixed"
@@ -1756,12 +1756,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Irq - Servicing interrupts"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#BF1B00",
                       "mode": "fixed"
@@ -1771,12 +1771,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Nice - Niced processes executing in user mode"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#C15C17",
                       "mode": "fixed"
@@ -1786,12 +1786,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Softirq - Servicing softirqs"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#E24D42",
                       "mode": "fixed"
@@ -1801,12 +1801,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Steal - Time spent in other operating systems when running in a virtualized environment"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#FCE2DE",
                       "mode": "fixed"
@@ -1816,12 +1816,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "System - Processes executing in kernel mode"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#508642",
                       "mode": "fixed"
@@ -1831,12 +1831,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "User - Normal processes executing in user mode"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#5195CE",
                       "mode": "fixed"
@@ -1846,16 +1846,16 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Guest CPU usage"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -1865,7 +1865,7 @@
                     }
                   },
                   {
-                    "id":null "custom.stacking",
+                    "id": "custom.stacking",
                     "value": {
                       "group": "A",
                       "mode": "none"
@@ -1881,7 +1881,7 @@
             "x": 0,
             "y": 21
           },
-          "id":null 3,
+          "id": 3,
           "options": {
             "legend": {
               "calcs": [
@@ -1991,7 +1991,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Breakdown of physical memory and swap usage. Hardware-detected memory errors are also displayed",
           "fieldConfig": {
@@ -2048,12 +2048,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Apps"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#629E51",
                       "mode": "fixed"
@@ -2063,12 +2063,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Buffers"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#614D93",
                       "mode": "fixed"
@@ -2078,12 +2078,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#6D1F62",
                       "mode": "fixed"
@@ -2093,12 +2093,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Cached"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#511749",
                       "mode": "fixed"
@@ -2108,12 +2108,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Committed"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#508642",
                       "mode": "fixed"
@@ -2123,12 +2123,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Free"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#0A437C",
                       "mode": "fixed"
@@ -2138,12 +2138,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Hardware Corrupted - Amount of RAM that the kernel identified as corrupted / not working"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#CFFAFF",
                       "mode": "fixed"
@@ -2153,12 +2153,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Inactive"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#584477",
                       "mode": "fixed"
@@ -2168,12 +2168,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "PageTables"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#0A50A1",
                       "mode": "fixed"
@@ -2183,12 +2183,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Page_Tables"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#0A50A1",
                       "mode": "fixed"
@@ -2198,12 +2198,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "RAM_Free"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#E0F9D7",
                       "mode": "fixed"
@@ -2213,12 +2213,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Slab"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#806EB7",
                       "mode": "fixed"
@@ -2228,12 +2228,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Slab_Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#E0752D",
                       "mode": "fixed"
@@ -2243,12 +2243,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#BF1B00",
                       "mode": "fixed"
@@ -2258,12 +2258,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap - Swap memory usage"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#BF1B00",
                       "mode": "fixed"
@@ -2273,12 +2273,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap_Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#C15C17",
                       "mode": "fixed"
@@ -2288,12 +2288,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap_Free"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#2F575E",
                       "mode": "fixed"
@@ -2303,12 +2303,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Unused"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EAB839",
                       "mode": "fixed"
@@ -2318,12 +2318,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Unused - Free memory unassigned"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#052B51",
                       "mode": "fixed"
@@ -2333,12 +2333,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Hardware Corrupted - *./"
                 },
                 "properties": [
                   {
-                    "id":null "custom.stacking",
+                    "id": "custom.stacking",
                     "value": {
                       "group": false,
                       "mode": "normal"
@@ -2354,7 +2354,7 @@
             "x": 12,
             "y": 21
           },
-          "id":null 24,
+          "id": 24,
           "options": {
             "legend": {
               "calcs": [
@@ -2463,7 +2463,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Incoming and outgoing network traffic per interface",
           "fieldConfig": {
@@ -2519,12 +2519,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -2537,7 +2537,7 @@
             "x": 0,
             "y": 433
           },
-          "id":null 84,
+          "id": 84,
           "options": {
             "legend": {
               "calcs": [
@@ -2582,7 +2582,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Network interface utilization as a percentage of its maximum capacity",
           "fieldConfig": {
@@ -2638,12 +2638,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -2656,7 +2656,7 @@
             "x": 12,
             "y": 433
           },
-          "id":null 338,
+          "id": 338,
           "options": {
             "legend": {
               "calcs": [
@@ -2701,7 +2701,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Disk I/O operations per second for each device",
           "fieldConfig": {
@@ -2757,12 +2757,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -2775,7 +2775,7 @@
             "x": 0,
             "y": 445
           },
-          "id":null 229,
+          "id": 229,
           "options": {
             "legend": {
               "calcs": [
@@ -2818,7 +2818,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Disk I/O throughput per device",
           "fieldConfig": {
@@ -2874,12 +2874,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read*./"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -2892,7 +2892,7 @@
             "x": 12,
             "y": 445
           },
-          "id":null 42,
+          "id": 42,
           "options": {
             "legend": {
               "calcs": [
@@ -2937,7 +2937,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Amount of available disk space per mounted filesystem, excluding rootfs. Based on block availability to non-root users",
           "fieldConfig": {
@@ -2999,7 +2999,7 @@
             "x": 0,
             "y": 457
           },
-          "id":null 43,
+          "id": 43,
           "options": {
             "legend": {
               "calcs": [
@@ -3056,7 +3056,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Disk usage (used = total - available) per mountpoint",
           "fieldConfig": {
@@ -3118,7 +3118,7 @@
             "x": 12,
             "y": 457
           },
-          "id":null 156,
+          "id": 156,
           "options": {
             "legend": {
               "calcs": [
@@ -3154,7 +3154,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Percentage of time the disk was actively processing I/O operations",
           "fieldConfig": {
@@ -3216,7 +3216,7 @@
             "x": 0,
             "y": 469
           },
-          "id":null 127,
+          "id": 127,
           "options": {
             "legend": {
               "calcs": [
@@ -3253,7 +3253,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "How often tasks experience CPU, memory, or I/O delays. 'Some' indicates partial slowdown; 'Full' indicates all tasks are stalled. Based on Linux PSI metrics:\nhttps://docs.kernel.org/accounting/psi.html",
           "fieldConfig": {
@@ -3309,24 +3309,24 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Some.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Some.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -3339,7 +3339,7 @@
             "x": 12,
             "y": 469
           },
-          "id":null 322,
+          "id": 322,
           "options": {
             "legend": {
               "calcs": [
@@ -3429,12 +3429,12 @@
         "x": 0,
         "y": 21
       },
-      "id":null 266,
+      "id": 266,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Displays committed memory usage versus the system's commit limit. Exceeding the limit is allowed under Linux overcommit policies but may increase OOM risks under high load",
           "fieldConfig": {
@@ -3491,19 +3491,19 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*CommitLimit - *./"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#BF1B00",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   }
                 ]
@@ -3516,7 +3516,7 @@
             "x": 0,
             "y": 732
           },
-          "id":null 135,
+          "id": 135,
           "options": {
             "legend": {
               "calcs": [
@@ -3562,7 +3562,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Memory currently dirty (modified but not yet written to disk), being actively written back, or held by writeback buffers. High dirty or writeback memory may indicate disk I/O pressure or delayed flushing",
           "fieldConfig": {
@@ -3624,7 +3624,7 @@
             "x": 12,
             "y": 732
           },
-          "id":null 130,
+          "id": 130,
           "options": {
             "legend": {
               "calcs": [
@@ -3687,7 +3687,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Kernel slab memory usage, separated into reclaimable and non-reclaimable categories. Reclaimable memory can be freed under memory pressure (e.g., caches), while unreclaimable memory is locked by the kernel for core functions",
           "fieldConfig": {
@@ -3749,7 +3749,7 @@
             "x": 0,
             "y": 932
           },
-          "id":null 131,
+          "id": 131,
           "options": {
             "legend": {
               "calcs": [
@@ -3794,7 +3794,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Memory used for mapped files (such as libraries) and shared memory (shmem and tmpfs), including variants backed by huge pages",
           "fieldConfig": {
@@ -3856,7 +3856,7 @@
             "x": 12,
             "y": 932
           },
-          "id":null 138,
+          "id": 138,
           "options": {
             "legend": {
               "calcs": [
@@ -3922,7 +3922,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Proportion of memory pages in the kernel's active and inactive LRU lists relative to total RAM. Active pages have been recently used, while inactive pages are less recently accessed but still resident in memory",
           "fieldConfig": {
@@ -3979,12 +3979,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Active.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "green",
                       "mode": "fixed"
@@ -3994,12 +3994,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Inactive.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-blue",
                       "mode": "fixed"
@@ -4015,7 +4015,7 @@
             "x": 0,
             "y": 942
           },
-          "id":null 136,
+          "id": 136,
           "options": {
             "legend": {
               "calcs": [
@@ -4061,7 +4061,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Breakdown of memory pages in the kernel's active and inactive LRU lists, separated by anonymous (heap, tmpfs) and file-backed (caches, mmap) pages.",
           "fieldConfig": {
@@ -4123,7 +4123,7 @@
             "x": 12,
             "y": 942
           },
-          "id":null 191,
+          "id": 191,
           "options": {
             "legend": {
               "calcs": [
@@ -4187,7 +4187,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks kernel memory used for CPU-local structures, per-thread stacks, and bounce buffers used for I/O on DMA-limited devices. These areas are typically small but critical for low-level operations",
           "fieldConfig": {
@@ -4249,7 +4249,7 @@
             "x": 0,
             "y": 952
           },
-          "id":null 160,
+          "id": 160,
           "options": {
             "legend": {
               "calcs": [
@@ -4306,7 +4306,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Usage of the kernel's vmalloc area, which provides virtual memory allocations for kernel modules and drivers. Includes total, used, and largest free block sizes",
           "fieldConfig": {
@@ -4363,16 +4363,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Total.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -4382,7 +4382,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -4398,7 +4398,7 @@
             "x": 12,
             "y": 952
           },
-          "id":null 70,
+          "id": 70,
           "options": {
             "legend": {
               "calcs": [
@@ -4452,7 +4452,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Memory used by anonymous pages (not backed by files), including standard and huge page allocations. Includes heap, stack, and memory-mapped anonymous regions",
           "fieldConfig": {
@@ -4514,7 +4514,7 @@
             "x": 0,
             "y": 962
           },
-          "id":null 129,
+          "id": 129,
           "options": {
             "legend": {
               "calcs": [
@@ -4559,7 +4559,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Memory that is locked in RAM and cannot be swapped out. Includes both kernel-unevictable memory and user-level memory locked with mlock()",
           "fieldConfig": {
@@ -4616,12 +4616,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Hardware Corrupted - Amount of RAM that the kernel identified as corrupted / not working"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#CFFAFF",
                       "mode": "fixed"
@@ -4637,7 +4637,7 @@
             "x": 12,
             "y": 962
           },
-          "id":null 137,
+          "id": 137,
           "options": {
             "legend": {
               "calcs": [
@@ -4683,7 +4683,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "How much memory is directly mapped in the kernel using different page sizes (4K, 2M, 1G). Helps monitor large page utilization in the direct map region",
           "fieldConfig": {
@@ -4744,12 +4744,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Active"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#99440A",
                       "mode": "fixed"
@@ -4759,12 +4759,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Buffers"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#58140C",
                       "mode": "fixed"
@@ -4774,12 +4774,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#6D1F62",
                       "mode": "fixed"
@@ -4789,12 +4789,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Cached"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#511749",
                       "mode": "fixed"
@@ -4804,12 +4804,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Committed"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#508642",
                       "mode": "fixed"
@@ -4819,12 +4819,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Dirty"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#6ED0E0",
                       "mode": "fixed"
@@ -4834,12 +4834,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Free"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#B7DBAB",
                       "mode": "fixed"
@@ -4849,12 +4849,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Inactive"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EA6460",
                       "mode": "fixed"
@@ -4864,12 +4864,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Mapped"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#052B51",
                       "mode": "fixed"
@@ -4879,12 +4879,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "PageTables"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#0A50A1",
                       "mode": "fixed"
@@ -4894,12 +4894,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Page_Tables"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#0A50A1",
                       "mode": "fixed"
@@ -4909,12 +4909,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Slab_Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EAB839",
                       "mode": "fixed"
@@ -4924,12 +4924,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#BF1B00",
                       "mode": "fixed"
@@ -4939,12 +4939,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Swap_Cache"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#C15C17",
                       "mode": "fixed"
@@ -4954,12 +4954,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Total"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#511749",
                       "mode": "fixed"
@@ -4969,12 +4969,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Total RAM"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#052B51",
                       "mode": "fixed"
@@ -4984,12 +4984,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Total RAM + Swap"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#052B51",
                       "mode": "fixed"
@@ -4999,12 +4999,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "VmallocUsed"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EA6460",
                       "mode": "fixed"
@@ -5020,7 +5020,7 @@
             "x": 0,
             "y": 972
           },
-          "id":null 128,
+          "id": 128,
           "options": {
             "legend": {
               "calcs": [
@@ -5076,7 +5076,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Displays HugePages memory usage in bytes, including allocated, free, reserved, and surplus memory. All values are calculated based on the number of huge pages multiplied by their configured size",
           "fieldConfig": {
@@ -5138,7 +5138,7 @@
             "x": 12,
             "y": 972
           },
-          "id":null 140,
+          "id": 140,
           "options": {
             "legend": {
               "calcs": [
@@ -5210,12 +5210,12 @@
         "x": 0,
         "y": 22
       },
-      "id":null 267,
+      "id": 267,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of memory pages being read from or written to disk (page-in and page-out operations). High page-out may indicate memory pressure or swapping activity",
           "fieldConfig": {
@@ -5271,12 +5271,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -5289,7 +5289,7 @@
             "x": 0,
             "y": 733
           },
-          "id":null 176,
+          "id": 176,
           "options": {
             "legend": {
               "calcs": [
@@ -5334,7 +5334,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate at which memory pages are being swapped in from or out to disk. High swap-out activity may indicate memory pressure",
           "fieldConfig": {
@@ -5390,12 +5390,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -5408,7 +5408,7 @@
             "x": 12,
             "y": 733
           },
-          "id":null 22,
+          "id": 22,
           "options": {
             "legend": {
               "calcs": [
@@ -5453,7 +5453,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of memory page faults, split into total, major (disk-backed), and derived minor (non-disk) faults. High major fault rates may indicate memory pressure or insufficient RAM",
           "fieldConfig": {
@@ -5510,23 +5510,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Pgfault - Page major and minor fault ops"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.stacking",
+                    "id": "custom.stacking",
                     "value": {
                       "group": false,
                       "mode": "none"
                     }
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -5536,7 +5536,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -5552,7 +5552,7 @@
             "x": 0,
             "y": 913
           },
-          "id":null 175,
+          "id": 175,
           "options": {
             "legend": {
               "calcs": [
@@ -5607,7 +5607,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of Out-of-Memory (OOM) kill events. A non-zero value indicates the kernel has terminated one or more processes due to memory exhaustion",
           "fieldConfig": {
@@ -5664,12 +5664,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "OOM Kills"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -5685,7 +5685,7 @@
             "x": 12,
             "y": 913
           },
-          "id":null 307,
+          "id": 307,
           "options": {
             "legend": {
               "calcs": [
@@ -5731,12 +5731,12 @@
         "x": 0,
         "y": 23
       },
-      "id":null 293,
+      "id": 293,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks the system clock's estimated and maximum error, as well as its offset from the reference clock (e.g., via NTP). Useful for detecting synchronization drift",
           "fieldConfig": {
@@ -5797,7 +5797,7 @@
             "x": 0,
             "y": 734
           },
-          "id":null 260,
+          "id": 260,
           "options": {
             "legend": {
               "calcs": [
@@ -5854,7 +5854,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "NTP phase-locked loop (PLL) time constant used by the kernel to control time adjustments. Lower values mean faster correction but less stability",
           "fieldConfig": {
@@ -5915,7 +5915,7 @@
             "x": 12,
             "y": 734
           },
-          "id":null 291,
+          "id": 291,
           "options": {
             "legend": {
               "calcs": [
@@ -5952,7 +5952,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows whether the system clock is synchronized to a reliable time source, and the current frequency correction ratio applied by the kernel to maintain synchronization",
           "fieldConfig": {
@@ -6013,7 +6013,7 @@
             "x": 0,
             "y": 884
           },
-          "id":null 168,
+          "id": 168,
           "options": {
             "legend": {
               "calcs": [
@@ -6082,7 +6082,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Displays the PPS signal's frequency offset and stability (jitter) in hertz. Useful for monitoring high-precision time sources like GPS or atomic clocks",
           "fieldConfig": {
@@ -6143,7 +6143,7 @@
             "x": 12,
             "y": 884
           },
-          "id":null 333,
+          "id": 333,
           "options": {
             "legend": {
               "calcs": [
@@ -6190,7 +6190,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks PPS signal timing jitter and shift compared to system clock",
           "fieldConfig": {
@@ -6251,7 +6251,7 @@
             "x": 0,
             "y": 894
           },
-          "id":null 334,
+          "id": 334,
           "options": {
             "legend": {
               "calcs": [
@@ -6298,7 +6298,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of PPS synchronization diagnostics including calibration events, jitter violations, errors, and frequency stability exceedances",
           "fieldConfig": {
@@ -6363,7 +6363,7 @@
             "x": 12,
             "y": 894
           },
-          "id":null 335,
+          "id": 335,
           "options": {
             "legend": {
               "calcs": [
@@ -6439,12 +6439,12 @@
         "x": 0,
         "y": 24
       },
-      "id":null 312,
+      "id": 312,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Processes currently in runnable or blocked states. Helps identify CPU contention or I/O wait bottlenecks.",
           "fieldConfig": {
@@ -6510,7 +6510,7 @@
             "x": 0,
             "y": 735
           },
-          "id":null 62,
+          "id": 62,
           "options": {
             "legend": {
               "calcs": [
@@ -6555,7 +6555,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Current number of processes in each state (e.g., running, sleeping, zombie). Requires --collector.processes to be enabled in node_exporter",
           "fieldConfig": {
@@ -6612,84 +6612,84 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "D"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Uninterruptible Sleeping"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "I"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Idle Kernel Thread"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "R"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Running"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "S"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Interruptible Sleeping"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "T"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Stopped"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "X"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Dead"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Z"
                 },
                 "properties": [
                   {
-                    "id":null "displayName",
+                    "id": "displayName",
                     "value": "Zombie"
                   }
                 ]
@@ -6702,7 +6702,7 @@
             "x": 12,
             "y": 735
           },
-          "id":null 315,
+          "id": 315,
           "options": {
             "legend": {
               "calcs": [
@@ -6739,7 +6739,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of new processes being created on the system (forks/sec).",
           "fieldConfig": {
@@ -6801,7 +6801,7 @@
             "x": 0,
             "y": 765
           },
-          "id":null 148,
+          "id": 148,
           "options": {
             "legend": {
               "calcs": [
@@ -6837,7 +6837,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows CPU saturation per core, calculated as the proportion of time spent waiting to run relative to total time demanded (running + waiting).",
           "fieldConfig": {
@@ -6897,12 +6897,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*waiting.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -6915,7 +6915,7 @@
             "x": 12,
             "y": 765
           },
-          "id":null 305,
+          "id": 305,
           "options": {
             "legend": {
               "calcs": [
@@ -6974,7 +6974,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of active PIDs on the system and the configured maximum allowed. Useful for detecting PID exhaustion risk. Requires --collector.processes in node_exporter",
           "fieldConfig": {
@@ -7031,23 +7031,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "PIDs limit"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#F2495C",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7066,7 +7066,7 @@
             "x": 0,
             "y": 775
           },
-          "id":null 313,
+          "id": 313,
           "options": {
             "legend": {
               "calcs": [
@@ -7113,7 +7113,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of active threads on the system and the configured thread limit. Useful for monitoring thread pressure. Requires --collector.processes in node_exporter",
           "fieldConfig": {
@@ -7170,23 +7170,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Threads limit"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#F2495C",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7205,7 +7205,7 @@
             "x": 12,
             "y": 775
           },
-          "id":null 314,
+          "id": 314,
           "options": {
             "legend": {
               "calcs": [
@@ -7261,12 +7261,12 @@
         "x": 0,
         "y": 25
       },
-      "id":null 269,
+      "id": 269,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Per-second rate of context switches and hardware interrupts. High values may indicate intense CPU or I/O activity",
           "fieldConfig": {
@@ -7328,7 +7328,7 @@
             "x": 0,
             "y": 816
           },
-          "id":null 8,
+          "id": 8,
           "options": {
             "legend": {
               "calcs": [
@@ -7373,7 +7373,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "System load average over 1, 5, and 15 minutes. Reflects the number of active or waiting processes. Values above CPU core count may indicate overload",
           "fieldConfig": {
@@ -7430,16 +7430,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "CPU Core Count"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7449,7 +7449,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -7465,7 +7465,7 @@
             "x": 12,
             "y": 816
           },
-          "id":null 7,
+          "id": 7,
           "options": {
             "legend": {
               "calcs": [
@@ -7528,7 +7528,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Real-time CPU frequency scaling per core, including average minimum and maximum allowed scaling frequencies",
           "fieldConfig": {
@@ -7584,12 +7584,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Max"
                 },
                 "properties": [
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7599,14 +7599,14 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.hideFrom",
+                    "id": "custom.hideFrom",
                     "value": {
                       "legend": true,
                       "tooltip": false,
@@ -7617,12 +7617,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Min"
                 },
                 "properties": [
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7632,14 +7632,14 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "blue",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.hideFrom",
+                    "id": "custom.hideFrom",
                     "value": {
                       "legend": true,
                       "tooltip": false,
@@ -7656,7 +7656,7 @@
             "x": 0,
             "y": 826
           },
-          "id":null 321,
+          "id": 321,
           "options": {
             "legend": {
               "calcs": [
@@ -7713,7 +7713,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of scheduling timeslices executed per CPU. Reflects how frequently the scheduler switches tasks on each core",
           "fieldConfig": {
@@ -7774,7 +7774,7 @@
             "x": 12,
             "y": 826
           },
-          "id":null 306,
+          "id": 306,
           "options": {
             "legend": {
               "calcs": [
@@ -7811,7 +7811,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Breaks down hardware interrupts by type and device. Useful for diagnosing IRQ load on network, disk, or CPU interfaces. Requires --collector.interrupts to be enabled in node_exporter",
           "fieldConfig": {
@@ -7873,7 +7873,7 @@
             "x": 0,
             "y": 836
           },
-          "id":null 259,
+          "id": 259,
           "options": {
             "legend": {
               "calcs": [
@@ -7910,7 +7910,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of bits of entropy currently available to the system's random number generators (e.g., /dev/random). Low values may indicate that random number generation could block or degrade performance of cryptographic operations",
           "fieldConfig": {
@@ -7967,16 +7967,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Entropy pool max"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -7986,7 +7986,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -8002,7 +8002,7 @@
             "x": 12,
             "y": 836
           },
-          "id":null 151,
+          "id": 151,
           "options": {
             "legend": {
               "calcs": [
@@ -8056,12 +8056,12 @@
         "x": 0,
         "y": 26
       },
-      "id":null 304,
+      "id": 304,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Monitors hardware sensor temperatures and critical thresholds as exposed by Linux hwmon. Includes CPU, GPU, and motherboard sensors where available",
           "fieldConfig": {
@@ -8118,19 +8118,19 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Critical*./"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#E24D42",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   }
                 ]
@@ -8143,7 +8143,7 @@
             "x": 0,
             "y": 737
           },
-          "id":null 158,
+          "id": 158,
           "options": {
             "legend": {
               "calcs": [
@@ -8217,7 +8217,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows how hard each cooling device (fan/throttle) is working relative to its maximum capacity",
           "fieldConfig": {
@@ -8273,19 +8273,19 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Max*./"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#EF843C",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   }
                 ]
@@ -8298,7 +8298,7 @@
             "x": 12,
             "y": 737
           },
-          "id":null 300,
+          "id": 300,
           "options": {
             "legend": {
               "calcs": [
@@ -8335,7 +8335,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows the online status of power supplies (e.g., AC, battery). A value of 1-Yes indicates the power supply is active/online",
           "fieldConfig": {
@@ -8400,7 +8400,7 @@
             "x": 0,
             "y": 747
           },
-          "id":null 302,
+          "id": 302,
           "options": {
             "legend": {
               "calcs": [
@@ -8437,7 +8437,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Displays the current fan speeds (RPM) from hardware sensors via the hwmon interface",
           "fieldConfig": {
@@ -8499,7 +8499,7 @@
             "x": 12,
             "y": 747
           },
-          "id":null 325,
+          "id": 325,
           "options": {
             "legend": {
               "calcs": [
@@ -8556,12 +8556,12 @@
         "x": 0,
         "y": 27
       },
-      "id":null 296,
+      "id": 296,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Current number of systemd units in each operational state, such as active, failed, inactive, or transitioning",
           "fieldConfig": {
@@ -8617,12 +8617,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Failed"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#F2495C",
                       "mode": "fixed"
@@ -8632,12 +8632,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Active"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#73BF69",
                       "mode": "fixed"
@@ -8647,12 +8647,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Activating"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#C8F2C2",
                       "mode": "fixed"
@@ -8662,12 +8662,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Deactivating"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -8677,12 +8677,12 @@
               },
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Inactive"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-blue",
                       "mode": "fixed"
@@ -8698,7 +8698,7 @@
             "x": 0,
             "y": 4228
           },
-          "id":null 298,
+          "id": 298,
           "options": {
             "legend": {
               "calcs": [
@@ -8775,7 +8775,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Current number of active connections per systemd socket, as reported by the Node Exporter systemd collector",
           "fieldConfig": {
@@ -8837,7 +8837,7 @@
             "x": 12,
             "y": 4228
           },
-          "id":null 331,
+          "id": 331,
           "options": {
             "legend": {
               "calcs": [
@@ -8874,7 +8874,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of accepted connections per second for each systemd socket",
           "fieldConfig": {
@@ -8936,7 +8936,7 @@
             "x": 0,
             "y": 4238
           },
-          "id":null 297,
+          "id": 297,
           "options": {
             "legend": {
               "calcs": [
@@ -8973,7 +8973,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of systemd socket connection refusals per second, typically due to service unavailability or backlog overflow",
           "fieldConfig": {
@@ -9035,7 +9035,7 @@
             "x": 12,
             "y": 4238
           },
-          "id":null 332,
+          "id": 332,
           "options": {
             "legend": {
               "calcs": [
@@ -9081,12 +9081,12 @@
         "x": 0,
         "y": 28
       },
-      "id":null 270,
+      "id": 270,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of I/O operations completed per second for the device (after merges), including both reads and writes",
           "fieldConfig": {
@@ -9142,24 +9142,24 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9175,7 +9175,7 @@
             "x": 0,
             "y": 29
           },
-          "id":null 9,
+          "id": 9,
           "options": {
             "legend": {
               "calcs": [
@@ -9218,7 +9218,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of bytes read from or written to the device per second",
           "fieldConfig": {
@@ -9274,24 +9274,24 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9307,7 +9307,7 @@
             "x": 12,
             "y": 29
           },
-          "id":null 33,
+          "id": 33,
           "options": {
             "legend": {
               "calcs": [
@@ -9354,7 +9354,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Average time for requests issued to the device to be served. This includes the time spent by the requests in queue and the time spent servicing them.",
           "fieldConfig": {
@@ -9410,24 +9410,24 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9443,7 +9443,7 @@
             "x": 0,
             "y": 389
           },
-          "id":null 37,
+          "id": 37,
           "options": {
             "legend": {
               "calcs": [
@@ -9488,7 +9488,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Average queue length of the requests that were issued to the device",
           "fieldConfig": {
@@ -9545,12 +9545,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda_*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#7EB26D",
                       "mode": "fixed"
@@ -9566,7 +9566,7 @@
             "x": 12,
             "y": 389
           },
-          "id":null 35,
+          "id": 35,
           "options": {
             "legend": {
               "calcs": [
@@ -9602,7 +9602,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of read and write requests merged per second that were queued to the device",
           "fieldConfig": {
@@ -9658,24 +9658,24 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Read.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9691,7 +9691,7 @@
             "x": 0,
             "y": 399
           },
-          "id":null 133,
+          "id": 133,
           "options": {
             "legend": {
               "calcs": [
@@ -9734,7 +9734,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Percentage of time the disk spent actively processing I/O operations, including general I/O, discards (TRIM), and write cache flushes",
           "fieldConfig": {
@@ -9791,12 +9791,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9812,7 +9812,7 @@
             "x": 12,
             "y": 399
           },
-          "id":null 36,
+          "id": 36,
           "options": {
             "legend": {
               "calcs": [
@@ -9866,7 +9866,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Per-second rate of discard (TRIM) and flush (write cache) operations. Useful for monitoring low-level disk activity on SSDs and advanced storage",
           "fieldConfig": {
@@ -9922,12 +9922,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -9943,7 +9943,7 @@
             "x": 0,
             "y": 409
           },
-          "id":null 301,
+          "id": 301,
           "options": {
             "legend": {
               "calcs": [
@@ -9997,7 +9997,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows how many disk sectors are discarded (TRIMed) per second. Useful for monitoring SSD behavior and storage efficiency",
           "fieldConfig": {
@@ -10053,12 +10053,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -10074,7 +10074,7 @@
             "x": 12,
             "y": 409
           },
-          "id":null 326,
+          "id": 326,
           "options": {
             "legend": {
               "calcs": [
@@ -10110,7 +10110,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of in-progress I/O requests at the time of sampling (active requests in the disk queue)",
           "fieldConfig": {
@@ -10167,12 +10167,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/sda.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "orange",
                       "mode": "fixed"
@@ -10188,7 +10188,7 @@
             "x": 0,
             "y": 419
           },
-          "id":null 34,
+          "id": 34,
           "options": {
             "legend": {
               "calcs": [
@@ -10233,12 +10233,12 @@
         "x": 0,
         "y": 29
       },
-      "id":null 271,
+      "id": 271,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of file descriptors currently allocated system-wide versus the system limit. Important for detecting descriptor exhaustion risks",
           "fieldConfig": {
@@ -10295,16 +10295,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Max.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -10314,7 +10314,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -10330,7 +10330,7 @@
             "x": 0,
             "y": 30
           },
-          "id":null 28,
+          "id": 28,
           "options": {
             "legend": {
               "calcs": [
@@ -10375,7 +10375,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of free file nodes (inodes) available per mounted filesystem. A low count may prevent file creation even if disk space is available",
           "fieldConfig": {
@@ -10437,7 +10437,7 @@
             "x": 12,
             "y": 30
           },
-          "id":null 41,
+          "id": 41,
           "options": {
             "legend": {
               "calcs": [
@@ -10473,7 +10473,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Indicates filesystems mounted in read-only mode or reporting device-level I/O errors.",
           "fieldConfig": {
@@ -10536,7 +10536,7 @@
             "x": 0,
             "y": 370
           },
-          "id":null 44,
+          "id": 44,
           "options": {
             "legend": {
               "calcs": [
@@ -10582,7 +10582,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of file nodes (inodes) available per mounted filesystem. Reflects maximum file capacity regardless of disk size",
           "fieldConfig": {
@@ -10644,7 +10644,7 @@
             "x": 12,
             "y": 370
           },
-          "id":null 219,
+          "id": 219,
           "options": {
             "legend": {
               "calcs": [
@@ -10689,12 +10689,12 @@
         "x": 0,
         "y": 30
       },
-      "id":null 272,
+      "id": 272,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of network packets received and transmitted per second, by interface.",
           "fieldConfig": {
@@ -10750,12 +10750,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -10768,7 +10768,7 @@
             "x": 0,
             "y": 31
           },
-          "id":null 60,
+          "id": 60,
           "options": {
             "legend": {
               "calcs": [
@@ -10816,7 +10816,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of packet-level errors for each network interface. Receive errors may indicate physical or driver issues; transmit errors may reflect collisions or hardware faults",
           "fieldConfig": {
@@ -10872,12 +10872,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -10890,7 +10890,7 @@
             "x": 12,
             "y": 31
           },
-          "id":null 142,
+          "id": 142,
           "options": {
             "legend": {
               "calcs": [
@@ -10936,7 +10936,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of dropped packets per network interface. Receive drops can indicate buffer overflow or driver issues; transmit drops may result from outbound congestion or queuing limits",
           "fieldConfig": {
@@ -10992,12 +10992,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11010,7 +11010,7 @@
             "x": 0,
             "y": 251
           },
-          "id":null 143,
+          "id": 143,
           "options": {
             "legend": {
               "calcs": [
@@ -11056,7 +11056,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of compressed network packets received and transmitted per interface. These are common in low-bandwidth or special interfaces like PPP or SLIP",
           "fieldConfig": {
@@ -11112,12 +11112,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11130,7 +11130,7 @@
             "x": 12,
             "y": 251
           },
-          "id":null 141,
+          "id": 141,
           "options": {
             "legend": {
               "calcs": [
@@ -11176,7 +11176,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of incoming multicast packets received per network interface. Multicast is used by protocols such as mDNS, SSDP, and some streaming or cluster services",
           "fieldConfig": {
@@ -11232,12 +11232,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11250,7 +11250,7 @@
             "x": 0,
             "y": 261
           },
-          "id":null 146,
+          "id": 146,
           "options": {
             "legend": {
               "calcs": [
@@ -11287,7 +11287,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of received packets that could not be processed due to missing protocol or handler in the kernel. May indicate unsupported traffic or misconfiguration",
           "fieldConfig": {
@@ -11343,12 +11343,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11361,7 +11361,7 @@
             "x": 12,
             "y": 261
           },
-          "id":null 327,
+          "id": 327,
           "options": {
             "legend": {
               "calcs": [
@@ -11398,7 +11398,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of frame errors on received packets, typically caused by physical layer issues such as bad cables, duplex mismatches, or hardware problems",
           "fieldConfig": {
@@ -11454,12 +11454,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11472,7 +11472,7 @@
             "x": 0,
             "y": 271
           },
-          "id":null 145,
+          "id": 145,
           "options": {
             "legend": {
               "calcs": [
@@ -11509,7 +11509,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks FIFO buffer overrun errors on network interfaces. These occur when incoming or outgoing packets are dropped due to queue or buffer overflows, often indicating congestion or hardware limits",
           "fieldConfig": {
@@ -11565,12 +11565,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11583,7 +11583,7 @@
             "x": 12,
             "y": 271
           },
-          "id":null 144,
+          "id": 144,
           "options": {
             "legend": {
               "calcs": [
@@ -11629,7 +11629,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of packet collisions detected during transmission. Mostly relevant on half-duplex or legacy Ethernet networks",
           "fieldConfig": {
@@ -11685,12 +11685,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -11703,7 +11703,7 @@
             "x": 0,
             "y": 281
           },
-          "id":null 232,
+          "id": 232,
           "options": {
             "legend": {
               "calcs": [
@@ -11740,7 +11740,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of carrier errors during transmission. These typically indicate physical layer issues like faulty cabling or duplex mismatches",
           "fieldConfig": {
@@ -11801,7 +11801,7 @@
             "x": 12,
             "y": 281
           },
-          "id":null 231,
+          "id": 231,
           "options": {
             "legend": {
               "calcs": [
@@ -11838,7 +11838,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of ARP entries per interface. Useful for detecting excessive ARP traffic or table growth due to scanning or misconfiguration",
           "fieldConfig": {
@@ -11900,7 +11900,7 @@
             "x": 0,
             "y": 291
           },
-          "id":null 230,
+          "id": 230,
           "options": {
             "legend": {
               "calcs": [
@@ -11936,7 +11936,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Current and maximum connection tracking entries used by Netfilter (nf_conntrack). High usage approaching the limit may cause packet drops or connection issues",
           "fieldConfig": {
@@ -11993,23 +11993,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "NF conntrack limit"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -12028,7 +12028,7 @@
             "x": 12,
             "y": 291
           },
-          "id":null 61,
+          "id": 61,
           "options": {
             "legend": {
               "calcs": [
@@ -12073,7 +12073,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Operational and physical link status of each network interface. Values are Yes for 'up' or link present, and No for 'down' or no carrier.",
           "fieldConfig": {
@@ -12134,7 +12134,7 @@
             "x": 0,
             "y": 301
           },
-          "id":null 309,
+          "id": 309,
           "options": {
             "legend": {
               "calcs": [
@@ -12180,7 +12180,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Maximum speed of each network interface as reported by the operating system. This is a static hardware capability, not current throughput",
           "fieldConfig": {
@@ -12211,7 +12211,7 @@
             "x": 12,
             "y": 301
           },
-          "id":null 280,
+          "id": 280,
           "options": {
             "displayMode": "basic",
             "legend": {
@@ -12254,7 +12254,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "MTU (Maximum Transmission Unit) in bytes for each network interface. Affects packet size and transmission efficiency",
           "fieldConfig": {
@@ -12284,7 +12284,7 @@
             "x": 18,
             "y": 301
           },
-          "id":null 288,
+          "id": 288,
           "options": {
             "displayMode": "basic",
             "legend": {
@@ -12336,12 +12336,12 @@
         "x": 0,
         "y": 31
       },
-      "id":null 273,
+      "id": 273,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks TCP socket usage and memory per node",
           "fieldConfig": {
@@ -12403,7 +12403,7 @@
             "x": 0,
             "y": 32
           },
-          "id":null 63,
+          "id": 63,
           "options": {
             "legend": {
               "calcs": [
@@ -12471,7 +12471,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of UDP and UDPLite sockets currently in use",
           "fieldConfig": {
@@ -12533,7 +12533,7 @@
             "x": 12,
             "y": 32
           },
-          "id":null 124,
+          "id": 124,
           "options": {
             "legend": {
               "calcs": [
@@ -12581,7 +12581,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Total number of sockets currently in use across all protocols (TCP, UDP, UNIX, etc.), as reported by /proc/net/sockstat",
           "fieldConfig": {
@@ -12643,7 +12643,7 @@
             "x": 0,
             "y": 42
           },
-          "id":null 126,
+          "id": 126,
           "options": {
             "legend": {
               "calcs": [
@@ -12681,7 +12681,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of FRAG and RAW sockets currently in use. RAW sockets are used for custom protocols or tools like ping; FRAG sockets are used internally for IP packet defragmentation",
           "fieldConfig": {
@@ -12743,7 +12743,7 @@
             "x": 12,
             "y": 42
           },
-          "id":null 125,
+          "id": 125,
           "options": {
             "legend": {
               "calcs": [
@@ -12791,7 +12791,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Kernel memory used by TCP, UDP, and IP fragmentation buffers",
           "fieldConfig": {
@@ -12853,7 +12853,7 @@
             "x": 0,
             "y": 52
           },
-          "id":null 220,
+          "id": 220,
           "options": {
             "legend": {
               "calcs": [
@@ -12909,7 +12909,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Average memory used per socket (TCP/UDP). Helps tune net.ipv4.tcp_rmem / tcp_wmem",
           "fieldConfig": {
@@ -12971,7 +12971,7 @@
             "x": 12,
             "y": 52
           },
-          "id":null 339,
+          "id": 339,
           "options": {
             "legend": {
               "calcs": [
@@ -13019,7 +13019,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "TCP/UDP socket memory usage in kernel (in pages)",
           "fieldConfig": {
@@ -13081,7 +13081,7 @@
             "x": 0,
             "y": 62
           },
-          "id":null 336,
+          "id": 336,
           "options": {
             "legend": {
               "calcs": [
@@ -13129,7 +13129,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Packets processed and dropped by the softnet network stack per CPU. Drops may indicate CPU saturation or network driver limitations",
           "fieldConfig": {
@@ -13185,12 +13185,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Dropped.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -13203,7 +13203,7 @@
             "x": 12,
             "y": 62
           },
-          "id":null 290,
+          "id": 290,
           "options": {
             "legend": {
               "calcs": [
@@ -13251,7 +13251,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "How often the kernel was unable to process all packets in the softnet queue before time ran out. Frequent squeezes may indicate CPU contention or driver inefficiency",
           "fieldConfig": {
@@ -13316,7 +13316,7 @@
             "x": 0,
             "y": 72
           },
-          "id":null 310,
+          "id": 310,
           "options": {
             "legend": {
               "calcs": [
@@ -13354,7 +13354,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks the number of packets processed or dropped by Receive Packet Steering (RPS), a mechanism to distribute packet processing across CPUs",
           "fieldConfig": {
@@ -13410,16 +13410,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Dropped.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -13435,7 +13435,7 @@
             "x": 12,
             "y": 72
           },
-          "id":null 330,
+          "id": 330,
           "options": {
             "legend": {
               "calcs": [
@@ -13492,12 +13492,12 @@
         "x": 0,
         "y": 32
       },
-      "id":null 274,
+      "id": 274,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of octets sent and received at the IP layer, as reported by /proc/net/netstat",
           "fieldConfig": {
@@ -13553,12 +13553,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -13571,7 +13571,7 @@
             "x": 0,
             "y": 163
           },
-          "id":null 221,
+          "id": 221,
           "options": {
             "legend": {
               "calcs": [
@@ -13618,7 +13618,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of TCP segments sent and received per second, including data and control segments",
           "fieldConfig": {
@@ -13678,19 +13678,19 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Snd.*/"
                 },
                 "properties": []
@@ -13703,7 +13703,7 @@
             "x": 12,
             "y": 163
           },
-          "id":null 299,
+          "id": 299,
           "options": {
             "legend": {
               "calcs": [
@@ -13750,7 +13750,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of UDP datagrams sent and received per second, based on /proc/net/netstat",
           "fieldConfig": {
@@ -13806,12 +13806,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -13824,7 +13824,7 @@
             "x": 0,
             "y": 193
           },
-          "id":null 55,
+          "id": 55,
           "options": {
             "legend": {
               "calcs": [
@@ -13871,7 +13871,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of ICMP messages sent and received per second, including error and control messages",
           "fieldConfig": {
@@ -13931,12 +13931,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -13949,7 +13949,7 @@
             "x": 12,
             "y": 193
           },
-          "id":null 115,
+          "id": 115,
           "options": {
             "legend": {
               "calcs": [
@@ -13996,7 +13996,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks various TCP error and congestion-related events, including retransmissions, timeouts, dropped connections, and buffer issues",
           "fieldConfig": {
@@ -14058,7 +14058,7 @@
             "x": 0,
             "y": 203
           },
-          "id":null 104,
+          "id": 104,
           "options": {
             "legend": {
               "calcs": [
@@ -14163,7 +14163,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of UDP and UDPLite datagram delivery errors, including missing listeners, buffer overflows, and protocol-specific issues",
           "fieldConfig": {
@@ -14228,7 +14228,7 @@
             "x": 12,
             "y": 203
           },
-          "id":null 109,
+          "id": 109,
           "options": {
             "legend": {
               "calcs": [
@@ -14303,7 +14303,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of incoming ICMP messages that contained protocol-specific errors, such as bad checksums or invalid lengths",
           "fieldConfig": {
@@ -14359,12 +14359,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*out.*/"
                 },
                 "properties": [
                   {
-                    "id":null "custom.transform",
+                    "id": "custom.transform",
                     "value": "negative-Y"
                   }
                 ]
@@ -14377,7 +14377,7 @@
             "x": 0,
             "y": 213
           },
-          "id":null 50,
+          "id": 50,
           "options": {
             "legend": {
               "calcs": [
@@ -14414,7 +14414,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of TCP SYN cookies sent, validated, and failed. These are used to protect against SYN flood attacks and manage TCP handshake resources under load",
           "fieldConfig": {
@@ -14470,12 +14470,12 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Failed.*/"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -14491,7 +14491,7 @@
             "x": 12,
             "y": 213
           },
-          "id":null 91,
+          "id": 91,
           "options": {
             "legend": {
               "calcs": [
@@ -14548,7 +14548,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of currently established TCP connections and the system's max supported limit. On Linux, MaxConn may return -1 to indicate a dynamic/unlimited configuration",
           "fieldConfig": {
@@ -14605,23 +14605,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Max*./"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#890F02",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -14640,7 +14640,7 @@
             "x": 0,
             "y": 223
           },
-          "id":null 85,
+          "id": 85,
           "options": {
             "legend": {
               "calcs": [
@@ -14687,7 +14687,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of UDP packets currently queued in the receive (RX) and transmit (TX) buffers. A growing queue may indicate a bottleneck",
           "fieldConfig": {
@@ -14748,7 +14748,7 @@
             "x": 12,
             "y": 223
           },
-          "id":null 337,
+          "id": 337,
           "options": {
             "legend": {
               "calcs": [
@@ -14795,7 +14795,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of TCP connection initiations per second. 'Active' opens are initiated by this host. 'Passive' opens are accepted from incoming connections",
           "fieldConfig": {
@@ -14857,7 +14857,7 @@
             "x": 0,
             "y": 233
           },
-          "id":null 82,
+          "id": 82,
           "options": {
             "legend": {
               "calcs": [
@@ -14904,7 +14904,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of TCP sockets in key connection states. Requires the --collector.tcpstat flag on node_exporter",
           "fieldConfig": {
@@ -14967,7 +14967,7 @@
             "x": 12,
             "y": 233
           },
-          "id":null 320,
+          "id": 320,
           "options": {
             "legend": {
               "calcs": [
@@ -15044,7 +15044,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Transient TCP connection states. These are typically short-lived during connection establishment and teardown",
           "fieldConfig": {
@@ -15107,7 +15107,7 @@
             "x": 0,
             "y": 243
           },
-          "id":null 339,
+          "id": 339,
           "options": {
             "legend": {
               "calcs": [
@@ -15188,7 +15188,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "TCP socket queue sizes. High rx_queued_bytes indicates application not reading fast enough. High tx_queued_bytes indicates network congestion or slow receiver",
           "fieldConfig": {
@@ -15250,7 +15250,7 @@
             "x": 12,
             "y": 243
           },
-          "id":null 340,
+          "id": 340,
           "options": {
             "legend": {
               "calcs": [
@@ -15304,12 +15304,12 @@
         "x": 0,
         "y": 33
       },
-      "id":null 279,
+      "id": 279,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Duration of each individual collector executed during a Node Exporter scrape. Useful for identifying slow or failing collectors",
           "fieldConfig": {
@@ -15374,7 +15374,7 @@
             "x": 0,
             "y": 164
           },
-          "id":null 40,
+          "id": 40,
           "options": {
             "legend": {
               "calcs": [
@@ -15411,7 +15411,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Rate of CPU time used by the process exposing this metric (user + system mode)",
           "fieldConfig": {
@@ -15472,7 +15472,7 @@
             "x": 12,
             "y": 164
           },
-          "id":null 308,
+          "id": 308,
           "options": {
             "legend": {
               "calcs": [
@@ -15509,7 +15509,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Tracks the memory usage of the process exposing this metric (e.g., node_exporter), including current virtual memory and maximum virtual memory limit",
           "fieldConfig": {
@@ -15566,16 +15566,16 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byName",
+                  "id": "byName",
                   "options": "Virtual Memory Limit"
                 },
                 "properties": [
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -15585,7 +15585,7 @@
                     }
                   },
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "dark-red",
                       "mode": "fixed"
@@ -15596,7 +15596,7 @@
               {
                 "__systemRef": "hideSeriesFrom",
                 "matcher": {
-                  "id":null "byNames",
+                  "id": "byNames",
                   "options": {
                     "mode": "exclude",
                     "names": [
@@ -15608,7 +15608,7 @@
                 },
                 "properties": [
                   {
-                    "id":null "custom.hideFrom",
+                    "id": "custom.hideFrom",
                     "value": {
                       "legend": false,
                       "tooltip": false,
@@ -15625,7 +15625,7 @@
             "x": 0,
             "y": 174
           },
-          "id":null 149,
+          "id": 149,
           "options": {
             "legend": {
               "calcs": [
@@ -15670,7 +15670,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Number of file descriptors used by the exporter process versus its configured limit",
           "fieldConfig": {
@@ -15727,23 +15727,23 @@
             "overrides": [
               {
                 "matcher": {
-                  "id":null "byRegexp",
+                  "id": "byRegexp",
                   "options": "/.*Max*./"
                 },
                 "properties": [
                   {
-                    "id":null "color",
+                    "id": "color",
                     "value": {
                       "fixedColor": "#890F02",
                       "mode": "fixed"
                     }
                   },
                   {
-                    "id":null "custom.fillOpacity",
+                    "id": "custom.fillOpacity",
                     "value": 0
                   },
                   {
-                    "id":null "custom.lineStyle",
+                    "id": "custom.lineStyle",
                     "value": {
                       "dash": [
                         10,
@@ -15757,7 +15757,7 @@
               {
                 "__systemRef": "hideSeriesFrom",
                 "matcher": {
-                  "id":null "byNames",
+                  "id": "byNames",
                   "options": {
                     "mode": "exclude",
                     "names": [
@@ -15769,7 +15769,7 @@
                 },
                 "properties": [
                   {
-                    "id":null "custom.hideFrom",
+                    "id": "custom.hideFrom",
                     "value": {
                       "legend": false,
                       "tooltip": false,
@@ -15786,7 +15786,7 @@
             "x": 10,
             "y": 174
           },
-          "id":null 64,
+          "id": 64,
           "options": {
             "legend": {
               "calcs": [
@@ -15831,7 +15831,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "mimir"
+            "uid": "${ds_prometheus}"
           },
           "description": "Shows whether each Node Exporter collector scraped successfully (1 = success, 0 = failure), and whether the textfile collector returned an error.",
           "fieldConfig": {
@@ -15867,7 +15867,7 @@
             "x": 20,
             "y": 174
           },
-          "id":null 157,
+          "id": 157,
           "options": {
             "displayMode": "basic",
             "legend": {
@@ -15931,7 +15931,11 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": "Mimir",
+          "value": "mimir"
+        },
         "includeAll": false,
         "label": "Datasource",
         "name": "ds_prometheus",
@@ -15945,7 +15949,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "mimir"
+          "uid": "${ds_prometheus}"
         },
         "definition": "",
         "includeAll": false,
@@ -15965,7 +15969,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "mimir"
+          "uid": "${ds_prometheus}"
         },
         "definition": "label_values(node_uname_info{job=\"$job\"}, nodename)",
         "includeAll": false,
@@ -15985,7 +15989,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "mimir"
+          "uid": "${ds_prometheus}"
         },
         "definition": "label_values(node_uname_info{job=\"$job\", nodename=\"$nodename\"}, instance)",
         "includeAll": false,

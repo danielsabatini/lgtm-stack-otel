@@ -9,15 +9,44 @@ prometheus.exporter.unix "host" {
   procfs_path    = "/host/proc"
   sysfs_path     = "/host/sys"
   rootfs_path    = "/host"
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg"]
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "uname"]
 }
 
 prometheus.scrape "host" {
   targets         = prometheus.exporter.unix.host.targets
-  forward_to      = [prometheus.remote_write.gateway.receiver]
-  job_name        = "node-exporter"
+  forward_to      = [prometheus.relabel.fix_job.receiver]
   scrape_interval = "60s"
   scrape_timeout  = "30s"
+
+  clustering {
+    enabled = false
+  }
+}
+
+// Garante compatibilidade total com o dashboard Node Exporter Full (ID 1860):
+// - job="node-exporter" → variável Job do dashboard
+// - nodename → variável Nodename do dashboard (requer este label explicitamente)
+// - instance → mantém o hostname do container como identificador
+prometheus.relabel "fix_job" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  // Sobrescreve job para bater com o filtro padrão do Node Exporter Full
+  rule {
+    target_label = "job"
+    replacement  = "node-exporter"
+  }
+
+  // Injeta nodename usando o hostname do sistema lido em runtime
+  rule {
+    target_label = "nodename"
+    replacement  = env("HOSTNAME")
+  }
+
+  // Garante que instance também seja legível (hostname) para correlação
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
 }
 
 // Auto-Monitoramento do próprio Agent

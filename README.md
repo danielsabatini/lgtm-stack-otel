@@ -116,7 +116,7 @@ Nós embarcamos nativamente as visualizações abaixo:
 |---|---|---|
 | **Host** | Node Exporter Full | [ID 1860](https://grafana.com/grafana/dashboards/1860) |
 | **Stack** | Logging Dashboard via Loki | [ID 12611](https://grafana.com/grafana/dashboards/12611) |
-| **Stack** | Alloy Monitoring | [ID 20475](https://grafana.com/grafana/dashboards/20475) |
+| **Stack** | Alloy Monitoring | Dashboard customizado (métricas `alloy_*`) |
 
 > 🧩 **Extensibilidade**: Para plugar mais painéis, efetue o download do layout JSON em Grafana.com, converta as variáveis declarativas e posicione em \`grafana/provisioning/dashboards/\`.
 
