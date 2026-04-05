@@ -31,9 +31,9 @@ Decidimos separar os pilares do Grafana Alloy:
 ### 1. Alloy Gateway (O Hub Central)
 Roda de forma comum e segura na Docker Engine. Contém nativamente os blocos `otelcol.processor`.
 Sua responsabilidade principal é amansar as requisições OpenTelemetry:
-*   **Memory Limiter:** Caso haja um surto/DDoS interno, ele passa a descartar traces ao invés de derrubar a Stack.
-*   **Batch:** Aglomera milhares de chamadas HTTP curtas por 5 segundos antes de atirá-las aos BDs, reduzindo exaustão de IOPS e RAM do banco de dados Mimir/Tempo.
-*   **Tail Sampling:** Avalia traços *a posteriori* e descarta dezenas de milhares de logs sadios inúteis (Veja `TRACES.md`).
+*   **Memory Limiter:** Caso haja um surto/DDoS interno, ele passa a descartar dados ao invés de derrubar a Stack.
+*   **Batch:** Aglomera milhares de chamadas HTTP curtas por 5 segundos antes de atirá-las aos BDs, reduzindo exaustão de IOPS e RAM do banco de dados Mimir/Tempo/Loki.
+*   **Tail Sampling:** Avalia *traces* a posteriori e filtra com inteligência — retém erros e lentos, descarta os 95% de chamadas saudáveis repetitivas (Veja `TRACES.md`). **Atenção: este filtro atua exclusivamente em traces (spans OTLP). Logs e métricas passam diretamente para o Batch sem amostragem.**
 
 ### 2. Alloy Agent (O Espião Silencioso)
 Contêiner injetado com flag de `privileged: true`. Ele não sabe o que é uma porta web; e o mundo não sabe o que ele é.

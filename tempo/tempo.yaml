@@ -9,7 +9,7 @@ distributor:
         grpc:
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30m
 
 compactor:
   compaction_window: 1h

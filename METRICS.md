@@ -30,7 +30,15 @@ Se precisar calcular o impacto futuro na instância lvm de `/lgtm/mimir`, a equa
 *Tendo scrape interno em 60s:*
 `Custo (GB) = [séries ativas] × [dias de retenção] × 0.0000045 × 1.5`
 
-Para manter a saúde e não escalar o disco prematuramente, sempre acesse as métricas via Grafana para monitorar via query `count({__name__=~".+"})` a contagem de séries vivas do ambiente web.
+Para manter a saúde e não escalar o disco prematuramente, monitore a cardinalidade ativa via a API dedicada do Mimir (evite `count({__name__=~".+"})` pois causa full-scan e degrada o TSDB):
+
+```bash
+# Retorna contagem e lista das séries ativas (requer acesso à porta interna 9009)
+curl -s "http://localhost:9009/api/v1/cardinality/active_series?selector={}" \
+  -H "X-Scope-OrgID: anonymous" | jq '.data.activeSeriesCount'
+```
+
+No Grafana, use a métrica interna `cortex_ingester_active_series` para um painel de tendência não-invasivo.
 
 ---
 🔙 Voltar: [README Principal](README.md)

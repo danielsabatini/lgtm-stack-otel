@@ -26,6 +26,21 @@ Tenha em mãos 5 discos montados em sua máquina:
 | `vde` | `/lgtm/mimir` | Metrics (Mimir TSDB Storage) |
 | `vdf` | `/lgtm/tempo` | Traces (Tempo Storage) |
 
+### 0. Apontar o Docker Engine para o disco dedicado
+
+Antes de instalar ou iniciar o Docker, configure o `daemon.json` para usar o LVM de Docker como raiz de dados. Isso garante que imagens, containers e overlays não consumam o disco OS:
+
+```bash
+sudo mkdir -p /etc/docker
+cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "data-root": "/docker"
+}
+EOF
+# Reinicie o daemon após montar o LV de Docker (passo 3 abaixo)
+sudo systemctl restart docker
+```
+
 ### Script Bash (Execução como Root)
 
 ```bash
@@ -72,16 +87,19 @@ sudo mount -a
 sudo mkdir -p /lgtm/apps/grafana /lgtm/apps/alloy-gateway /lgtm/apps/alloy-agent
 ```
 
-### 4. Permissões de PID e Chown (UID Oficial Grafana)
+### 4. UIDs e Permissões de Diretório (Dockerfiles Oficiais)
 
-Para evitar erros crônicos de "File Permission Denied", o UID restritivo do Grafana (Loki/Mimir,UID:10001) e Server Frontend (UID:472) devem ser alinhados aos diretórios em disco:
+Para evitar erros crônicos de "Permission Denied", os UIDs dos containers devem ser alinhados aos diretórios em disco antes de criar os volumes bind:
 
 ```bash
-# Grafana (UID 472)
+# Grafana — UID 472, GID 0 (root group, conforme Dockerfile oficial grafana/grafana)
 sudo chown -R 472:0 /lgtm/apps/grafana
 
-# Backends (UID 10001)
+# Backends — UID/GID 10001 (conforme Dockerfiles grafana/loki, grafana/mimir, grafana/tempo)
 sudo chown -R 10001:10001 /lgtm/loki /lgtm/mimir /lgtm/tempo
+
+# Alloy Gateway e Alloy Agent — sem chown necessário (rodam como root)
+# Os diretórios /lgtm/apps/alloy-gateway e /lgtm/apps/alloy-agent já foram criados acima.
 ```
 
 ### 5. Ativar as Gavetas Locais via Docker CLI

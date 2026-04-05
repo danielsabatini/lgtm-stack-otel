@@ -24,11 +24,11 @@ Um fato matemático na captura de Traces em produção: Seu banco Tempo afogará
 
 Nós ativamos o padrão arquitetural Enterprise batizado de `Tail Sampling` direto no processador OTLP do nosso Alloy Gateway (Porta invisível). Ele guarda os traces "na memória" e julga antes de encaminhá-los pro Tempo:
 
-1. **Keep-Errors:** Ele descobre se qualquer span ou requisição deu status Crash/500/Fail. Se sim, ele retém **100% da cadeia do erro** obrigatoriamente.
-2. **Keep-Slow:** Ele mede o tempo de duração da rota. Bateu acima de **1000 milissegundos** (1 Lento/pesado)? Ele arquivará a jornada `100%` da requisição para você debugar o gargalo.
-3. **Drop Sample-OK:** Para os infames 99% das chamadas rápidas e com pleno sucesso, ele arquivará uma proporção pífia (probabilidade randômica de **5% a 10%**). Assim, você terá uma "amostra estatística base" preservada, jogando mais de 90% dos bytes duplicados no limbo.
+1. **Keep-Errors:** Retém **100%** dos traces onde qualquer span possui status OpenTelemetry `ERROR`. **Importante:** isso depende do SDK da aplicação mapear o erro para o status OTel `ERROR` — a maioria dos SDKs modernos faz isso automaticamente para exceções não tratadas e respostas HTTP 5xx, mas verifique o comportamento do seu SDK.
+2. **Keep-Slow:** Mede a duração total do trace. Acima de **1000 ms**? Arquiva **100%** da jornada para diagnóstico de gargalo.
+3. **Drop Sample-OK:** Para as chamadas rápidas e bem-sucedidas restantes, preserva apenas **5%** como amostra estatística — descartando os 95% duplicados sem valor analítico.
 
-*O limite e probabilidade para "Corte" podem ser livremente configurados dentro da tag `otelcol.processor.tail_sampling` do arquivo `alloy-gateway/config.alloy`. Reajuste para seu escopo.*
+*Os thresholds podem ser ajustados em `alloy-gateway/conf.d/00-core.alloy` dentro do bloco `otelcol.processor.tail_sampling "lean"`.*
 
 ## Retenção em Disco
 

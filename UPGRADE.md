@@ -1,71 +1,157 @@
 # Manual de Upgrades e Lifecycle (Update SRE)
 
-A substituição de versões em Bancos de Dados Time-Series (TSDBs) como Loki e Mimir **não deve** ser tratada como a simples atualização de um site. Um *"bump"* cego de versão sem leitura prévia de Release Notes pode corromper índices históricos (ex: migração para TSDB Blocks `v13` no Loki).
+A substituição de versões em Bancos de Dados Time-Series (TSDBs) como Loki e Mimir **não deve** ser tratada como a simples atualização de um site. Um *"bump"* cego de versão sem leitura prévia de Release Notes pode corromper índices históricos irreversivelmente.
 
-Nosso repositório concentra o controle de Múltiplas Imagens de forma unificada no arquivo base `.env`. Siga estritamente as regras de ouro abaixo antes de aplicar um upgrade em Produção.
+Nosso repositório concentra o controle de múltiplas imagens de forma unificada no arquivo base `.env`. Siga estritamente as regras abaixo antes de aplicar um upgrade em produção.
 
 ---
 
-## 🛑 Rule #1: Nunca Pule "Major Releases"
-Se o seu arquivo `.env` constar Loki `2.9.0` e a Grafana Labs estiver lançando a `4.0.0`, **não avance diretamente para a 4.0.0**.
-Você *precisa* passar sequencialmente pela `3.0`, iniciar o container para que ele efetue eventuais rotinas internas de *Migration* e Data-Translation no LVM, e só então saltar de `3.y` para a próxima barreira arquitetural.
+## 🛑 Rule #1: Nunca Pule Major Releases (TSDBs)
 
-Diferente do Frontend (Grafana local) que pode saltar *majors* facilmente devido à resiliência do mapeamento e migração automática do banco relacional SQLite subjacente, o Mimir e o Loki gerenciam petabytes fragmentados em chunk-files crús no disco ext4, e quebram se as premissas faltarem.
+Esta regra se aplica ao **Loki, Mimir e Tempo**. Se o seu `.env` constar Loki `2.9.x` e a Grafana Labs estiver na `4.0.0`, **não avance diretamente**. Passe sequencialmente pela `3.0`, inicie o container para que ele execute as rotinas internas de migração/data-translation no LVM, e só então avance para a próxima barreira.
+
+> **Exceção — Grafana Frontend:** O Grafana (`grafana/grafana`) pode saltar major versions com segurança. Seu banco relacional SQLite possui migração automática progressiva e não compartilha o risco de corrupção de chunk-files dos TSDBs.
 
 ---
 
 ## 🛑 Rule #2: Schema Validation (A Bíblia do Upgrade)
-Antes de alterar os números no seu `.env`:
-1. Abra as **[Release Notes Oficiais do Loki](https://grafana.com/docs/loki/latest/setup/upgrade/)** ou as **[Release Notes do Mimir](https://grafana.com/docs/mimir/latest/operators-guide/upgrading/)**.
-2. Dê `Ctrl+F` buscando pelas chaves `schema_config` e `Breaking Changes`.
-3. Se a documentação exigir um novo Storage Index, você precisará editar os arquivos (`loki.yaml` / `mimir.yaml`) **ANTERIORMENTE** à subida do Container declarando a validade temporal do novo schema. Sem o arquivo ajustado antemão, o TSDB Travará no Boot.
+
+Antes de alterar os números no `.env`:
+
+1. Abra as **[Release Notes do Loki](https://grafana.com/docs/loki/latest/setup/upgrade/)** ou **[do Mimir](https://grafana.com/docs/mimir/latest/operators-guide/upgrading/)** ou **[do Tempo](https://grafana.com/docs/tempo/latest/setup/upgrade/)**.
+2. Dê `Ctrl+F` buscando por `schema_config`, `Breaking Changes` e `migration`.
+3. Se a documentação exigir novo Storage Index, edite os arquivos YAML (`loki.yaml`, `mimir.yaml`) **antes** de subir o container — sem o arquivo ajustado, o TSDB travará no boot.
+
+> **Consulte o Apêndice** no final deste documento para os breaking changes conhecidos do Loki 3.x.
 
 ---
 
-## 🚀 Procedimento Padrão Executivo (Step-by-Step)
+## 🚀 Procedimento Padrão Step-by-Step
 
-Se garantiu que não feriu as Rule 1 e 2, aplique o *upgrade*:
+### 1. Downtime Estratégico
 
-**1. O Downtime Estratégico**
-Banco de Dados não se chuta "live" a não ser em HA/Kubernetes. Drene o recebimento:
+Banco de dados TSDB não se atualiza "live" sem HA/Kubernetes. Drene o recebimento:
+
 ```bash
 docker compose stop
-sync # Garanta que a sua RAM escoa todo log/trace remanescente pros LVs!
+sync  # Força o flush dos WALs para disco antes do snapshot pré-upgrade
 ```
 
-**2. Mudança Paramétrica**
-Altere de forma unificada o arquivo de ambiente:
+### 2. Mudança Paramétrica no `.env`
+
 ```bash
+# Edite apenas as versões que deseja atualizar
 nano .env
 
-# Altere as TAGS na cabeça do documento.
-GRAFANA_LOKI_VERSION=3.8.0 # Nova versão.
+# Exemplo:
+# GRAFANA_LOKI_VERSION=3.8.0
 ```
 
-**3. Download Estrito**
-Baixe as dependências declaradas antes de forçar a subida. Se faltar disco no _pulling_, o seu setup velho estará são e salvo.
+### 3. Validação do Compose (Antes de qualquer pull)
+
+Valide que o `compose.yaml` e as variáveis do `.env` estão sintaticamente corretos antes de fazer qualquer download:
+
+```bash
+# Valida a sintaxe e resolve as variáveis do .env
+docker compose config --quiet && echo "✓ compose.yaml válido"
+```
+
+### 4. Download Estrito das Novas Imagens
+
+Baixe as dependências declaradas antes de forçar a subida. Se faltar disco no *pull*, o setup antigo permanece intacto:
+
 ```bash
 docker compose pull
 ```
 
-**4. Inicialização a Seco**
-Se quiser ser profissional extremo, comande a imagem do container novo baixada a ler seu YAML antigo de configuração apenas para checar "Syntax errors de Depreciação" antes de botar em produção:
+### 5. Validação a Seco (Verify-Config + Dry-Run)
+
+**5a. Valide a configuração de cada TSDB com a nova imagem:**
+
 ```bash
-docker run --rm -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml grafana/loki:3.8.0 -config.file=/etc/loki/local-config.yaml -verify-config
+# Loki
+docker run --rm \
+  -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml \
+  grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1} \
+  -config.file=/etc/loki/local-config.yaml -verify-config \
+  && echo "✓ loki.yaml válido"
+
+# Mimir
+docker run --rm \
+  -v $(pwd)/mimir/mimir.yaml:/etc/mimir.yaml \
+  grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.0.5} \
+  -config.file=/etc/mimir.yaml -modules \
+  && echo "✓ mimir.yaml válido"
+
+# Tempo
+docker run --rm \
+  -v $(pwd)/tempo/tempo.yaml:/etc/tempo.yaml \
+  grafana/tempo:${GRAFANA_TEMPO_VERSION:-2.10.3} \
+  -config.file=/etc/tempo.yaml -version \
+  && echo "✓ tempo.yaml válido"
 ```
 
-**5. Wake-Up Final**
-Se não houver grito no verify. Reviva a infra!
+**5b. Simule a subida do compose sem aplicar mudanças:**
+
+```bash
+docker compose --dry-run up
+```
+
+### 6. Wake-Up e Verificação de Saúde
+
+Se não houve erros nos passos anteriores, reviva a infra:
+
 ```bash
 docker compose up -d
-docker compose logs -f loki
-# Espere a palavra mágica: "server initialized" . E cheque a tela do Grafana OTLP.
+
+# Acompanhe os logs de inicialização (aguarde "ready" de cada serviço)
+docker compose logs -f loki mimir tempo grafana
 ```
 
-## 🛡️ O Mecanismo Anti-Falha (Fallback Nativo)
+Healthchecks esperados (todos devem chegar a `healthy`):
 
-> Se alguém executar `docker compose up -d` sem possuir o arquivo `.env` (ex: um pull novo do Git onde .env não existe) ou deletar os headers acidentalmente, a nuvem não cairá! Nosso `compose.yaml` orquestra a técnica de *Safe-Fallback*:
+```bash
+# Aguarda todos os serviços ficarem healthy (timeout 120s)
+docker compose ps
 
-`image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1}`
+# Verificação manual das APIs de saúde
+curl -s http://localhost:3000/api/health | jq .database   # → "ok"
+```
 
-Neste exemplo real, se o Docker notar amnésia do operador, ele rejeitará a ordem de usar versão genérica `:latest` e invocará magicamente a trava nativa `3.7.1` salvando sua partição na Cloud.
+---
+
+## 🛡️ Mecanismo Anti-Falha (Fallback Nativo)
+
+Se o arquivo `.env` não existir (ex: pull limpo do Git em nova máquina), o stack **não cai**. O `compose.yaml` usa *Safe-Fallback* em toda imagem:
+
+```yaml
+image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1}
+```
+
+Se o Docker detectar ausência da variável, usa automaticamente a versão travada `3.7.1`, evitando o risco do `:latest`.
+
+---
+
+## 📋 Apêndice: Breaking Changes Conhecidos
+
+### Loki 2.x → 3.x (migração obrigatória)
+
+Se você ainda opera Loki 2.x e planeja migrar:
+
+| Breaking Change | Impacto | Ação Necessária |
+|---|---|---|
+| Schema TSDB + v13 obrigatório | Boot travado sem migração | Adicione nova entrada em `schema_config` com `from:` futuro antes de subir 3.0 |
+| `shared_store` removido | Config inválida | Remova as chaves `shared_store` e `shared_store_key_prefix` do `loki.yaml` |
+| Max labels por série: **15** (era 30) | Streams com >15 labels rejeitados | Audite a cardinalidade de labels antes da migração |
+| Max log line: **256 KB** | Linhas grandes descartadas silenciosamente | Valide apps que loggam objetos JSON grandes |
+| Prefixo de métricas: `loki_*` (era `cortex_*`) | Alertas e dashboards quebram | Atualize queries que referenciam `cortex_` para `loki_` |
+
+### Tempo < 2.0 → 2.x
+
+| Breaking Change | Impacto | Ação Necessária |
+|---|---|---|
+| Formato vParquet obrigatório | Blocos antigos ilegíveis | Aguarde expiração da retenção ou migre manualmente |
+| `overrides.metrics_generator_processors` movido | Config inválida | Use `overrides.defaults.metrics_generator.processors` |
+
+---
+🔙 Voltar: [README Principal](README.md)

@@ -118,9 +118,15 @@ Nós embarcamos nativamente as visualizações abaixo:
 docker compose logs -f alloy-gateway
 ```
 
-**Tombamento a Quente (Hot-Reload):**
+**Restart de Serviço:**
 ```bash
 docker compose restart mimir
+```
+
+**Hot-Reload do Alloy Gateway (sem downtime):**
+```bash
+# Recarrega a config do alloy-gateway sem derrubar o container
+curl -X POST http://localhost:12345/-/reload
 ```
 
 **Destruição Segura (Seus HD/Volumes estão salvos):**
