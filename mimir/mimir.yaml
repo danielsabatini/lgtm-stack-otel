@@ -1,6 +1,9 @@
 target: all
 multitenancy_enabled: false
 
+activity_tracker:
+  filepath: /data/metrics-activity.log
+
 server:
   http_listen_port: 9009
   grpc_listen_port: 9095
@@ -9,7 +12,7 @@ common:
   storage:
     backend: filesystem
     filesystem:
-      root_directory: /data/storage
+      dir: /data/storage
 
 blocks_storage:
   storage_prefix: blocks
@@ -20,6 +23,14 @@ blocks_storage:
 
 compactor:
   data_dir: /data/compactor
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/ruler
+
+ruler:
+  rule_path: /data/ruler-temp
 
 ingester:
   ring:

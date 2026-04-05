@@ -23,6 +23,21 @@ A retenção é definida dinamicamente. Os blocos persistidos obedecem à variá
 *   Valor Padrão Original: **`30d`**
 *   Cortes de blocos velhos ocorrem autonomamente em partições TSDB limitadas.
 
+> **Requisito Técnico — `ruler_storage` e `ruler.rule_path`:** O Mimir, mesmo em modo single-binary sem regras configuradas, inicializa o componente `ruler` na startup. Sem os paths explícitos no `mimir.yaml`, o binário tenta usar o diretório de trabalho relativo (`./data-ruler/`) onde o UID 10001 não tem permissão de escrita, causando boot failure:
+> ```
+> ruler: failed to access directory ./data-ruler/: open .check: permission denied
+> ```
+> O `mimir.yaml` desta stack já declara os paths absolutos obrigatórios:
+> ```yaml
+> ruler_storage:
+>   backend: filesystem
+>   filesystem:
+>     dir: /data/ruler
+>
+> ruler:
+>   rule_path: /data/ruler-temp
+> ```
+
 ## Fórmula de Dimensionamento Estrito
 
 Se precisar calcular o impacto futuro na instância lvm de `/lgtm/mimir`, a equação padrão de compressão é de `2 bytes/amostra`.

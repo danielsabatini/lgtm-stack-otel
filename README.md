@@ -34,7 +34,7 @@ Disponibilizamos na pasta `examples/` uma curadoria de configurações oficiais 
 | Imagem Original | Versão Bloqueada |
 |---|---|
 | `grafana/grafana` | `12.4.2` |
-| `grafana/alloy` | `1.15.0` |
+| `grafana/alloy` | `v1.15.0` |
 | `grafana/loki` | `3.7.1` |
 | `grafana/mimir` | `3.0.5` |
 | `grafana/tempo` | `2.10.3` |
@@ -63,7 +63,18 @@ docker volume create mimir-data
 docker volume create tempo-data
 ```
 
-3. **Inicie Mágica:**
+3. **Pré-inicialize os Diretórios do Mimir:**
+
+O Mimir usa uma imagem distroless (sem shell) e exige que seus subdiretórios de dados existam antes do primeiro boot. Sem isso, o container falha com `permission denied`:
+
+```bash
+docker run --rm -v mimir-data:/data busybox sh -c "
+  mkdir -p /data/storage /data/tsdb /data/tsdb-sync /data/compactor /data/ruler /data/ruler-temp &&
+  chown -R 10001:10001 /data
+"
+```
+
+4. **Inicie a Stack:**
 ```bash
 docker compose up -d
 ```

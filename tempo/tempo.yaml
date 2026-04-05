@@ -12,8 +12,9 @@ ingester:
   max_block_duration: 30m
 
 compactor:
-  compaction_window: 1h
-  block_retention: ${TEMPO_RETENTION}
+  compaction:
+    block_retention: ${TEMPO_RETENTION}
+    compaction_window: 1h
 
 storage:
   trace:

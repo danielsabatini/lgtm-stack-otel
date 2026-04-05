@@ -108,14 +108,24 @@ docker compose up -d
 docker compose logs -f loki mimir tempo grafana
 ```
 
-Healthchecks esperados (todos devem chegar a `healthy`):
+Healthchecks esperados:
+
+> **Backends distroless (Loki, Mimir, Tempo):** As imagens são distroless — sem shell, sem healthcheck Docker nativo (`healthcheck: disable: true` no `compose.yaml`). Verifique via container auxiliar na rede interna:
 
 ```bash
-# Aguarda todos os serviços ficarem healthy (timeout 120s)
-docker compose ps
+docker run --rm --network lgtm curlimages/curl:latest -s http://loki:3100/ready    # → "ready"
+docker run --rm --network lgtm curlimages/curl:latest -s http://mimir:9009/ready   # → "ready"
+docker run --rm --network lgtm curlimages/curl:latest -s http://tempo:3200/ready   # → "ready"
+```
 
-# Verificação manual das APIs de saúde
+> **Frontend e Coletor (Grafana e Alloy Gateway):** Acessíveis diretamente pelo host:
+
+```bash
 curl -s http://localhost:3000/api/health | jq .database   # → "ok"
+curl -s http://localhost:12345/-/ready                    # → "Alloy is ready."
+
+# Visão geral de todos os containers
+docker compose ps
 ```
 
 ---

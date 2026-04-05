@@ -95,12 +95,26 @@ Para evitar erros crônicos de "Permission Denied", os UIDs dos containers devem
 # Grafana — UID 472, GID 0 (root group, conforme Dockerfile oficial grafana/grafana)
 sudo chown -R 472:0 /lgtm/apps/grafana
 
-# Backends — UID/GID 10001 (conforme Dockerfiles grafana/loki, grafana/mimir, grafana/tempo)
-sudo chown -R 10001:10001 /lgtm/loki /lgtm/mimir /lgtm/tempo
+# Loki e Tempo — UID/GID 10001 (conforme Dockerfiles grafana/loki, grafana/tempo)
+sudo chown -R 10001:10001 /lgtm/loki /lgtm/tempo
+
+# Mimir — UID/GID 10001, mas exige subdiretórios pré-criados (imagem distroless não os cria)
+sudo mkdir -p \
+  /lgtm/mimir/storage \
+  /lgtm/mimir/tsdb \
+  /lgtm/mimir/tsdb-sync \
+  /lgtm/mimir/compactor \
+  /lgtm/mimir/ruler \
+  /lgtm/mimir/ruler-temp
+sudo chown -R 10001:10001 /lgtm/mimir
 
 # Alloy Gateway e Alloy Agent — sem chown necessário (rodam como root)
 # Os diretórios /lgtm/apps/alloy-gateway e /lgtm/apps/alloy-agent já foram criados acima.
 ```
+
+> **Por que o Mimir precisa de subdiretórios pré-criados?** A imagem distroless do Mimir não possui shell nem `mkdir`. O binário espera que `/data/storage`, `/data/tsdb`, `/data/ruler` etc. já existam com permissão de escrita ao iniciar. Sem eles, o boot falha com `permission denied` ou `open .check: permission denied` no `ruler`.
+
+> **Nota sobre `rslave` no Alloy Agent:** O volume `/:/host:ro` do `alloy-agent` usa propagação `rprivate` (padrão Docker), compatível com Linux e WSL2. Em servidores Linux de produção com systemd, pode-se adicionar `,rslave` ao volume para capturar dinamicamente novos pontos de montagem criados no host após o start do container. **WSL2 não suporta `rslave`** — o `compose.yaml` atual omite propositalmente essa flag para garantir portabilidade.
 
 ### 5. Ativar as Gavetas Locais via Docker CLI
 

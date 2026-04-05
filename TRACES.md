@@ -35,5 +35,17 @@ Nós ativamos o padrão arquitetural Enterprise batizado de `Tail Sampling` dire
 O expurgo natural do Tempo é manipulado no banco central de retenções `.env` na chave associada `TEMPO_RETENTION` e declarada unicamente em horas (Ex: `336h`).
 Sempre consulte o painel para auditar o número de traces salvos, calculando um peso médio de ~`1,5 KB` de ocupação em disco virtual por span processado.
 
+> **Requisito Técnico — `compactor.compaction` sub-block:** No `tempo.yaml`, as chaves `block_retention` e `compaction_window` devem estar **dentro do sub-bloco `compactor.compaction`**, não diretamente em `compactor`. Colocá-las no nível errado causa boot failure:
+> ```
+> field block_retention not found in type compactor.Config
+> ```
+> Estrutura correta (já aplicada no `tempo.yaml` desta stack):
+> ```yaml
+> compactor:
+>   compaction:
+>     block_retention: ${TEMPO_RETENTION}
+>     compaction_window: 1h
+> ```
+
 ---
 🔙 Voltar: [README Principal](README.md)

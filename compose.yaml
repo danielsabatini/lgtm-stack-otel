@@ -11,7 +11,7 @@ services:
     environment:
       - LOKI_RETENTION=${LOKI_RETENTION:-30d}
     # Portas omitidas por segurança.
-    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends
     # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
     # ports:
     #   - "3100:3100"
@@ -19,12 +19,10 @@ services:
       - loki-data:/loki
       - ./loki/loki.yaml:/etc/loki/local-config.yaml:ro
     command: ["-config.file=/etc/loki/local-config.yaml", "-config.expand-env=true"]
+    # Imagem distroless: sem shell nem wget. Healthcheck desabilitado — restart: unless-stopped
+    # garante reinicialização automática em caso de crash.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      disable: true
     networks:
       - lgtm
     deploy:
@@ -41,7 +39,7 @@ services:
     environment:
       - MIMIR_RETENTION=${MIMIR_RETENTION:-30d}
     # Portas omitidas por segurança.
-    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends
     # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
     # ports:
     #   - "9009:9009"
@@ -49,12 +47,10 @@ services:
       - mimir-data:/data
       - ./mimir/mimir.yaml:/etc/mimir.yaml:ro
     command: ["-config.file=/etc/mimir.yaml", "-config.expand-env=true"]
+    # Imagem distroless: sem shell nem wget. Healthcheck desabilitado — restart: unless-stopped
+    # garante reinicialização automática em caso de crash.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9009/ready || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      disable: true
     networks:
       - lgtm
     deploy:
@@ -71,7 +67,7 @@ services:
     environment:
       - TEMPO_RETENTION=${TEMPO_RETENTION:-336h}
     # Portas omitidas por segurança.
-    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends
     # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
     # ports:
     #   - "3200:3200"
@@ -79,12 +75,10 @@ services:
       - tempo-data:/var/tempo
       - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
     command: ["-config.file=/etc/tempo.yaml", "-config.expand-env=true"]
+    # Imagem distroless: sem shell nem wget. Healthcheck desabilitado — restart: unless-stopped
+    # garante reinicialização automática em caso de crash.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      disable: true
     networks:
       - lgtm
     deploy:
@@ -111,12 +105,9 @@ services:
     networks:
       - lgtm
     depends_on:
-      loki:
-        condition: service_healthy
-      mimir:
-        condition: service_healthy
-      tempo:
-        condition: service_healthy
+      - loki
+      - mimir
+      - tempo
     deploy:
       resources:
         limits:
@@ -124,24 +115,21 @@ services:
           memory: ${GRAFANA_MEMORY:-4GB}
 
   alloy-gateway:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.15.0}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.15.0}
     container_name: alloy-gateway
     restart: unless-stopped
     volumes:
       - ./alloy-gateway/conf.d:/etc/alloy/conf.d:ro
       - alloy-gateway-data:/var/lib/alloy/data
-    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/conf.d/"]
+    command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
     ports:
       - "12345:12345"  # UI do Alloy Gateway
       - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)
       - "4318:4318"    # OTLP HTTP (traces/metrics das aplicações)
     depends_on:
-      loki:
-        condition: service_healthy
-      mimir:
-        condition: service_healthy
-      tempo:
-        condition: service_healthy
+      - loki
+      - mimir
+      - tempo
     networks:
       - lgtm
     deploy:
@@ -151,7 +139,7 @@ services:
           memory: ${ALLOY_GATEWAY_MEMORY:-2GB}
 
   alloy-agent:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.15.0}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.15.0}
     container_name: alloy-agent
     restart: unless-stopped
     privileged: true  # Necessário para leitura do /proc, /sys e journal do host
@@ -160,7 +148,7 @@ services:
       - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro
       - /var/log/journal:/var/log/journal:ro
       - /run/systemd/journal/socket:/run/systemd/journal/socket
-      - /:/host:ro,rslave
+      - /:/host:ro
       - alloy-agent-data:/var/lib/alloy/data
     command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     depends_on:

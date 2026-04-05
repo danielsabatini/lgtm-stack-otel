@@ -21,6 +21,12 @@ Definido organicamente na chave `.env` global pela cláusula `LOKI_RETENTION`.
 *   Valor Padrão Original: **`30d`**
 *   Após a expiração, os _chunks_ são apagados assincronamente da pasta interna `/lgtm/loki`.
 
+> **Requisito Técnico — `delete_request_store`:** Quando `retention_enabled: true`, o Loki exige obrigatoriamente a chave `delete_request_store: filesystem` no bloco `compactor` do `loki.yaml`. Sem ela, o boot falha com:
+> ```
+> CONFIG ERROR: compactor.delete-request-store should be configured when retention is enabled
+> ```
+> O `loki.yaml` desta stack já inclui essa configuração.
+
 ## Estimativa de Armazenamento e Performance
 
 A compressão típica que você experimentará será em torno de `10:1` (Sua aplicação gera 100GB de texto bruto HTTP 200/500, e o Loki formata isso comprimido usando apenas 10GB de seu HD). Isso sem contar o *Overhead* residual do Índice (WAL de 30% a 50%).
