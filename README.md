@@ -8,6 +8,8 @@ Para manter a organização e escalabilidade deste repositório, separamos as de
 
 - 🏗️ **[ARCHITECTURE.md](ARCHITECTURE.md)** — Topologia do Docker, Alloy Gateway vs Alloy Agent, e filosofia Zero-Trust.
 - ⚙️ **[INFRASTRUCTURE.md](INFRASTRUCTURE.md)** — Roteiro oficial de setup (Scripts LVM), limites restritos de CPU/RAM, e provisionamento de HDs físicos.
+- 🛡️ **[BACKUP.md](BACKUP.md)** — Políticas do Disaster Recovery, estratégias de Snapshot na Cloud e como realizar restauração de servidores perdidos.
+- 🔄 **[UPGRADE.md](UPGRADE.md)** — Regras Ouro do Lifecycle: Prevenção de quebra de base e checagens estritas ao subir o Mimir/Loki.
 - 📈 **[METRICS.md](METRICS.md)** — Planejamento do Mimir, dimensionamento, whitelist de componentes do Node Exporter e gestão de TSDB retenções.
 - 📋 **[LOGS.md](LOGS.md)** — Armazenamento do Loki, cálculos de GB/dia e uso de filtros estritos omitindo os ruídos do Kernel/Systemd.
 - 🔗 **[TRACES.md](TRACES.md)** — Recebimentos do Banco Tempo, integração OTLP e o uso cirúrgico de "Tail Sampling" para cortar descartes.

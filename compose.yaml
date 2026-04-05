@@ -4,7 +4,7 @@ services:
   # --- BACKENDS (Bases de Dados) ---
 
   loki:
-    image: grafana/loki:3.7.1
+    image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1}
     container_name: loki
     restart: unless-stopped
     user: "10001:10001"
@@ -18,7 +18,7 @@ services:
     volumes:
       - loki-data:/loki
       - ./loki/loki.yaml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml
+    command: ["-config.file=/etc/loki/local-config.yaml", "-config.expand-env=true"]
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
       interval: 10s
@@ -34,7 +34,7 @@ services:
           memory: ${LOKI_MEMORY:-6GB}
 
   mimir:
-    image: grafana/mimir:3.0.5
+    image: grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.0.5}
     container_name: mimir
     restart: unless-stopped
     user: "10001:10001"
@@ -48,7 +48,7 @@ services:
     volumes:
       - mimir-data:/data
       - ./mimir/mimir.yaml:/etc/mimir.yaml:ro
-    command: ["-config.file=/etc/mimir.yaml"]
+    command: ["-config.file=/etc/mimir.yaml", "-config.expand-env=true"]
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9009/ready || exit 1"]
       interval: 15s
@@ -64,7 +64,7 @@ services:
           memory: ${MIMIR_MEMORY:-8GB}
 
   tempo:
-    image: grafana/tempo:2.10.3
+    image: grafana/tempo:${GRAFANA_TEMPO_VERSION:-2.10.3}
     container_name: tempo
     restart: unless-stopped
     user: "10001:10001"
@@ -78,7 +78,7 @@ services:
     volumes:
       - tempo-data:/var/tempo
       - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
-    command: ["-config.file=/etc/tempo.yaml"]
+    command: ["-config.file=/etc/tempo.yaml", "-config.expand-env=true"]
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
       interval: 10s
@@ -96,7 +96,7 @@ services:
   # --- FRONTEND E COLETOR (Dependem dos Backends) ---
 
   grafana:
-    image: grafana/grafana:12.4.2
+    image: grafana/grafana:${GRAFANA_VERSION:-12.4.2}
     container_name: grafana
     restart: unless-stopped
     user: "472:0"
@@ -124,7 +124,7 @@ services:
           memory: ${GRAFANA_MEMORY:-4GB}
 
   alloy-gateway:
-    image: grafana/alloy:1.15.0
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.15.0}
     container_name: alloy-gateway
     restart: unless-stopped
     volumes:
@@ -151,7 +151,7 @@ services:
           memory: ${ALLOY_GATEWAY_MEMORY:-2GB}
 
   alloy-agent:
-    image: grafana/alloy:1.15.0
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.15.0}
     container_name: alloy-agent
     restart: unless-stopped
     privileged: true  # Necessário para leitura do /proc, /sys e journal do host
