@@ -1,37 +1,80 @@
-// --- COLETA DE MÉTRICAS ---
+// =============================================================================
+// MÉTRICAS DO HOST
+// Usa o node_exporter embutido do Alloy para coletar CPU, memória, disco e rede.
+// procfs/sysfs/rootfs apontam para o host montado em /host (compose.yaml).
+// =============================================================================
 prometheus.exporter.unix "host" {
   procfs_path = "/host/proc"
   sysfs_path  = "/host/sys"
   rootfs_path = "/host"
 }
 
-prometheus.scrape "default" {
-  targets    = prometheus.exporter.unix.host.targets
-  forward_to = [prometheus.remote_write.mimir.receiver]
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  job_name        = "node-exporter"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
 }
 
+// =============================================================================
+// AUTO-MONITORAMENTO DO ALLOY
+// Expõe métricas internas do próprio coletor (pipeline health, WAL, erros).
+// prometheus.exporter.self não aceita argumentos — bloco vazio é obrigatório.
+// =============================================================================
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  job_name        = "alloy"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+}
+
+// =============================================================================
+// ENVIO DE MÉTRICAS → MIMIR
+// Ponto de saída único para todas as métricas coletadas (host + alloy + OTLP).
+// =============================================================================
 prometheus.remote_write "mimir" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
   }
 }
 
-// --- COLETA DE LOGS ---
+// =============================================================================
+// COLETA DE LOGS DO JOURNAL
+//
+// Pipeline: source.journal → relabel (add instance) → process (drop label) → write
+//
+// Nota: loki.relabel requer forward_to (campo obrigatório conforme documentação
+// oficial). O componente deve ser um estágio real na pipeline, não apenas uma
+// fonte de regras. O parâmetro relabel_rules em loki.source.journal é um padrão
+// alternativo, mas viola a constraint de forward_to obrigatório.
+//
+// max_age: limita a leitura retroativa do journal no startup (default: 7h).
+// Um valor alto pode gerar spike de ingestão em sistemas movimentados.
+// =============================================================================
 loki.source.journal "system" {
-  forward_to = [loki.process.labels.receiver]
-  relabel_rules = loki.relabel.journal.rules
+  forward_to = [loki.relabel.journal.receiver]
+  max_age    = "12h"
 }
 
 loki.relabel "journal" {
+  forward_to = [loki.process.labels.receiver]
+
   rule {
     target_label = "instance"
-    replacement  = "servidor-debian"
+    replacement  = env("HOSTNAME")
   }
 }
 
 loki.process "labels" {
-  stage.label_drop { values = ["_SOURCE_REALTIME_TIMESTAMP"] }
   forward_to = [loki.write.local.receiver]
+
+  stage.label_drop {
+    values = ["_SOURCE_REALTIME_TIMESTAMP"]
+  }
 }
 
 loki.write "local" {
@@ -40,7 +83,17 @@ loki.write "local" {
   }
 }
 
-// --- COLETA DE TRACES ---
+// =============================================================================
+// RECEPÇÃO OTLP (Aplicações)
+// Aceita traces, métricas e logs de qualquer aplicação instrumentada com
+// OpenTelemetry nas portas expostas no compose.yaml:
+//   4317 → gRPC
+//   4318 → HTTP
+//
+// AVISO: métricas do tipo delta (ex.: counters OTel nativos) são descartadas
+// pelo otelcol.exporter.prometheus, pois o Prometheus não suporta delta.
+// Se necessário, adicione otelcol.processor.deltatocumulative antes do exporter.
+// =============================================================================
 otelcol.receiver.otlp "default" {
   grpc { endpoint = "0.0.0.0:4317" }
   http { endpoint = "0.0.0.0:4318" }
@@ -48,9 +101,11 @@ otelcol.receiver.otlp "default" {
   output {
     traces  = [otelcol.exporter.otlp.tempo.input]
     metrics = [otelcol.exporter.prometheus.mimir.input]
+    logs    = [otelcol.exporter.loki.default.input]
   }
 }
 
+// --- Traces → Tempo ---
 otelcol.exporter.otlp "tempo" {
   client {
     endpoint = "tempo:4317"
@@ -58,6 +113,14 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
+// --- Métricas OTLP → Prometheus → Mimir ---
+// add_metric_suffixes (padrão: true) adiciona _total, _seconds etc. ao nome.
+// Desative se suas aplicações já incluem os sufixos para evitar duplicação.
 otelcol.exporter.prometheus "mimir" {
   forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+// --- Logs OTLP → Loki ---
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.local.receiver]
 }

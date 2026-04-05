@@ -20,10 +20,12 @@ blocks_storage:
 
 compactor:
   data_dir: /data/compactor
-  sharding_enabled: false # Falso para modo all-in-one
 
 ingester:
   ring:
     kvstore:
       store: inmemory
     replication_factor: 1
+
+limits:
+  compactor_blocks_retention_period: ${MIMIR_RETENTION}

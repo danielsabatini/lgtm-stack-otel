@@ -4,9 +4,12 @@ services:
   # --- BACKENDS (Bases de Dados) ---
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.7.1
     container_name: loki
     restart: unless-stopped
+    user: "10001:10001"
+    environment:
+      - LOKI_RETENTION=${LOKI_RETENTION:-30d}
     ports:
       - "3100:3100"
     volumes:
@@ -18,7 +21,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
     networks:
       - lgtm
     deploy:
@@ -28,9 +31,12 @@ services:
           memory: 4GB
 
   mimir:
-    image: grafana/mimir:latest
+    image: grafana/mimir:3.0.5
     container_name: mimir
     restart: unless-stopped
+    user: "10001:10001"
+    environment:
+      - MIMIR_RETENTION=${MIMIR_RETENTION:-30d}
     ports:
       - "9009:9009"
     volumes:
@@ -38,10 +44,11 @@ services:
       - ./mimir/mimir.yaml:/etc/mimir.yaml:ro
     command: ["-config.file=/etc/mimir.yaml"]
     healthcheck:
-      test: ["CMD", "prometheus-mimir", "-target=all", "-check-ready"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9009/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - lgtm
     deploy:
@@ -51,9 +58,12 @@ services:
           memory: 6GB
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.3
     container_name: tempo
     restart: unless-stopped
+    user: "10001:10001"
+    environment:
+      - TEMPO_RETENTION=${TEMPO_RETENTION:-336h}
     ports:
       - "3200:3200"
     volumes:
@@ -63,6 +73,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
       interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - lgtm
     deploy:
@@ -74,17 +87,18 @@ services:
   # --- FRONTEND E COLETOR (Dependem dos Backends) ---
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.4.2
     container_name: grafana
     restart: unless-stopped
+    user: "472:0"
     ports:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-changeme}
     networks:
       - lgtm
     depends_on:
@@ -101,21 +115,22 @@ services:
           memory: 1GB
 
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:1.15.0
     container_name: alloy
     restart: unless-stopped
-    privileged: true
+    privileged: true  # Necessário para leitura do /proc, /sys e journal do host
     user: root
     volumes:
       - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/log/journal:/var/log/journal:ro
       - /run/systemd/journal/socket:/run/systemd/journal/socket
       - /:/host:ro,rslave
-    command: [ "run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy" ]
+      - alloy-data:/var/lib/alloy/data
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     ports:
-      - "12345:12345"
-      - "4317:4317"
-      - "4318:4318"
+      - "12345:12345"  # UI do Alloy
+      - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)
+      - "4318:4318"    # OTLP HTTP (traces/metrics das aplicações)
     depends_on:
       loki:
         condition: service_healthy
@@ -144,4 +159,6 @@ volumes:
   mimir-data:
     external: true
   tempo-data:
+    external: true
+  alloy-data:
     external: true
