@@ -1,0 +1,34 @@
+// =============================================================================
+// EXEMPLO ALLOY GATEWAY - PULL DE NODE_EXPORTER LEGADO
+// 
+// Como Usar:
+// Copie este arquivo para 'lgtm-stack/alloy-gateway/conf.d/' e reinicie o Alloy Gateway.
+// IMPORTANTE: Diferente dos módulos locais que filtram na fonte, aqui o servidor
+// legado (node_exporter:9100) manda TUDO(>10MB). Nós protegemos a nuvem Mimir
+// filtrando ativamente via 'metric_relabel' e jogando o "lixo" no limbo.
+// =============================================================================
+
+prometheus.scrape "pull_linux_legado" {
+  // Lista EXPLÍCITA de servidores legados a varrer (Sem port-scanning na rede)
+  targets = [
+    {"__address__" = "192.168.10.55:9100", "instance" = "servidor-financas-01"},
+    {"__address__" = "192.168.10.56:9100", "instance" = "servidor-erp-legado"},
+  ]
+
+  job_name        = "linux-legacy"
+  scrape_interval = "60s"
+  
+  // Como o Alloy já está no próprio Gateway, ele manda os dados processados 
+  // diretamente para a porta interna do Mimir.
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+
+  // =========================================================
+  // VÁLVULA DE SEGURANÇA (Relabel e Drop em tempo de execução)
+  // =========================================================
+  // Mantém apenas os 5 "Golden Signals" e joga o resto sumariamente fora.
+  metric_relabel {
+    source_labels = ["__name__"]
+    regex         = "^node_(cpu_seconds_total|memory_MemAvailable_bytes|memory_MemTotal_bytes|filesystem_avail_bytes|filesystem_size_bytes|disk_io_time_seconds_total|network_receive_bytes_total|network_transmit_bytes_total|load1.*)$"
+    action        = "keep"
+  }
+}

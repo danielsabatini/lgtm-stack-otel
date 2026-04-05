@@ -23,6 +23,7 @@ Disponibilizamos na pasta `examples/` uma curadoria de configurações oficiais 
 - 🐬 **[MySQL](examples/mysql/config.alloy)** — Mitigação de cardinalidade inútil de _schemas_ e leitura exclusiva de _error.log_.
 - 🐘 **[PostgreSQL](examples/postgresql/config.alloy)** — Remoção de lock-metrics invasivos e _Regex_ matando logs triviais de nível INFO.
 - 📊 **[SQL Server](examples/sqlserver/config.alloy)** — Coleta global via Exporter MSSQL aliada a um XPath de Provider cruzado.
+- 📡 **[Legado / Remote Scrape](examples/remote-scrape)** — Arquitetura de `Pull Scrape` via módulos, protegendo contra *node_exporters* clássicos invasivos em clusters não gerenciados.
 
 ---
 

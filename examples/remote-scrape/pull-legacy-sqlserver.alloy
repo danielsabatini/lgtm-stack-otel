@@ -1,0 +1,27 @@
+// =============================================================================
+// EXEMPLO ALLOY GATEWAY - PULL DE MSSQL_EXPORTER LEGADO
+// 
+// Como Usar:
+// Copie este arquivo para 'lgtm-stack/alloy-gateway/conf.d/' e reinicie.
+// =============================================================================
+
+prometheus.scrape "pull_sqlserver_legado" {
+  // Lista EXPLÍCITA de alvos
+  targets = [
+    {"__address__" = "10.0.0.101:9375", "instance" = "db-windows-sql"},
+  ]
+
+  job_name        = "sqlserver-legacy"
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+
+  // =========================================================
+  // VÁLVULA DE SEGURANÇA (Relabeling MSSQL)
+  // =========================================================
+  // Captura os padrões de exportadores SQL oficiais ou módulos do windows_exporter 
+  metric_relabel {
+    source_labels = ["__name__"]
+    regex         = "^(windows_mssql|mssql|sqlserver)_.*$"
+    action        = "keep"
+  }
+}

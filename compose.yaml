@@ -128,9 +128,9 @@ services:
     container_name: alloy-gateway
     restart: unless-stopped
     volumes:
-      - ./alloy-gateway/config.alloy:/etc/alloy/config.alloy:ro
+      - ./alloy-gateway/conf.d:/etc/alloy/conf.d:ro
       - alloy-gateway-data:/var/lib/alloy/data
-    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/conf.d/"]
     ports:
       - "12345:12345"  # UI do Alloy Gateway
       - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)

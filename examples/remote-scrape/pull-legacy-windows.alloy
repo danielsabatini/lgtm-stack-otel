@@ -1,0 +1,30 @@
+// =============================================================================
+// EXEMPLO ALLOY GATEWAY - PULL DE WINDOWS_EXPORTER LEGADO
+// 
+// Como Usar:
+// Copie este arquivo para 'lgtm-stack/alloy-gateway/conf.d/' e reinicie o Gateway.
+// Esta configuração faz o scraping de servidores Windows com o agent clássico 
+// rodando na porta 9182.
+// =============================================================================
+
+prometheus.scrape "pull_windows_legado" {
+  // Lista EXPLÍCITA de servidores legados na porta padrão do windows_exporter
+  targets = [
+    {"__address__" = "10.0.0.99:9182", "instance" = "win-ad-server"},
+  ]
+
+  job_name        = "windows-legacy"
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+
+  // =========================================================
+  // VÁLVULA DE SEGURANÇA (Relabeling Window Minimal)
+  // =========================================================
+  // Idêntico ao padrão Local (Push):
+  // enabled_collectors = ["cpu", "logical_disk", "net", "os", "system", "memory"]
+  metric_relabel {
+    source_labels = ["__name__"]
+    regex         = "^windows_(cpu|logical_disk|net|os|system|memory)_.*$"
+    action        = "keep"
+  }
+}
