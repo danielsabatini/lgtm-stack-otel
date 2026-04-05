@@ -1,0 +1,69 @@
+// =============================================================================
+// ALLOY AGENT - COLETOR DO HOST E REDE INTERNA
+// =============================================================================
+
+// =============================================================================
+// MÉTRICAS DO HOST
+// =============================================================================
+prometheus.exporter.unix "host" {
+  procfs_path    = "/host/proc"
+  sysfs_path     = "/host/sys"
+  rootfs_path    = "/host"
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg"]
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+  job_name        = "node-exporter"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+}
+
+// Auto-Monitoramento do próprio Agent
+prometheus.exporter.self "alloy_agent" {}
+prometheus.scrape "alloy_agent" {
+  targets         = prometheus.exporter.self.alloy_agent.targets
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+  job_name        = "alloy-agent"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+}
+
+// Envio de métricas para o Gateway
+prometheus.remote_write "gateway" {
+  endpoint {
+    url = "http://alloy-gateway:9999/api/v1/metrics/write"
+  }
+}
+
+// =============================================================================
+// COLETA DE LOGS DO JOURNAL
+// =============================================================================
+loki.source.journal "system" {
+  forward_to = [loki.relabel.journal.receiver]
+  max_age    = "12h"
+  matches    = "_SYSTEMD_UNIT=docker.service"
+}
+
+loki.relabel "journal" {
+  forward_to = [loki.process.labels.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
+}
+
+loki.process "labels" {
+  forward_to = [loki.write.gateway.receiver]
+  stage.label_drop {
+    values = ["_SOURCE_REALTIME_TIMESTAMP"]
+  }
+}
+
+// Envio de logs para o Gateway
+loki.write "gateway" {
+  endpoint {
+    url = "http://alloy-gateway:9998/loki/api/v1/push"
+  }
+}

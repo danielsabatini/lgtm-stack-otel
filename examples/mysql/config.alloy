@@ -1,0 +1,65 @@
+// =============================================================================
+// EXEMPLO ALLOY AGENT: MYSQL / MARIADB (LEAN)
+// Foco: Banco de Dados de Alta Performance, expurgando metrics granulares inúteis.
+// Aviso de Traces: Bancos de Dados não operam Traces diretamente via agent.
+// =============================================================================
+
+// =============================================================================
+// 1. MÉTRICAS (Mínimas Necessárias)
+// =============================================================================
+prometheus.exporter.mysql "db_mysql" {
+  // Substitua as credenciais e garanta que o user possua REPLICATION CLIENT e PROCESS
+  data_source_name = "alloy_exporter:senha_segura@(localhost:3306)/"
+
+  // Restrição estrita de cardinalidade: Pegar apenas estatísticas Globais e de Engine.
+  // Evitará a coleta de schemas complexos ou events statements que esmagam o Mimir.
+  set_collectors = [
+    "global_status",
+    "global_variables",
+    "innodb",
+  ]
+}
+
+prometheus.scrape "mysql_metrics" {
+  targets         = prometheus.exporter.mysql.db_mysql.targets
+  job_name        = "mysql-cluster"
+  scrape_interval = "60s"
+  
+  // Envia as métricas diretamente para a porta Mimir no Gateway Interno
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.remote_write "gateway" {
+  endpoint {
+    url = "http://alloy-gateway.meudominio.internal:9999/api/v1/metrics/write"
+  }
+}
+
+// =============================================================================
+// 2. LOGS DO SO (Filtro por Arquivo Oficial do Engine)
+// =============================================================================
+local.file_match "mysql_logs" {
+  // Ao invez de sugar o Syslog geral, miramos com laser no que importa
+  path_targets = [
+    {"__path__" = "/var/log/mysql/error.log"},
+  ]
+}
+
+loki.source.file "mysql" {
+  targets    = local.file_match.mysql_logs.targets
+  forward_to = [loki.relabel.mysql_format.receiver]
+}
+
+loki.relabel "mysql_format" {
+  forward_to = [loki.write.gateway_logs.receiver]
+  rule {
+    target_label = "service"
+    replacement  = "mysql"
+  }
+}
+
+loki.write "gateway_logs" {
+  endpoint {
+    url = "http://alloy-gateway.meudominio.internal:9998/loki/api/v1/push"
+  }
+}

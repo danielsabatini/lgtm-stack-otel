@@ -1,0 +1,63 @@
+// =============================================================================
+// EXEMPLO ALLOY AGENT: WINDOWS SERVER (LEAN)
+// Foco: WDF, Disco, CPU, e Critical Errors nativos via EventViewer (XPath).
+// Aviso de Traces: Traces devem ser enviados via SDK das aplicações .NET (ex) para o Gateway.
+// =============================================================================
+
+// =============================================================================
+// 1. MÉTRICAS (Mínimas Necessárias)
+// =============================================================================
+prometheus.exporter.windows "win_host" {
+  // Supressão total de módulos ruidosos como IIS, textfile e terminal_services
+  enabled_collectors = [
+    "cpu",
+    "logical_disk",
+    "net",
+    "os",
+    "system",
+    "memory",
+  ]
+}
+
+prometheus.scrape "win_metrics" {
+  targets        = prometheus.exporter.windows.win_host.targets
+  job_name       = "win-node"
+  scrape_interval = "60s"
+  
+  // Envia direto para a porta (ou IP do Proxy) do Alloy Gateway
+  forward_to     = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.remote_write "gateway" {
+  endpoint {
+    // Altere para o IP/DNS real do seu LGTM Stack
+    url = "http://alloy-gateway.meudominio.internal:9999/api/v1/metrics/write"
+  }
+}
+
+// =============================================================================
+// 2. LOGS DO SO (Filtro XPath de Alta Performance)
+// =============================================================================
+loki.source.windowsevent "system_errors" {
+  eventlog_name = "System"
+  // MAGIA AQUI: Ao invés de mandar todo o tráfego e descartar depois,
+  // nós pedimos pro Kernel do Windows entregar apenas Level=1(Critical) ou Level=2(Error).
+  // A economia de I/O em disco e rede é de mais de 98%
+  xpath_query   = "*[System[(Level=1 or Level=2)]]"
+  
+  forward_to    = [loki.relabel.win_logs.receiver]
+}
+
+loki.relabel "win_logs" {
+  forward_to = [loki.write.gateway_logs.receiver]
+  rule {
+    target_label = "os"
+    replacement  = "windows"
+  }
+}
+
+loki.write "gateway_logs" {
+  endpoint {
+    url = "http://alloy-gateway.meudominio.internal:9998/loki/api/v1/push"
+  }
+}

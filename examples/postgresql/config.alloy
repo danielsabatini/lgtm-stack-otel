@@ -1,0 +1,81 @@
+// =============================================================================
+// EXEMPLO ALLOY AGENT: POSTGRESQL (LEAN)
+// Foco: Bloqueio de sub-métricas de linhas em background, indexando Lock e BD.
+// Aviso de Traces: Bancos de Dados não operam Traces diretamente via agent.
+// =============================================================================
+
+// =============================================================================
+// 1. MÉTRICAS (Mínimas Necessárias)
+// =============================================================================
+prometheus.exporter.postgres "db_pg" {
+  data_source_names = [
+    "postgresql://alloy_exporter:senha_segura@localhost:5432/postgres?sslmode=disable",
+  ]
+
+  // Mantemos estritamente saúde do banco e incidentes de trava (Locks)
+  // Rejeitamos relatórios pesados de Row/Transaction (Especialmente num BD transatural)
+  enabled_collectors = [
+    "database",
+    "locks",
+    "stat_user_tables",
+  ]
+}
+
+prometheus.scrape "pg_metrics" {
+  targets         = prometheus.exporter.postgres.db_pg.targets
+  job_name        = "postgres-cluster"
+  scrape_interval = "60s"
+  
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.remote_write "gateway" {
+  endpoint {
+    url = "http://alloy-gateway.meudominio.internal:9999/api/v1/metrics/write"
+  }
+}
+
+// =============================================================================
+// 2. LOGS DO SO (Filtro por Arquivo Oficial do Engine)
+// =============================================================================
+local.file_match "pg_logs" {
+  // Evitar apontar para arquivos de pg_stat_statements cru para salvar infraestrutura
+  path_targets = [
+    {"__path__" = "/var/log/postgresql/postgresql-*.log"},
+  ]
+}
+
+loki.source.file "postgres" {
+  targets    = local.file_match.pg_logs.targets
+  forward_to = [loki.process.pg_filter.receiver]
+}
+
+// Filtro Adicional Loki (Se Desejado): Suprimir logs triviais de LOG/INFO
+// Comente 'stage.drop' se quiser os logs completos limitados.
+loki.process "pg_filter" {
+  forward_to = [loki.relabel.pg_format.receiver]
+  
+  stage.regex {
+    expression = "^.*?\\s\\[\\d+\\]\\s(?P<level>LOG|INFO|ERROR|FATAL):"
+  }
+  
+  // Limpa ruído pesado descartando tudo que for LOG
+  stage.drop {
+    source = "level"
+    value  = "LOG"
+  }
+}
+
+loki.relabel "pg_format" {
+  forward_to = [loki.write.gateway_logs.receiver]
+  rule {
+    target_label = "service"
+    replacement  = "postgresql"
+  }
+}
+
+loki.write "gateway_logs" {
+  endpoint {
+    url = "http://alloy-gateway.meudominio.internal:9998/loki/api/v1/push"
+  }
+}

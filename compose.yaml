@@ -10,8 +10,11 @@ services:
     user: "10001:10001"
     environment:
       - LOKI_RETENTION=${LOKI_RETENTION:-30d}
-    ports:
-      - "3100:3100"
+    # Portas omitidas por segurança.
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
+    # ports:
+    #   - "3100:3100"
     volumes:
       - loki-data:/loki
       - ./loki/loki.yaml:/etc/loki/local-config.yaml:ro
@@ -27,8 +30,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 4GB
+          cpus: '${LOKI_CPUS:-2.0}'
+          memory: ${LOKI_MEMORY:-6GB}
 
   mimir:
     image: grafana/mimir:3.0.5
@@ -37,8 +40,11 @@ services:
     user: "10001:10001"
     environment:
       - MIMIR_RETENTION=${MIMIR_RETENTION:-30d}
-    ports:
-      - "9009:9009"
+    # Portas omitidas por segurança.
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
+    # ports:
+    #   - "9009:9009"
     volumes:
       - mimir-data:/data
       - ./mimir/mimir.yaml:/etc/mimir.yaml:ro
@@ -54,8 +60,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '3.0'
-          memory: 6GB
+          cpus: '${MIMIR_CPUS:-2.0}'
+          memory: ${MIMIR_MEMORY:-8GB}
 
   tempo:
     image: grafana/tempo:2.10.3
@@ -64,8 +70,11 @@ services:
     user: "10001:10001"
     environment:
       - TEMPO_RETENTION=${TEMPO_RETENTION:-336h}
-    ports:
-      - "3200:3200"
+    # Portas omitidas por segurança.
+    # Como o Alloy é o gateway de ingestão e o Grafana a leitura, os backends 
+    # não devem ser expostos na rede do Host. O tráfego flui pela rede interna 'lgtm'.
+    # ports:
+    #   - "3200:3200"
     volumes:
       - tempo-data:/var/tempo
       - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
@@ -81,8 +90,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2GB
+          cpus: '${TEMPO_CPUS:-2.0}'
+          memory: ${TEMPO_MEMORY:-6GB}
 
   # --- FRONTEND E COLETOR (Dependem dos Backends) ---
 
@@ -111,24 +120,19 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1GB
+          cpus: '${GRAFANA_CPUS:-1.0}'
+          memory: ${GRAFANA_MEMORY:-4GB}
 
-  alloy:
+  alloy-gateway:
     image: grafana/alloy:1.15.0
-    container_name: alloy
+    container_name: alloy-gateway
     restart: unless-stopped
-    privileged: true  # Necessário para leitura do /proc, /sys e journal do host
-    user: root
     volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/log/journal:/var/log/journal:ro
-      - /run/systemd/journal/socket:/run/systemd/journal/socket
-      - /:/host:ro,rslave
-      - alloy-data:/var/lib/alloy/data
+      - ./alloy-gateway/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-gateway-data:/var/lib/alloy/data
     command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     ports:
-      - "12345:12345"  # UI do Alloy
+      - "12345:12345"  # UI do Alloy Gateway
       - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)
       - "4318:4318"    # OTLP HTTP (traces/metrics das aplicações)
     depends_on:
@@ -143,8 +147,31 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1GB
+          cpus: '${ALLOY_GATEWAY_CPUS:-1.0}'
+          memory: ${ALLOY_GATEWAY_MEMORY:-2GB}
+
+  alloy-agent:
+    image: grafana/alloy:1.15.0
+    container_name: alloy-agent
+    restart: unless-stopped
+    privileged: true  # Necessário para leitura do /proc, /sys e journal do host
+    user: root
+    volumes:
+      - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/systemd/journal/socket:/run/systemd/journal/socket
+      - /:/host:ro,rslave
+      - alloy-agent-data:/var/lib/alloy/data
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    depends_on:
+      - alloy-gateway
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '${ALLOY_AGENT_CPUS:-0.5}'
+          memory: ${ALLOY_AGENT_MEMORY:-1GB}
 
 networks:
   lgtm:
@@ -160,5 +187,7 @@ volumes:
     external: true
   tempo-data:
     external: true
-  alloy-data:
+  alloy-gateway-data:
+    external: true
+  alloy-agent-data:
     external: true
