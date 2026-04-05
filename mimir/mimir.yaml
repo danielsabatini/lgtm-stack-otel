@@ -1,0 +1,29 @@
+target: all
+multitenancy_enabled: false
+
+server:
+  http_listen_port: 9009
+  grpc_listen_port: 9095
+
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      root_directory: /data/storage
+
+blocks_storage:
+  storage_prefix: blocks
+  tsdb:
+    dir: /data/tsdb
+  bucket_store:
+    sync_dir: /data/tsdb-sync
+
+compactor:
+  data_dir: /data/compactor
+  sharding_enabled: false # Falso para modo all-in-one
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1

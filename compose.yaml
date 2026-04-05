@@ -1,0 +1,147 @@
+name: lgtm-stack
+
+services:
+  # --- BACKENDS (Bases de Dados) ---
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+      - ./loki/loki.yaml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4GB
+
+  mimir:
+    image: grafana/mimir:latest
+    container_name: mimir
+    restart: unless-stopped
+    ports:
+      - "9009:9009"
+    volumes:
+      - mimir-data:/data
+      - ./mimir/mimir.yaml:/etc/mimir.yaml:ro
+    command: ["-config.file=/etc/mimir.yaml"]
+    healthcheck:
+      test: ["CMD", "prometheus-mimir", "-target=all", "-check-ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 6GB
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    restart: unless-stopped
+    ports:
+      - "3200:3200"
+    volumes:
+      - tempo-data:/var/tempo
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
+    command: ["-config.file=/etc/tempo.yaml"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
+      interval: 10s
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2GB
+
+  # --- FRONTEND E COLETOR (Dependem dos Backends) ---
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    networks:
+      - lgtm
+    depends_on:
+      loki:
+        condition: service_healthy
+      mimir:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1GB
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    restart: unless-stopped
+    privileged: true
+    user: root
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/systemd/journal/socket:/run/systemd/journal/socket
+      - /:/host:ro,rslave
+    command: [ "run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy" ]
+    ports:
+      - "12345:12345"
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      loki:
+        condition: service_healthy
+      mimir:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1GB
+
+networks:
+  lgtm:
+    name: lgtm
+    driver: bridge
+
+volumes:
+  grafana-data:
+    external: true
+  loki-data:
+    external: true
+  mimir-data:
+    external: true
+  tempo-data:
+    external: true

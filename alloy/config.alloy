@@ -1,0 +1,63 @@
+// --- COLETA DE MÉTRICAS ---
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host"
+}
+
+prometheus.scrape "default" {
+  targets    = prometheus.exporter.unix.host.targets
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+// --- COLETA DE LOGS ---
+loki.source.journal "system" {
+  forward_to = [loki.process.labels.receiver]
+  relabel_rules = loki.relabel.journal.rules
+}
+
+loki.relabel "journal" {
+  rule {
+    target_label = "instance"
+    replacement  = "servidor-debian"
+  }
+}
+
+loki.process "labels" {
+  stage.label_drop { values = ["_SOURCE_REALTIME_TIMESTAMP"] }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// --- COLETA DE TRACES ---
+otelcol.receiver.otlp "default" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+
+  output {
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.mimir.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls { insecure = true }
+  }
+}
+
+otelcol.exporter.prometheus "mimir" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
