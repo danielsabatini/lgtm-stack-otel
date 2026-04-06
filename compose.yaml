@@ -144,11 +144,19 @@ services:
     restart: unless-stopped
     privileged: true  # Necessário para leitura do /proc, /sys e journal do host
     user: root
+    pid: host
+    environment:
+      - HOSTNAME=code
     volumes:
       - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro
       - /var/log/journal:/var/log/journal:ro
       - /run/systemd/journal/socket:/run/systemd/journal/socket
       - /:/host:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      - /docker:/docker:ro
       - alloy-agent-data:/var/lib/alloy/data
     command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     depends_on:

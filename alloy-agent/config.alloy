@@ -49,6 +49,35 @@ prometheus.relabel "fix_job" {
   }
 }
 
+// =============================================================================
+// MÉTRICAS DE CONTAINERS (cAdvisor)
+// =============================================================================
+prometheus.exporter.cadvisor "docker" {
+  docker_host = "unix:///var/run/docker.sock"
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  forward_to      = [prometheus.relabel.fix_job_cadvisor.receiver]
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+}
+
+prometheus.relabel "fix_job_cadvisor" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+
+  // Compatibilidade com variáveis "instance" do dashboard interligado
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
+}
+
 // Auto-Monitoramento do próprio Agent
 prometheus.exporter.self "alloy_agent" {}
 prometheus.scrape "alloy_agent" {
