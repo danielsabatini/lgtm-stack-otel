@@ -1,126 +1,109 @@
 // =============================================================================
-// ALLOY AGENT - COLETOR DO HOST E REDE INTERNA
+// MÉTRICAS DO HOST (Node Exporter)
 // =============================================================================
-
-// =============================================================================
-// MÉTRICAS DO HOST
-// =============================================================================
-prometheus.exporter.unix "host" {
-  procfs_path    = "/host/proc"
-  sysfs_path     = "/host/sys"
-  rootfs_path    = "/host"
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "uname"]
+prometheus.exporter.unix "node_exporter" {
+  procfs_path    = "/procfs"
+  sysfs_path     = "/sys"
+  rootfs_path    = "/rootfs"
+  
+  set_collectors = [
+    "cpu", "meminfo", "diskstats", "filesystem", 
+    "netdev", "loadavg", "uname", "os",
+  ]
 }
 
-prometheus.scrape "host" {
-  targets         = prometheus.exporter.unix.host.targets
-  forward_to      = [prometheus.relabel.fix_job.receiver]
-  scrape_interval = "60s"
-  scrape_timeout  = "30s"
-
-  clustering {
-    enabled = false
-  }
+prometheus.scrape "node_exporter_scrape" {
+  targets    = prometheus.exporter.unix.node_exporter.targets
+  forward_to = [prometheus.relabel.node_metrics_labels.receiver]
+  scrape_interval = "30s"
 }
 
-// Garante compatibilidade total com o dashboard Node Exporter Full (ID 1860):
-// - job="node-exporter" → variável Job do dashboard
-// - nodename → variável Nodename do dashboard (requer este label explicitamente)
-// - instance → mantém o hostname do container como identificador
-prometheus.relabel "fix_job" {
-  forward_to = [prometheus.remote_write.gateway.receiver]
+prometheus.relabel "node_metrics_labels" {
+  forward_to = [prometheus.remote_write.metrics_gateway.receiver]
 
-  // Sobrescreve job para bater com o filtro padrão do Node Exporter Full
   rule {
     target_label = "job"
     replacement  = "node-exporter"
   }
-
-  // Injeta nodename usando o hostname do sistema lido em runtime
-  rule {
-    target_label = "nodename"
-    replacement  = env("HOSTNAME")
-  }
-
-  // Garante que instance também seja legível (hostname) para correlação
   rule {
     target_label = "instance"
-    replacement  = env("HOSTNAME")
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "service_name"
+    replacement  = "node-exporter"
   }
 }
 
 // =============================================================================
 // MÉTRICAS DE CONTAINERS (cAdvisor)
 // =============================================================================
-prometheus.exporter.cadvisor "docker" {
+prometheus.exporter.cadvisor "docker_exporter" {
   docker_host = "unix:///var/run/docker.sock"
 }
 
-prometheus.scrape "cadvisor" {
-  targets         = prometheus.exporter.cadvisor.docker.targets
-  forward_to      = [prometheus.relabel.fix_job_cadvisor.receiver]
-  scrape_interval = "60s"
-  scrape_timeout  = "30s"
+prometheus.scrape "docker_exporter_scrape" {
+  targets         = prometheus.exporter.cadvisor.docker_exporter.targets
+  forward_to      = [prometheus.relabel.docker_exporter_labels.receiver]
+  scrape_interval = "30s"
 }
 
-prometheus.relabel "fix_job_cadvisor" {
-  forward_to = [prometheus.remote_write.gateway.receiver]
+prometheus.relabel "docker_exporter_labels" {
+  forward_to = [prometheus.remote_write.metrics_gateway.receiver]
+  
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "job"
+    replacement  = "integrations/docker"
+  }
+  rule {
+    target_label = "service_name"
+    replacement  = "cadvisor"
+  }
+}
+
+// =============================================================================
+// COLETA DE LOGS (Systemd Journal)
+// =============================================================================
+loki.source.journal "systemd_journal_logs" {
+  forward_to = [loki.relabel.systemd_journal_labels.receiver]
+  max_age    = "12h"
+  matches    = "_SYSTEMD_UNIT=docker.service"
+}
+
+loki.relabel "systemd_journal_labels" {
+  forward_to = [loki.write.logs_gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  
+  rule {
+    source_labels = ["_SYSTEMD_UNIT"]
+    regex         = "(.*)\\.service"
+    target_label  = "service_name"
+  }
 
   rule {
     target_label = "job"
-    replacement  = "cadvisor"
-  }
-
-  // Compatibilidade com variáveis "instance" do dashboard interligado
-  rule {
-    target_label = "instance"
-    replacement  = env("HOSTNAME")
+    replacement  = "system/journal"
   }
 }
 
-// Auto-Monitoramento do próprio Agent
-prometheus.exporter.self "alloy_agent" {}
-prometheus.scrape "alloy_agent" {
-  targets         = prometheus.exporter.self.alloy_agent.targets
-  forward_to      = [prometheus.remote_write.gateway.receiver]
-  job_name        = "alloy-agent"
-  scrape_interval = "60s"
-  scrape_timeout  = "30s"
-}
-
-// Envio de métricas para o Gateway
-prometheus.remote_write "gateway" {
+// =============================================================================
+// EXPORTAÇÃO (Destinos Finais)
+// =============================================================================
+prometheus.remote_write "metrics_gateway" {
   endpoint {
     url = "http://alloy-gateway:9999/api/v1/metrics/write"
   }
 }
 
-// =============================================================================
-// COLETA DE LOGS DO JOURNAL
-// =============================================================================
-loki.source.journal "system" {
-  forward_to = [loki.relabel.journal.receiver]
-  max_age    = "12h"
-  matches    = "_SYSTEMD_UNIT=docker.service"
-}
-
-loki.relabel "journal" {
-  forward_to = [loki.process.labels.receiver]
-  rule {
-    target_label = "instance"
-    replacement  = env("HOSTNAME")
-  }
-}
-
-loki.process "labels" {
-  forward_to = [loki.write.gateway.receiver]
-  stage.label_drop {
-    values = ["_SOURCE_REALTIME_TIMESTAMP"]
-  }
-}
-
-// Envio de logs para o Gateway
-loki.write "gateway" {
+loki.write "logs_gateway" {
   endpoint {
     url = "http://alloy-gateway:9998/loki/api/v1/push"
   }

@@ -148,15 +148,26 @@ services:
     environment:
       - HOSTNAME=code
     volumes:
+      # Arquivo de configuração do agente, mapeado do host.
       - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro
+      
+      # Logs
       - /var/log/journal:/var/log/journal:ro
       - /run/systemd/journal/socket:/run/systemd/journal/socket
-      - /:/host:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      
+      # Node Exporter
+      - /:/rootfs:ro
       - /sys:/sys:ro
+      - /proc:/procfs:ro
+
+      # Docker Exporter (cAdvisor usa /sys, /var/run e /var/lib/docker diretamente)
+      - /var/run:/var/run:rw
       - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
       - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
       - /docker:/docker:ro
+      
+      # Volume armazenado para dados do agente.
       - alloy-agent-data:/var/lib/alloy/data
     command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     depends_on:
