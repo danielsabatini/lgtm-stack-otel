@@ -147,6 +147,10 @@ services:
     pid: host
     environment:
       - HOSTNAME=code
+      - ENVIRONMENT=${ENVIRONMENT:-prd}
+      - CLOUD_PROVIDER=${CLOUD_PROVIDER:-mgc}
+      - CLOUD_REGION=${CLOUD_REGION:-br-se1}
+      - CLOUD_AVAILABILITY_ZONE=${CLOUD_AVAILABILITY_ZONE:-a}
     volumes:
       # Arquivo de configuração do agente, mapeado do host.
       - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro

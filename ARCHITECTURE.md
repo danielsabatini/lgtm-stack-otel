@@ -39,7 +39,7 @@ Sua responsabilidade principal é amansar as requisições OpenTelemetry:
 
 ### 2. Alloy Agent (O Espião Silencioso)
 Contêiner injetado com flag de `privileged: true`. Ele não sabe o que é uma porta web; e o mundo não sabe o que ele é.
-Ele espiona `/host/proc` e `/var/log` usando regras _Strict-Whitelist_ e manda os achados pelo túnel interno até o Gateway.
+Ele espiona `/procfs`, `/sys` e `/var/log` usando regras _Strict-Whitelist_ e manda os achados pelo túnel interno até o Gateway.
 
 > **Mount Propagation:** O volume `/:/host:ro` usa propagação `rprivate` (padrão Docker), suficiente para leitura de paths fixos já existentes no boot (`/proc`, `/sys`, `/var/log`). Em Linux de produção com systemd, pode-se adicionar `,rslave` para que novos pontos de montagem criados no host **após** o start do container também fiquem visíveis em `/host`. **WSL2 não suporta `rslave`** — o root filesystem do WSL2 é montado como `private`, incompatível com slave propagation. A versão sem propagação é obrigatória em ambiente de desenvolvimento.
 

@@ -5,21 +5,41 @@ prometheus.exporter.unix "node_exporter" {
   procfs_path    = "/procfs"
   sysfs_path     = "/sys"
   rootfs_path    = "/rootfs"
-  
+
   set_collectors = [
-    "cpu", "meminfo", "diskstats", "filesystem", 
+    "cpu", "meminfo", "diskstats", "filesystem",
     "netdev", "loadavg", "uname", "os",
   ]
 }
 
 prometheus.scrape "node_exporter_scrape" {
-  targets    = prometheus.exporter.unix.node_exporter.targets
-  forward_to = [prometheus.relabel.node_metrics_labels.receiver]
+  targets         = prometheus.exporter.unix.node_exporter.targets
+  forward_to      = [prometheus.relabel.node_metrics_labels.receiver]
   scrape_interval = "30s"
+  scrape_timeout  = "10s"
 }
 
 prometheus.relabel "node_metrics_labels" {
   forward_to = [prometheus.remote_write.metrics_gateway.receiver]
+
+  // Droplist: descarta séries de dispositivos virtuais antes de gravar no TSDB.
+  // Filtragem na borda elimina cardinalidade antes da transmissão — mais eficiente
+  // do que filtrar na query do Grafana (dado já estaria armazenado no Mimir).
+  rule {
+    source_labels = ["__name__", "device"]
+    regex         = "node_disk_.+;(loop|dm-|sr|fd|ram|zram|nbd).*"
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__name__", "device"]
+    regex         = "node_network_.+;lo"
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__name__", "fstype"]
+    regex         = "node_filesystem_.+;(tmpfs|devtmpfs|squashfs|overlay|aufs|iso9660)"
+    action        = "drop"
+  }
 
   rule {
     target_label = "job"
@@ -32,6 +52,22 @@ prometheus.relabel "node_metrics_labels" {
   rule {
     target_label = "service_name"
     replacement  = "node-exporter"
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
   }
 }
 
@@ -46,11 +82,21 @@ prometheus.scrape "docker_exporter_scrape" {
   targets         = prometheus.exporter.cadvisor.docker_exporter.targets
   forward_to      = [prometheus.relabel.docker_exporter_labels.receiver]
   scrape_interval = "30s"
+  scrape_timeout  = "10s"
 }
 
 prometheus.relabel "docker_exporter_labels" {
   forward_to = [prometheus.remote_write.metrics_gateway.receiver]
-  
+
+  // Allowlist: mantém apenas métricas essenciais de container.
+  // cAdvisor expõe ~200 métricas por container por default — sem filtro
+  // explode cardinalidade com matrizes de container × device × operação.
+  rule {
+    source_labels = ["__name__"]
+    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|fs_usage_bytes|fs_limit_bytes|start_time_seconds|last_seen|oom_events_total)"
+    action        = "keep"
+  }
+
   rule {
     target_label = "instance"
     replacement  = sys.env("HOSTNAME")
@@ -63,14 +109,30 @@ prometheus.relabel "docker_exporter_labels" {
     target_label = "service_name"
     replacement  = "cadvisor"
   }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
 }
 
 // =============================================================================
-// COLETA DE LOGS (Systemd Journal)
+// LOGS DO DAEMON DOCKER (Systemd Journal)
 // =============================================================================
 loki.source.journal "systemd_journal_logs" {
   forward_to = [loki.relabel.systemd_journal_labels.receiver]
-  max_age    = "12h"
+  max_age    = "1h"
   matches    = "_SYSTEMD_UNIT=docker.service"
 }
 
@@ -81,16 +143,80 @@ loki.relabel "systemd_journal_labels" {
     target_label = "instance"
     replacement  = sys.env("HOSTNAME")
   }
-  
   rule {
     source_labels = ["_SYSTEMD_UNIT"]
     regex         = "(.*)\\.service"
     target_label  = "service_name"
   }
-
   rule {
     target_label = "job"
     replacement  = "system/journal"
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// =============================================================================
+// LOGS DE CONTAINERS (stdout/stderr via Docker socket)
+// Fecha o gap de correlação: métricas de container (cAdvisor) ↔ logs de aplicação.
+// service_name extraído do nome do container para correlação direta com cAdvisor.
+// =============================================================================
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+loki.source.docker "container_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.containers.targets
+  forward_to = [loki.relabel.container_logs_labels.receiver]
+}
+
+loki.relabel "container_logs_labels" {
+  forward_to = [loki.write.logs_gateway.receiver]
+
+  // Nome do container sem a barra inicial (ex: /mimir → mimir)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "service_name"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "docker/containers"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
   }
 }
 

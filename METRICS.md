@@ -13,8 +13,22 @@ Por isso, na nossa arquitetura, utilizamos `set_collectors`. O Agent foi amorda�
 - `filesystem` (Espaço em HD)
 - `netdev` (Banda in/out em eth0 e interfaces)
 - `loadavg` (Média de Carga)
+- `uname` (Informações do Kernel — alimenta `node_uname_info`)
+- `os` (Informações do SO — alimenta `node_os_info`, `node_os_version`)
 
 A cardinalidade extra do Node Exporter nativo (Bateria, BTRFS, Wifi, Infiniband, Selinux state) é limada antes de bater na RAM. O resultado é a premissa de um Mimir _Lean_ operando com **30 a 50% de custo reduzido**.
+
+## Política de Labels (Identificação de Hosts)
+
+Todos os hosts são identificados exclusivamente pelo label **`instance`**. O label `nodename` **não é utilizado** para evitar duplicidade de cardinalidade — `instance` e `nodename` carregariam o mesmo valor, dobrando o custo de séries sem benefício analítico.
+
+| Label | Valor | Origem |
+|---|---|---|
+| `job` | `node-exporter` | Injetado pelo `prometheus.relabel` no Alloy Agent |
+| `instance` | `$HOSTNAME` (ex: `code`) | Injetado pelo `prometheus.relabel` via `sys.env("HOSTNAME")` |
+| `service_name` | `node-exporter` | Injetado pelo `prometheus.relabel` — compatibilidade OTLP |
+
+O mesmo padrão se aplica ao cAdvisor (`job=integrations/docker`) e aos logs do Journald (`job=system/journal`). Dashboards que exijam `nodename` devem ser adaptados para filtrar por `instance`.
 
 ## Política de Retenção
 
