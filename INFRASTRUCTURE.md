@@ -1,11 +1,11 @@
 # Setup Físico e Dimensionamentos (Infrastructure)
 
-A Stack LGTM foi rigorosamente testada e dimensionada para servidores que abraçam Linux LVM, dividindo cada serviço pesado de IOPS (Escrita) para discos físicos exclusivos. Abaixo reside o roteiro Devops para Subir e Operar essa orquestração.
+Este documento cobre somente setup físico, LVM, diretórios e permissões.
 
 ## Limites Físicos Sugeridos (Hardware Limiters)
 
 *   **Padrão Gold:** Em Produção (Alta Carga de APM), exija um Host/VM com `8 Cores` e `32GB RAM`.
-*   A distribuição de uso de núcleo via Kernel (CGroups Docker) que parametrizamos segue estencialmente a alocação do arquivo `.env.example`:
+*   A distribuição de uso de núcleo segue os limites padrão definidos no `compose.yaml` e pode ser sobrescrita via `.env`:
   *   Loki e Mimir: ~2vCPU / 6GB a 8GB de RAM fixos.
   *   Tempo: ~2vCPU / 6GB RAM fixos.
   *   Alloy Gateway e Grafana: ~1vCPU / 2GB a 4GB fixos.
@@ -116,7 +116,7 @@ sudo chown -R 10001:10001 /lgtm/mimir
 >
 > Em ambientes de desenvolvimento (volumes Docker genéricos sem LVM), use `scripts/volumes-init.sh` — ele cria os volumes, corrige os owners e pré-cria os subdiretórios do Mimir em um único passo.
 
-> **Nota sobre `rslave` no Alloy Agent:** O volume `/:/host:ro` do `alloy-agent` usa propagação `rprivate` (padrão Docker), compatível com Linux e WSL2. Em servidores Linux de produção com systemd, pode-se adicionar `,rslave` ao volume para capturar dinamicamente novos pontos de montagem criados no host após o start do container. **WSL2 não suporta `rslave`** — o `compose.yaml` atual omite propositalmente essa flag para garantir portabilidade.
+> **Nota sobre `rslave` no Alloy Agent:** O volume `/:/rootfs:ro` usa propagação `rprivate` por padrão. Em servidores Linux com systemd, `rslave` pode ser avaliado se você precisar enxergar mounts criados após o start do container. Em WSL2 isso não é compatível.
 
 ### 5. Inicializar diretórios e permissões
 
@@ -128,7 +128,7 @@ sudo bash scripts/volumes-init.sh
 
 Os volumes Docker são bind-mounts declarados no `compose.yaml` e criados automaticamente pelo `docker compose up`. Não é necessário criá-los manualmente.
 
-Você estará pronto agora para preencher o seu arquivo `.env` e iniciar com `docker compose up -d`.
+Você estará pronto para ajustar o `.env` e iniciar com `docker compose up -d`.
 
 ---
 🔙 Voltar: [README Principal](README.md)

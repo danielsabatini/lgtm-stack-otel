@@ -53,7 +53,7 @@ loki.source.file "mysql" {
 loki.relabel "mysql_format" {
   forward_to = [loki.write.gateway_logs.receiver]
   rule {
-    target_label = "service"
+    target_label = "service_name"
     replacement  = "mysql"
   }
 }

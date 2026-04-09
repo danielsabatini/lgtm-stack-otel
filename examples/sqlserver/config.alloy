@@ -45,7 +45,7 @@ loki.source.windowsevent "mssql_errors" {
 loki.relabel "mssql_format" {
   forward_to = [loki.write.gateway_logs.receiver]
   rule {
-    target_label = "service"
+    target_label = "service_name"
     replacement  = "sqlserver"
   }
 }

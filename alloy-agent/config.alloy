@@ -111,7 +111,9 @@ prometheus.relabel "node_metrics_labels" {
 //    Requer bind-mount do Docker socket e /var/lib/docker (compose.yaml).
 // =============================================================================
 prometheus.exporter.cadvisor "docker_exporter" {
-  docker_host = "unix:///var/run/docker.sock"
+  docker_host            = "unix:///var/run/docker.sock"
+  storage_duration       = "5m"
+  store_container_labels = false
 }
 
 prometheus.scrape "docker_exporter_scrape" {
@@ -170,10 +172,11 @@ prometheus.relabel "docker_exporter_labels" {
 //    Lê logs do journald do host através dos bind-mounts:
 //      /var/log/journal, /run/systemd/journal/socket e /etc/machine-id
 //
-//    IMPORTANTE: O atributo 'matches' do Alloy aceita apenas UM filtro por
-//    instância do componente. Para coletar múltiplos serviços do systemd,
-//    crie uma instância de loki.source.journal por serviço e encaminhe
-//    todas para o mesmo pipeline de relabel.
+//    IMPORTANTE: O atributo 'matches' do Alloy aceita múltiplos termos
+//    separados por espaço com semântica de AND. OR com '+' não é suportado.
+//    Para coletar múltiplos serviços do systemd com lógica de OR, crie uma
+//    instância de loki.source.journal por serviço e encaminhe todas para o
+//    mesmo pipeline de relabel.
 //
 //    Para adicionar um novo serviço (ex: nginx), basta copiar o bloco abaixo:
 //      loki.source.journal "nginx" {

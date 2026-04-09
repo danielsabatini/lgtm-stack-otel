@@ -1,8 +1,8 @@
 # Traces (Tempo e OTLP)
 
-Traces distribuídos capturam a jornada integral de uma requisição pelo seu sistema e microsserviços. Eles são essenciais na identificação de gargalos de desempenho e quebra da arquitetura Lógica. O recebedor disso na nossa Stack é o banco Grafana Tempo, porém todo rastro passa antes pelo nosso filtro de inteligência (Alloy Gateway).
+Este documento cobre somente a política de traces da stack.
 
-## O Endpoint (Recebedor Pùblico)
+## Endpoints
 
 Você programará suas aplicações para enviar spans via OpenTelemetry apontando o exporter para o IP do seu servidor nas portas:
 
@@ -18,7 +18,7 @@ exporter, _ := otlptracegrpc.New(ctx,
 )
 ```
 
-## A Grande Economia: Tail Sampling (Amostragem Categórica)
+## Tail sampling
 
 Um fato matemático na captura de Traces em produção: Seu banco Tempo afogará em disco se receber milhões de repetições de _HTTP 200 OK_. A esmagadora maioria são chamadas perfeitas e imutáveis das funções, sem variação analítica pertinente, ocupando RAM e disco.
 
@@ -28,14 +28,14 @@ Nós ativamos o padrão arquitetural Enterprise batizado de `Tail Sampling` dire
 2. **Keep-Slow:** Mede a duração total do trace. Acima de **1000 ms**? Arquiva **100%** da jornada para diagnóstico de gargalo.
 3. **Drop Sample-OK:** Para as chamadas rápidas e bem-sucedidas restantes, preserva apenas **5%** como amostra estatística — descartando os 95% duplicados sem valor analítico.
 
-*Os thresholds podem ser ajustados em `alloy-gateway/conf.d/00-core.alloy` dentro do bloco `otelcol.processor.tail_sampling "lean"`.*
+Os thresholds ficam em `alloy-gateway/conf.d/00-core.alloy`.
 
-## Retenção em Disco
+## Retenção
 
 O expurgo natural do Tempo é manipulado no banco central de retenções `.env` na chave associada `TEMPO_RETENTION` e declarada unicamente em horas (Ex: `336h`).
 Sempre consulte o painel para auditar o número de traces salvos, calculando um peso médio de ~`1,5 KB` de ocupação em disco virtual por span processado.
 
-> **Requisito Técnico — `compactor.compaction` sub-block:** No `tempo.yaml`, as chaves `block_retention` e `compaction_window` devem estar **dentro do sub-bloco `compactor.compaction`**, não diretamente em `compactor`. Colocá-las no nível errado causa boot failure:
+> **Requisito técnico:** no `tempo.yaml`, `block_retention` e `compaction_window` devem ficar dentro de `compactor.compaction`.
 > ```
 > field block_retention not found in type compactor.Config
 > ```

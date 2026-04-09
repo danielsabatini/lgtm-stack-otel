@@ -57,7 +57,7 @@ docker compose stop grafana
 
 # 2. Copia o grafana.db para fora do volume
 docker run --rm \
-  -v grafana-data:/source:ro \
+  -v lgtm-stack_grafana-data:/source:ro \
   -v $(pwd)/backup:/backup \
   busybox cp /source/grafana.db /backup/grafana-$(date +%Y%m%d).db
 
@@ -81,7 +81,13 @@ docker compose down
 sync
 
 # Exporta cada volume para um arquivo tar
-for vol in grafana-data loki-data mimir-data tempo-data alloy-gateway-data alloy-agent-data; do
+for vol in \
+  lgtm-stack_grafana-data \
+  lgtm-stack_loki-data \
+  lgtm-stack_mimir-data \
+  lgtm-stack_tempo-data \
+  lgtm-stack_alloy-gateway-data \
+  lgtm-stack_alloy-agent-data; do
   docker run --rm \
     -v ${vol}:/data:ro \
     -v $(pwd)/backup:/backup \
@@ -97,7 +103,13 @@ Restauração:
 ```bash
 docker compose down
 
-for vol in grafana-data loki-data mimir-data tempo-data alloy-gateway-data alloy-agent-data; do
+for vol in \
+  lgtm-stack_grafana-data \
+  lgtm-stack_loki-data \
+  lgtm-stack_mimir-data \
+  lgtm-stack_tempo-data \
+  lgtm-stack_alloy-gateway-data \
+  lgtm-stack_alloy-agent-data; do
   docker volume create ${vol} 2>/dev/null || true
   docker run --rm \
     -v ${vol}:/data \
@@ -146,12 +158,12 @@ cd /caminho/para/lgtm-stack
 # vault kv get -field=value secret/lgtm/.env > .env
 
 # Cria os apontamentos bind (herdarão tudo do Fstab)
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/grafana --opt o=bind grafana-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-gateway --opt o=bind alloy-gateway-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-agent   --opt o=bind alloy-agent-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/loki         --opt o=bind loki-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/mimir        --opt o=bind mimir-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/tempo        --opt o=bind tempo-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/apps/grafana --opt o=bind lgtm-stack_grafana-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-gateway --opt o=bind lgtm-stack_alloy-gateway-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-agent --opt o=bind lgtm-stack_alloy-agent-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/loki --opt o=bind lgtm-stack_loki-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/mimir --opt o=bind lgtm-stack_mimir-data
+docker volume create --driver local --opt type=none --opt device=/lgtm/tempo --opt o=bind lgtm-stack_tempo-data
 
 docker compose up -d
 ```
