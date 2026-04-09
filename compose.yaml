@@ -191,14 +191,38 @@ networks:
 
 volumes:
   grafana-data:
-    external: true
-  loki-data:
-    external: true
-  mimir-data:
-    external: true
-  tempo-data:
-    external: true
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/apps/grafana
+      o: bind
   alloy-gateway-data:
-    external: true
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/apps/alloy-gateway
+      o: bind
   alloy-agent-data:
-    external: true
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/apps/alloy-agent
+      o: bind
+  loki-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/loki
+      o: bind
+  mimir-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/mimir
+      o: bind
+  tempo-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /lgtm/tempo
+      o: bind

@@ -53,30 +53,31 @@ cd lgtm-stack
 cp .env.example .env
 ```
 
-2. **Crie Volumes Docker Virtuais Genéricos:**
-```bash
-docker volume create grafana-data
-docker volume create alloy-gateway-data
-docker volume create alloy-agent-data
-docker volume create loki-data
-docker volume create mimir-data
-docker volume create tempo-data
-```
-
-3. **Pré-inicialize os Diretórios do Mimir:**
-
-O Mimir usa uma imagem distroless (sem shell) e exige que seus subdiretórios de dados existam antes do primeiro boot. Sem isso, o container falha com `permission denied`:
+2. **Inicialize os diretórios de dados:**
 
 ```bash
-docker run --rm -v mimir-data:/data busybox sh -c "
-  mkdir -p /data/storage /data/tsdb /data/tsdb-sync /data/compactor /data/ruler /data/ruler-temp &&
-  chown -R 10001:10001 /data
-"
+sudo bash scripts/volumes-init.sh
 ```
 
-4. **Inicie a Stack:**
+Cria a estrutura abaixo no disco local, corrige os owners e pré-cria os subdiretórios do Mimir:
+
+```
+/lgtm/apps/grafana        → Grafana
+/lgtm/apps/alloy-gateway  → Alloy Gateway (WAL)
+/lgtm/apps/alloy-agent    → Alloy Agent (WAL)
+/lgtm/loki                → Loki (logs)
+/lgtm/mimir               → Mimir (métricas)
+/lgtm/tempo               → Tempo (traces)
+```
+
+3. **Inicie a Stack:**
 ```bash
 docker compose up -d
+```
+
+**Reset completo** (apaga todos os dados e recomeça do zero):
+```bash
+docker compose down -v && sudo bash scripts/volumes-reset.sh && docker compose up -d
 ```
 
 ---

@@ -113,23 +113,22 @@ sudo chown -R 10001:10001 /lgtm/mimir
 ```
 
 > **Por que o Mimir precisa de subdiretórios pré-criados?** A imagem distroless do Mimir não possui shell nem `mkdir`. O binário espera que `/data/storage`, `/data/tsdb`, `/data/ruler` etc. já existam com permissão de escrita ao iniciar. Sem eles, o boot falha com `permission denied` ou `open .check: permission denied` no `ruler`.
+>
+> Em ambientes de desenvolvimento (volumes Docker genéricos sem LVM), use `scripts/volumes-init.sh` — ele cria os volumes, corrige os owners e pré-cria os subdiretórios do Mimir em um único passo.
 
 > **Nota sobre `rslave` no Alloy Agent:** O volume `/:/host:ro` do `alloy-agent` usa propagação `rprivate` (padrão Docker), compatível com Linux e WSL2. Em servidores Linux de produção com systemd, pode-se adicionar `,rslave` ao volume para capturar dinamicamente novos pontos de montagem criados no host após o start do container. **WSL2 não suporta `rslave`** — o `compose.yaml` atual omite propositalmente essa flag para garantir portabilidade.
 
-### 5. Ativar as Gavetas Locais via Docker CLI
+### 5. Inicializar diretórios e permissões
 
-Essa arquitetura dispensa "Volumes virtuais Mágicos". Criamos `docker volumes` que mapeiam _device drivers hard-binded_:
+Com os LVM montados em `/lgtm/*`, execute o script de inicialização — ele corrige os owners e pré-cria os subdiretórios do Mimir:
 
 ```bash
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/grafana --opt o=bind grafana-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-gateway --opt o=bind alloy-gateway-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-agent   --opt o=bind alloy-agent-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/loki         --opt o=bind loki-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/mimir        --opt o=bind mimir-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/tempo        --opt o=bind tempo-data
+sudo bash scripts/volumes-init.sh
 ```
 
-Você estará pronto agora para preencher o seu arquivo `[.]env` e compilar usando `docker compose up -d` na raiz do diretório GitHub.
+Os volumes Docker são bind-mounts declarados no `compose.yaml` e criados automaticamente pelo `docker compose up`. Não é necessário criá-los manualmente.
+
+Você estará pronto agora para preencher o seu arquivo `.env` e iniciar com `docker compose up -d`.
 
 ---
 🔙 Voltar: [README Principal](README.md)

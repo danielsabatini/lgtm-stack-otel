@@ -8,7 +8,7 @@ prometheus.exporter.unix "node_exporter" {
 
   set_collectors = [
     "cpu", "meminfo", "diskstats", "filesystem",
-    "netdev", "loadavg", "uname", "os",
+    "netdev", "loadavg", "uname", "os", "stat",
   ]
 }
 
@@ -22,9 +22,18 @@ prometheus.scrape "node_exporter_scrape" {
 prometheus.relabel "node_metrics_labels" {
   forward_to = [prometheus.remote_write.metrics_gateway.receiver]
 
-  // Droplist: descarta séries de dispositivos virtuais antes de gravar no TSDB.
-  // Filtragem na borda elimina cardinalidade antes da transmissão — mais eficiente
-  // do que filtrar na query do Grafana (dado já estaria armazenado no Mimir).
+  // Allowlist: mantém apenas as métricas consumidas pelo dashboard Node Exporter (Self).
+  // O Node Exporter expõe tudo que os collectors geram — sem filtro, o Mimir recebe
+  // séries que nunca serão consultadas. O keep aqui é o ponto mais cedo possível.
+  rule {
+    source_labels = ["__name__"]
+    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(read_bytes_total|written_bytes_total|reads_completed_total|writes_completed_total)|filesystem_(avail_bytes|free_bytes|size_bytes|files|files_free)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapTotal_bytes)|network_(receive|transmit)_(bytes_total|drop_total|errs_total)|uname_info)"
+    action        = "keep"
+  }
+
+  // Droplist: descarta séries de dispositivos virtuais.
+  // Aplicado após o allowlist — só alcança métricas node_disk_* e node_network_*
+  // que já passaram pelo keep acima.
   rule {
     source_labels = ["__name__", "device"]
     regex         = "node_disk_.+;(loop|dm-|sr|fd|ram|zram|nbd).*"
@@ -38,6 +47,11 @@ prometheus.relabel "node_metrics_labels" {
   rule {
     source_labels = ["__name__", "fstype"]
     regex         = "node_filesystem_.+;(tmpfs|devtmpfs|squashfs|overlay|aufs|iso9660)"
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__name__", "mountpoint"]
+    regex         = "node_filesystem_.+;(/docker/.*|/run/.*|/sys/.*|/proc/.*|/dev/.*)"
     action        = "drop"
   }
 
@@ -93,7 +107,7 @@ prometheus.relabel "docker_exporter_labels" {
   // explode cardinalidade com matrizes de container × device × operação.
   rule {
     source_labels = ["__name__"]
-    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|fs_usage_bytes|fs_limit_bytes|start_time_seconds|last_seen|oom_events_total)"
+    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|start_time_seconds|last_seen|oom_events_total)"
     action        = "keep"
   }
 
