@@ -107,7 +107,9 @@ prometheus.relabel "docker_exporter_labels" {
   // explode cardinalidade com matrizes de container × device × operação.
   rule {
     source_labels = ["__name__"]
-    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|start_time_seconds|last_seen|oom_events_total)"
+    // container_start_time_seconds removido: não possui painel no dashboard.
+    // Para restaurar, adicione |start_time_seconds antes do parêntese de fechamento.
+    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|last_seen|oom_events_total)"
     action        = "keep"
   }
 
