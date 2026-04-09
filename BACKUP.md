@@ -26,15 +26,7 @@ sync
 
 ### 2. Captação dos Discos (O Backup)
 
-Pelo painel do seu provedor, solicite Snapshot simultâneo dos 5 volumes atrelados ao host:
-
-| Volume | Ponto de Montagem | Conteúdo crítico |
-|---|---|---|
-| `vdb` | `/docker` | Engine Docker + imagens |
-| `vdc` | `/lgtm/apps` | WAL do Alloy, SQLite do Grafana |
-| `vdd` | `/lgtm/loki` | Chunks + índices TSDB do Loki |
-| `vde` | `/lgtm/mimir` | Blocos TSDB do Mimir |
-| `vdf` | `/lgtm/tempo` | Traces + WAL do Tempo |
+Pelo painel do seu provedor, solicite Snapshot simultâneo de todos os volumes físicos atrelados ao host. Consulte o **[INFRASTRUCTURE.md](INFRASTRUCTURE.md#roteiro-de-implantação-com-lvm-volumes)** para conferir a tabela oficial de todos os discos LVM e os respectivos Mount Pointers (Existem usualmente do `vdb` ao `vdf` que acomodam métricas, logs, apps e banco do Docker).
 
 > **Atenção WAL:** Os diretórios de WAL do Loki (`/loki/compactor`) e do Tempo (`/var/tempo/wal`) estão dentro dos volumes `vdd` e `vdf` respectivamente — são capturados automaticamente no snapshot integral. Não exclua esses diretórios de backups pontuais.
 
@@ -129,24 +121,15 @@ Houve colapso do Servidor Primário ou você quer invocar um ambiente idêntico 
 
 ### Passo 2: O Despertar do LVM
 
-Sendo discos LVM legítimos preexistentes, a nova máquina Linux não precisará de scripts longos de formatação:
+Sendo discos LVM legítimos preexistentes, a nova VM não necessita das formatações originais completas, bastando reconectar o "mapper".
+Contudo, a fim de garantirmos **100% de paridade do sistema e dos caminhos de montagem (`fstab`)**, acesse o script matriz de **[Roteiro de Implantação Física (INFRASTRUCTURE.md)](INFRASTRUCTURE.md)**. 
 
+Execute as sub-etapas nativas da documentação que cuidam de criar as lógicas de diretório (ex: `mkdir -p /lgtm...`) e a respectiva injeção no registro `/etc/fstab`.
+
+Após o LVM dar o despertar e você seguir a rotina oficial, force a releitura:
 ```bash
-# Varre e recupera os grupos nativos na nova VM
 sudo vgscan
 sudo vgchange -ay
-
-# Recrie as pastas alvo exatamente iguais
-sudo mkdir -p /docker /lgtm/apps/grafana /lgtm/apps/alloy-gateway /lgtm/apps/alloy-agent /lgtm/loki /lgtm/mimir /lgtm/tempo
-
-# Adicione as diretrizes no FSTAB e monte
-cat <<EOF | sudo tee -a /etc/fstab
-/dev/mapper/vg_docker-lv_docker  /docker     ext4  defaults  0 2
-/dev/mapper/vg_apps-lv_apps      /lgtm/apps  ext4  defaults  0 2
-/dev/mapper/vg_loki-lv_loki      /lgtm/loki  ext4  defaults  0 2
-/dev/mapper/vg_mimir-lv_mimir    /lgtm/mimir ext4  defaults  0 2
-/dev/mapper/vg_tempo-lv_tempo    /lgtm/tempo ext4  defaults  0 2
-EOF
 
 sudo mount -a
 ```

@@ -1,5 +1,25 @@
 // =============================================================================
-// MÉTRICAS DO HOST (Node Exporter)
+// config.alloy — Alloy Agent (Coletor local de métricas e logs)
+// =============================================================================
+//
+// Pipeline de dados deste agente:
+//
+//   [Host]  prometheus.exporter.unix ──► prometheus.scrape ──► prometheus.relabel ──┐
+//   [Docker] prometheus.exporter.cadvisor ──► prometheus.scrape ──► prometheus.relabel ──┤
+//                                                                                       ├──► prometheus.remote_write ──► alloy-gateway ──► Mimir
+//   [Journal] loki.source.journal (N instâncias) ──► loki.relabel ──────────────────┤
+//   [Docker]  discovery.docker ──► discovery.relabel ──► loki.source.docker ──► loki.process ──┤
+//                                                                                              └──► loki.write ──► alloy-gateway ──► Loki
+//
+// Variáveis de ambiente injetadas via compose.yaml:
+//   HOSTNAME, ENVIRONMENT, CLOUD_PROVIDER, CLOUD_REGION, CLOUD_AVAILABILITY_ZONE
+//
+// =============================================================================
+
+// =============================================================================
+// 1. MÉTRICAS DO HOST (Node Exporter)
+//    Coleta métricas de CPU, memória, disco, rede e informações do SO.
+//    Os paths /procfs, /sys e /rootfs são bind-mounts definidos no compose.yaml.
 // =============================================================================
 prometheus.exporter.unix "node_exporter" {
   procfs_path    = "/procfs"
@@ -86,7 +106,9 @@ prometheus.relabel "node_metrics_labels" {
 }
 
 // =============================================================================
-// MÉTRICAS DE CONTAINERS (cAdvisor)
+// 2. MÉTRICAS DE CONTAINERS (cAdvisor)
+//    Coleta métricas de CPU, memória e rede por container Docker.
+//    Requer bind-mount do Docker socket e /var/lib/docker (compose.yaml).
 // =============================================================================
 prometheus.exporter.cadvisor "docker_exporter" {
   docker_host = "unix:///var/run/docker.sock"
@@ -144,14 +166,40 @@ prometheus.relabel "docker_exporter_labels" {
 }
 
 // =============================================================================
-// LOGS DO DAEMON DOCKER (Systemd Journal)
+// 3. LOGS DO HOST VIA SYSTEMD JOURNAL
+//    Lê logs do journald do host através dos bind-mounts:
+//      /var/log/journal, /run/systemd/journal/socket e /etc/machine-id
+//
+//    IMPORTANTE: O atributo 'matches' do Alloy aceita apenas UM filtro por
+//    instância do componente. Para coletar múltiplos serviços do systemd,
+//    crie uma instância de loki.source.journal por serviço e encaminhe
+//    todas para o mesmo pipeline de relabel.
+//
+//    Para adicionar um novo serviço (ex: nginx), basta copiar o bloco abaixo:
+//      loki.source.journal "nginx" {
+//        forward_to = [loki.relabel.systemd_journal_labels.receiver]
+//        max_age    = "1h"
+//        matches    = "_SYSTEMD_UNIT=nginx.service"
+//      }
+//
+//    Para coletar TODOS os logs do host: crie uma única instância sem 'matches'.
 // =============================================================================
-loki.source.journal "systemd_journal_logs" {
+
+loki.source.journal "docker_daemon" {
   forward_to = [loki.relabel.systemd_journal_labels.receiver]
   max_age    = "1h"
   matches    = "_SYSTEMD_UNIT=docker.service"
 }
 
+loki.source.journal "sshd" {
+  forward_to = [loki.relabel.systemd_journal_labels.receiver]
+  max_age    = "1h"
+  matches    = "_SYSTEMD_UNIT=sshd.service"
+}
+
+// Pipeline de relabel compartilhado por todas as instâncias de journal acima.
+// Extrai o nome do serviço (docker, sshd, etc.) da label _SYSTEMD_UNIT
+// e adiciona labels de contexto (instance, environment, cloud_*).
 loki.relabel "systemd_journal_labels" {
   forward_to = [loki.write.logs_gateway.receiver]
 
@@ -187,29 +235,40 @@ loki.relabel "systemd_journal_labels" {
 }
 
 // =============================================================================
-// LOGS DE CONTAINERS (stdout/stderr via Docker socket)
-// Fecha o gap de correlação: métricas de container (cAdvisor) ↔ logs de aplicação.
-// service_name extraído do nome do container para correlação direta com cAdvisor.
+// 4. LOGS DE CONTAINERS (stdout/stderr via Docker socket)
+//    Coleta logs de todos os containers via Docker API.
+//    Fecha o gap de correlação: métricas de container (cAdvisor) ↔ logs de aplicação.
+//    O label "service_name" é extraído do nome do container para que os logs
+//    e métricas possam ser correlacionados no mesmo dashboard do Grafana.
+//
+//    Pipeline: discovery.docker → discovery.relabel → loki.source.docker → loki.process → loki.write
 // =============================================================================
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
 
-loki.source.docker "container_logs" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.containers.targets
-  forward_to = [loki.relabel.container_logs_labels.receiver]
-}
+// IMPORTANTE: A extração de meta-labels (__meta_docker_*) DEVE ser feita na
+// fase de 'discovery.relabel', ANTES da coleta. Se for feita no 'loki.relabel'
+// (pós-coleta), as meta-labels já terão sido descartadas pelo agente.
+discovery.relabel "container_logs_targets" {
+  targets = discovery.docker.containers.targets
 
-loki.relabel "container_logs_labels" {
-  forward_to = [loki.write.logs_gateway.receiver]
-
-  // Nome do container sem a barra inicial (ex: /mimir → mimir)
+  // Extrai o nome do container (ex: /mimir -> mimir)
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/(.*)"
+    regex         = "^/*(.*)$"
     target_label  = "service_name"
+    replacement   = "$1"
   }
+
+  // Mapeamos também para a label "name" para espelhar perfeitamente o cAdvisor
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "^/*(.*)$"
+    target_label  = "name"
+    replacement   = "$1"
+  }
+
   rule {
     target_label = "job"
     replacement  = "docker/containers"
@@ -236,8 +295,46 @@ loki.relabel "container_logs_labels" {
   }
 }
 
+// Coleta os logs de stdout/stderr dos containers descobertos acima.
+// Os logs passam por loki.process para extração de nível (level) antes do envio.
+loki.source.docker "container_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.container_logs_targets.output
+  forward_to = [loki.process.container_logs_filter.receiver]
+}
+
+// Enriquece os logs de container com o nível (level) extraído do conteúdo.
+// Usa Structured Metadata nativo do Loki v3 para indexar o level sem
+// explodir a cardinalidade de labels convencionais.
+loki.process "container_logs_filter" {
+  forward_to = [loki.write.logs_gateway.receiver]
+
+  // Extrai o Level do Log via regex hibrida (funciona para logfmt e JSON bruto)
+  stage.regex {
+    expression = "(?i)(level|lvl|severity)[\\s]*[=:]?[\\s]*[\"']?(?P<level>debug|info|warn|warning|error|fatal|trace)[\"']?"
+  }
+
+  // Grava dinamicamente como "Structured Metadata" nativo do Loki v3 (Nao explode labels indexadas)
+  stage.structured_metadata {
+    values = {
+      level = "level",
+    }
+  }
+
+  // ATENCAO: Drop de logs DEBUG mantido comentado intencionalmente.
+  // Em ambientes de producao pesados, descomente o bloco 'stage.drop' abaixo 
+  // para economizar trafego e armazenamento descartando ruido de depuracao:
+  //
+  // stage.drop {
+  //   source = "level"
+  //   expression = "(?i)^(debug|trace)$"
+  // }
+}
+
 // =============================================================================
-// EXPORTAÇÃO (Destinos Finais)
+// 5. EXPORTAÇÃO (Destinos Finais)
+//    Todos os pipelines de métricas e logs convergem para o alloy-gateway,
+//    que atua como proxy/fanout para os backends Mimir (métricas) e Loki (logs).
 // =============================================================================
 prometheus.remote_write "metrics_gateway" {
   endpoint {

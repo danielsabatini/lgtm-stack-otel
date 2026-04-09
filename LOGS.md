@@ -15,6 +15,14 @@ Num ecossistema saudável, não temos por que varrer os logs sistêmicos do Kern
 
 **O Resultado:** Do host, o Loki indexará e engolirá apenas catástrofes e reboots inesperados ocorridos do Motor Docker em si. O ruído do S.O foi suprimido 100%. Seus dashboards exibirão majoritariamente _apenas ocorrências que o seu software ou seus devs registraram_.
 
+## Filtragem e Processamento de Containers (Correlação Híbrida)
+
+Além do syslog, o `alloy-agent` captura logs do `stdout/stderr` de todos os containers via Docker socket. Para garantir alta performance estruturada e forte correlação nativa com as métricas (cAdvisor):
+
+*   **Adequação Múltipla de Labels:** O nome do container (ex: `mimir`) é parseado simultaneamente para a label padrão `service_name` e também para a label `name`. A label `name` é crucial para que, no Grafana, os Dashboards de Containers do Node Exporter consigam saltar das métricas diretamente aos logs sem erro de visualização.
+*   **Structured Metadata:** Evitamos a conversão pesada e tóxica que criaria índices excessivos para campos JSON na base do Loki. Empregamos um filtro Regex que puxa de dentro das strings de log (como JSON bruto ou formato estendido) em grande velocidade a palavra de severidade (`level` ou `severity`) e acopla isso unicamente no *Storage* usando o suporte ao `Structured Metadata` do Loki v3. Assim a máquina segue rápida.
+*   **Controle Cirúrgico de DEBUG:** As configurações iniciais de nossa esteira vêm mantendo a coleta de logs `DEBUG` operante nas entrelinhas para ambientes de test e homolagação não sofrerem. **ATENÇÃO:** Em clusters escalonados ou cenários de Alta Ingestão *Production Level*, acesse e descomente o bloco de `stage.drop` explicitado dentro do arquivo `alloy-agent/config.alloy`. Isso mandará os níveis depurativos para descarte antes de transmiti-los (reduzindo ruído drasticamente).
+
 ## Política de Retenção
 
 Definido organicamente na chave `.env` global pela cláusula `LOKI_RETENTION`.

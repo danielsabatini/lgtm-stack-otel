@@ -1106,6 +1106,33 @@
       ],
       "title": "Network Throughput Transmit by Container (bytes/s)",
       "type": "timeseries"
+    },
+    {
+      "type": "logs",
+      "title": "Container Logs (stdout/stderr)",
+      "gridPos": {
+        "x": 0,
+        "y": 100,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "uid": "loki",
+        "type": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"docker/containers\", instance=\"$instance\", name=~\"$container\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      }
     }
   ],
   "preload": false,

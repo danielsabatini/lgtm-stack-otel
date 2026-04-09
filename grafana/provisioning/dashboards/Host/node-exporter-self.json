@@ -2354,6 +2354,33 @@
       ],
       "title": "Network Errors/Drops",
       "type": "timeseries"
+    },
+    {
+      "type": "logs",
+      "title": "Systemd Journal (Host Logs)",
+      "gridPos": {
+        "x": 0,
+        "y": 100,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "uid": "loki",
+        "type": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"system/journal\", instance=\"$instance\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      }
     }
   ],
   "preload": false,

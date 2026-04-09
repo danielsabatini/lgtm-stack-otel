@@ -110,13 +110,8 @@ docker compose logs -f loki mimir tempo grafana
 
 Healthchecks esperados:
 
-> **Backends distroless (Loki, Mimir, Tempo):** As imagens são distroless — sem shell, sem healthcheck Docker nativo (`healthcheck: disable: true` no `compose.yaml`). Verifique via container auxiliar na rede interna:
-
-```bash
-docker run --rm --network lgtm curlimages/curl:latest -s http://loki:3100/ready    # → "ready"
-docker run --rm --network lgtm curlimages/curl:latest -s http://mimir:9009/ready   # → "ready"
-docker run --rm --network lgtm curlimages/curl:latest -s http://tempo:3200/ready   # → "ready"
-```
+> **Verificação Avançada Distroless:**
+> Para validar os Healthchecks dos backends que não possuem shell interno exposto, siga rigidamente as orientações e instruções em rede interna documentadas na matriz funcional: **[ARCHITECTURE.md (Verificação de Saúde)](ARCHITECTURE.md#imagens-distroless-backends)**.
 
 > **Frontend e Coletor (Grafana e Alloy Gateway):** Acessíveis diretamente pelo host:
 

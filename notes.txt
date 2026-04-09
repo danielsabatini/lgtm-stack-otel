@@ -1,0 +1,13 @@
+Metrics
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/prometheus/prometheus.exporter.unix/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/prometheus/prometheus.scrape/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/prometheus/prometheus.relabel/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/prometheus/prometheus.exporter.cadvisor/
+
+Logs
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.source.journal/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.relabel/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/discovery/discovery.docker/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/discovery/discovery.relabel/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.source.docker/
+https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.process/

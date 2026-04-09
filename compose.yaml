@@ -158,6 +158,7 @@ services:
       # Logs
       - /var/log/journal:/var/log/journal:ro
       - /run/systemd/journal/socket:/run/systemd/journal/socket
+      - /etc/machine-id:/etc/machine-id:ro
       
       # Node Exporter
       - /:/rootfs:ro
