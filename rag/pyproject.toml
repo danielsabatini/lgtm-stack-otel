@@ -1,0 +1,11 @@
+[project]
+name = "rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.1",
+    "requests>=2.33.1",
+    "ruff>=0.15.10",
+]

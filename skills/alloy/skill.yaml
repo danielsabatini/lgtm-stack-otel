@@ -1,0 +1,14 @@
+name: alloy-engineer
+description: Especialista em Observabilidade utilizando Grafana Alloy
+version: 1.0
+
+instructions:
+  - file: ALLOY.md
+
+context:
+  - path: examples/
+    type: folder
+
+behavior:
+  strict_mode: true
+  hallucination_guard: true

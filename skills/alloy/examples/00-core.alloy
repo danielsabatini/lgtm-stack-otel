@@ -1,0 +1,178 @@
+// =============================================================================
+// AUTO-MONITORAMENTO DO ALLOY GATEWAY
+// =============================================================================
+prometheus.exporter.self "alloy_gateway" {}
+
+prometheus.scrape "alloy_gateway" {
+  targets         = prometheus.exporter.self.alloy_gateway.targets
+  forward_to      = [prometheus.relabel.self_metrics_filter.receiver]
+  job_name        = "alloy-gateway"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+}
+
+// Allowlist: mantém apenas métricas alloy_* (saúde dos componentes do pipeline).
+//
+// O prometheus.exporter.self expõe ~256 séries extras do runtime interno que
+// não possuem dashboard associado e apenas inflacionam a cardinalidade do Mimir.
+// Famílias descartadas e motivo:
+//
+//   go_*            (31 séries) — runtime Go: GC, heap, goroutines, threads
+//   prometheus_*   (121 séries) — internos do Alloy: WAL, remote_write, scrape engine
+//   loki_*          (29 séries) — write path do componente loki.write
+//   otelcol_*       (14 séries) — pipeline OpenTelemetry: tail sampling, exporter queue
+//   process_*        (9 séries) — recursos do processo: CPU, memória, file descriptors
+//   remotecfg_*      (9 séries) — sistema de configuração remota do Alloy
+//   net_conntrack_*  (4 séries) — tracking de conexões TCP dos dialers internos
+//   scrape_*         (4 séries) — meta-métricas de scraping (duração, amostras)
+//   promhttp_*       (2 séries) — handler HTTP do Prometheus
+//   deprecated_*     (1 série)  — flags deprecated em uso
+//   up               (1 série)  — saúde de scrape targets (redundante com alloy_*)
+//
+// Para restaurar uma ou mais famílias, expanda o regex abaixo adicionando
+// o prefixo desejado com pipe, por exemplo:
+//   regex = "alloy_.+|go_.+|prometheus_.+"
+prometheus.relabel "self_metrics_filter" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "alloy_.+"
+    action        = "keep"
+  }
+}
+
+// =============================================================================
+// RECEPÇÃO DE MÉTRICAS (AGENT -> GATEWAY -> MIMIR)
+// =============================================================================
+prometheus.receive_http "agent_metrics" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9999
+  }
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+// =============================================================================
+// RECEPÇÃO DE LOGS (AGENT -> GATEWAY -> LOKI)
+// =============================================================================
+loki.source.api "agent_logs" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9998
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// =============================================================================
+// RECEPÇÃO OTLP (Aplicações -> Gateway)
+// =============================================================================
+otelcol.receiver.otlp "default" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+
+  output {
+    traces  = [otelcol.processor.memory_limiter.default.input]
+    metrics = [otelcol.processor.memory_limiter.default.input]
+    logs    = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
+// =============================================================================
+// PROCESSADOR OTLP: MEMORY LIMITER (VÁLVULA DE SEGURANÇA)
+// =============================================================================
+otelcol.processor.memory_limiter "default" {
+  check_interval         = "1s"
+  // Usa "limit" fixo para evitar engasgos em detecção de limites do cgroup
+  limit                  = "1GiB"
+  spike_limit            = "200MiB"
+
+  output {
+    traces  = [otelcol.processor.tail_sampling.lean.input]
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+// =============================================================================
+// PROCESSADOR OTLP: TAIL SAMPLING (ECONOMIA DE TRACES)
+// =============================================================================
+otelcol.processor.tail_sampling "lean" {
+  decision_wait = "10s"
+  num_traces    = 50000
+
+  // 1. Manter 100% dos Traces com Erro (HTTP 500 / Exceptions)
+  policy {
+    name = "keep-errors"
+    type = "status_code"
+    status_code {
+      status_codes = ["ERROR"]
+    }
+  }
+
+  // 2. Manter 100% dos Traces lentos (> 1000ms)
+  policy {
+    name = "keep-slow"
+    type = "latency"
+    latency {
+      threshold_ms = 1000
+    }
+  }
+
+  // 3. Dos traces saudáveis e rápidos restantes, salvar apenas 5% (Drop de 95%)
+  policy {
+    name = "sample-ok"
+    type = "probabilistic"
+    probabilistic {
+      sampling_percentage = 5
+    }
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+// =============================================================================
+// PROCESSADOR OTLP: BATCH (AGRUPAMENTO)
+// =============================================================================
+otelcol.processor.batch "default" {
+  send_batch_size = 2000
+  timeout         = "5s"
+
+  output {
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.mimir.input]
+    logs    = [otelcol.exporter.loki.default.input]
+  }
+}
+
+// =============================================================================
+// EXPORTADORES OTLP
+// =============================================================================
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls { insecure = true }
+  }
+}
+
+otelcol.exporter.prometheus "mimir" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.local.receiver]
+}

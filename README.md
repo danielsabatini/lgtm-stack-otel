@@ -15,7 +15,7 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 Cada arquivo abaixo é a fonte da verdade do seu próprio tema:
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): topologia, papéis de cada componente e fronteiras de rede.
-- [INFRASTRUCTURE.md](INFRASTRUCTURE.md): setup físico, LVM, permissões e diretórios.
+- [INFRASTRUCTURE.md](INFRASTRUCTURE.md): setup físico, disco e volumes.
 - [BACKUP.md](BACKUP.md): backup, snapshot e disaster recovery.
 - [UPGRADE.md](UPGRADE.md): processo de upgrade e validações.
 - [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.
@@ -30,11 +30,23 @@ Para laboratório ou desenvolvimento local:
 git clone <seu-repo> lgtm-stack
 cd lgtm-stack
 cp .env.example .env
-sudo bash scripts/volumes-init.sh
 docker compose up -d
 ```
 
-Para ambiente produtivo com discos dedicados, siga [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+Para ambiente produtivo com disco dedicado, siga [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+
+## Lifecycle
+
+```bash
+# Subir
+docker compose up -d
+
+# Parar (mantém dados)
+docker compose down
+
+# Reset completo (apaga todos os dados)
+docker compose down -v
+```
 
 ## Endpoints expostos
 

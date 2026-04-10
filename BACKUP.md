@@ -8,7 +8,7 @@ Para infraestruturas alocadas em nuvem (AWS, GCP, Azure) ou virtualizadores on-p
 
 ## 📸 Estratégia Principal: Cloud Block Snapshots (EBS/VMDK)
 
-Como dividimos os dados em 5 discos independentes vinculados estruturalmente ao LVM, você deve programar sua Cloud para tirar fotografias (*Snapshots*) sistêmicos dessas unidades.
+Como todos os dados residem no disco `/docker` (data-root do Docker), você deve programar sua Cloud para tirar fotografias (*Snapshots*) desse único volume.
 
 ### 1. Parada Estrita (Quiescence) — *Recomendada para App-Consistent*
 
@@ -24,11 +24,11 @@ sync
 
 > **Crash-Consistent Snapshots (sistema vivo):** O LVM e os mecanismos de WAL recovery do Loki, Mimir e Tempo suportam recuperação na esmagadora maioria dos casos em snapshots automáticos noturnos sem parada. Use com consciência do risco residual de perda das últimas escritas in-flight.
 
-### 2. Captação dos Discos (O Backup)
+### 2. Captação do Disco (O Backup)
 
-Pelo painel do seu provedor, solicite Snapshot simultâneo de todos os volumes físicos atrelados ao host. Consulte o **[INFRASTRUCTURE.md](INFRASTRUCTURE.md#roteiro-de-implantação-com-lvm-volumes)** para conferir a tabela oficial de todos os discos LVM e os respectivos Mount Pointers (Existem usualmente do `vdb` ao `vdf` que acomodam métricas, logs, apps e banco do Docker).
+Pelo painel do seu provedor, solicite Snapshot do volume físico `/docker` atrelado ao host. Todo o estado da stack (volumes Docker, imagens e dados dos backends) reside nesse único disco.
 
-> **Atenção WAL:** Os diretórios de WAL do Loki (`/loki/compactor`) e do Tempo (`/var/tempo/wal`) estão dentro dos volumes `vdd` e `vdf` respectivamente — são capturados automaticamente no snapshot integral. Não exclua esses diretórios de backups pontuais.
+> **Atenção WAL:** Os diretórios de WAL do Loki e do Tempo estão dentro dos volumes Docker nomeados, que residem em `/docker/volumes/` — são capturados automaticamente no snapshot do disco. Não exclua esses diretórios de backups pontuais.
 
 ### 3. Proteção do Arquivo de Configuração
 
@@ -131,24 +131,25 @@ Houve colapso do Servidor Primário ou você quer invocar um ambiente idêntico 
 1. Levante uma nova VM limpa no ambiente alvo (apenas o disco OS padrão).
 2. Restaure os 5 Snapshots criando Volumes Frescos e anexe os 5 discos à nova VM em ordem idêntica (`/dev/vdb` → `/dev/vdf`).
 
-### Passo 2: O Despertar do LVM
+### Passo 2: Reconectar o disco restaurado
 
-Sendo discos LVM legítimos preexistentes, a nova VM não necessita das formatações originais completas, bastando reconectar o "mapper".
-Contudo, a fim de garantirmos **100% de paridade do sistema e dos caminhos de montagem (`fstab`)**, acesse o script matriz de **[Roteiro de Implantação Física (INFRASTRUCTURE.md)](INFRASTRUCTURE.md)**. 
+Restaure o snapshot do disco `/docker` na nova VM e monte-o:
 
-Execute as sub-etapas nativas da documentação que cuidam de criar as lógicas de diretório (ex: `mkdir -p /lgtm...`) e a respectiva injeção no registro `/etc/fstab`.
-
-Após o LVM dar o despertar e você seguir a rotina oficial, force a releitura:
 ```bash
 sudo vgscan
 sudo vgchange -ay
-
 sudo mount -a
+```
+
+Confirme que o Docker enxerga o data-root correto:
+
+```bash
+docker info | grep "Docker Root Dir"  # → /docker
 ```
 
 ### Passo 3: Inicialização da Stack Transplantada
 
-Instale o Docker e configure o `daemon.json` conforme descrito em `INFRASTRUCTURE.md` (seção "Apontar o Docker Engine para o disco dedicado") para apontar o `data-root` para `/docker` antes de iniciar o daemon.
+Como os volumes nomeados residem dentro de `/docker/volumes/`, eles são restaurados automaticamente com o disco — não é necessário recriar volumes manualmente.
 
 ```bash
 git clone <seu-repo> /caminho/para/lgtm-stack
@@ -156,14 +157,6 @@ cd /caminho/para/lgtm-stack
 
 # Recupere o .env do seu vault de segredos
 # vault kv get -field=value secret/lgtm/.env > .env
-
-# Cria os apontamentos bind (herdarão tudo do Fstab)
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/grafana --opt o=bind lgtm-stack_grafana-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-gateway --opt o=bind lgtm-stack_alloy-gateway-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/apps/alloy-agent --opt o=bind lgtm-stack_alloy-agent-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/loki --opt o=bind lgtm-stack_loki-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/mimir --opt o=bind lgtm-stack_mimir-data
-docker volume create --driver local --opt type=none --opt device=/lgtm/tempo --opt o=bind lgtm-stack_tempo-data
 
 docker compose up -d
 ```
