@@ -1197,7 +1197,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Docker Containers (Self)",
-  "uid": "docker-container-self",
+  "title": "Docker Containers (Local)",
+  "uid": "docker-container-local",
   "weekStart": ""
 }

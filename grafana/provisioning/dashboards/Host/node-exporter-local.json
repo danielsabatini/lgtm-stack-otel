@@ -2421,7 +2421,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Node Exporter (Self)",
-  "uid": "ad7m7vn",
+  "title": "Node Exporter (Local)",
+  "uid": "node-exporter-local",
   "weekStart": ""
 }
