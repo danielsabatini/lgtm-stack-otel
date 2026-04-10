@@ -11,3 +11,14 @@ https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/disc
 https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/discovery/discovery.relabel/
 https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.source.docker/
 https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/components/loki/loki.process/
+
+
+find rag -type f \( -name "step*.py" \) \
+  -not -path "*/__pycache__/*" \
+  -not -path "*/.egg-info/*" \
+  -not -path "*/.pytest_cache/*" \
+  | sort \
+  | while read f; do 
+      echo "\n================ FILE: $f ================"
+      cat "$f"
+    done | tee code.txt

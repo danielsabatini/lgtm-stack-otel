@@ -1,14 +1,25 @@
 name: alloy-engineer
-description: Especialista em Observabilidade utilizando Grafana Alloy
-version: 1.0
+description: Especialista em Grafana Alloy com suporte a RAG baseado em documentação oficial
+version: 2.2
 
 instructions:
   - file: ALLOY.md
 
-context:
-  - path: examples/
-    type: folder
+tools:
+  - name: alloy_rag_search
+    description: Busca semântica na documentação do Grafana Alloy
+    entrypoint: rag.skill_query.alloy_rag_searchch
+
+knowledge:
+  - type: local
+    path: ../../rag/rag/index
 
 behavior:
   strict_mode: true
   hallucination_guard: true
+  retrieval_augmented: true
+
+config:
+  rag:
+    top_k: 4
+    min_relevance: 0.2

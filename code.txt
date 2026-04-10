@@ -1,0 +1,466 @@
+
+================ FILE: rag/step1_crawler.py ================
+import httpx
+import asyncio
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
+from pathlib import Path
+import logging
+
+# Configuração de Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+BASE_DOMAIN = "grafana.com"
+START_URL = "https://grafana.com/docs/grafana-cloud/send-data/alloy/"
+MAX_DEPTH = 2
+OUTPUT_DIR = Path("rag/docs")
+
+visited = set()
+
+
+async def fetch(client, url, retries=3):
+    for i in range(retries):
+        try:
+            r = await client.get(url, timeout=20.0, follow_redirects=True)
+            r.raise_for_status()
+            return r.text
+        except Exception as e:
+            logger.warning(f"Erro ao baixar {url} (tentativa {i+1}/{retries}): {e}")
+            await asyncio.sleep(2**i)  # Backoff exponencial
+    return None
+
+
+def extract_links(html, base_url):
+    soup = BeautifulSoup(html, "html.parser")
+    links = set()
+
+    for a in soup.find_all("a", href=True):
+        href = urljoin(base_url, a["href"])
+        parsed = urlparse(href)
+        # Filtra apenas links do mesmo domínio e evita âncoras/fragmentos
+        if BASE_DOMAIN in parsed.netloc and not parsed.fragment:
+            # Remove query params para evitar duplicatas semânticas
+            clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+            links.add(clean_url)
+
+    return links
+
+
+async def crawl(start_url):
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    async with httpx.AsyncClient(headers={"User-Agent": "RAG-Bot/1.0"}) as client:
+        queue = [(start_url, 0)]
+
+        while queue:
+            url, depth = queue.pop(0)
+
+            if url in visited or depth > MAX_DEPTH:
+                continue
+
+            visited.add(url)
+            logger.info(f"[{depth}] Crawling: {url}")
+
+            html = await fetch(client, url)
+            if not html:
+                continue
+
+            # Nome de arquivo amigável
+            path_part = urlparse(url).path.strip("/").replace("/", "_")
+            if not path_part:
+                path_part = "index"
+            filename = f"{path_part}.html"
+            
+            with open(OUTPUT_DIR / filename, "w", encoding="utf-8") as f:
+                f.write(html)
+
+            # Extração de novos links se ainda não atingiu a profundidade máxima
+            if depth < MAX_DEPTH:
+                for link in extract_links(html, url):
+                    if link not in visited:
+                        queue.append((link, depth + 1))
+
+
+if __name__ == "__main__":
+    asyncio.run(crawl(START_URL))
+================ FILE: rag/step2_cleanup.py ================
+from bs4 import BeautifulSoup
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INPUT_DIR = Path("rag/docs")
+OUTPUT_DIR = Path("rag/cleaned")
+
+
+def clean_html(html_content):
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Remove elementos irrelevantes
+    tags_to_remove = ["script", "style", "nav", "footer", "header", "aside", "form", "iframe"]
+    for tag in soup(tags_to_remove):
+        tag.decompose()
+
+    # Tenta focar no conteúdo principal se houver uma tag <main> ou <article>
+    main_content = soup.find("main") or soup.find("article") or soup.find("body")
+    
+    if main_content:
+        # Retorna o HTML limpo, mas ainda como HTML
+        return main_content.prettify()
+    return ""
+
+
+def main():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    files = list(INPUT_DIR.glob("*.html"))
+    if not files:
+        logger.warning(f"Nenhum arquivo encontrado em {INPUT_DIR}")
+        return
+
+    for file_path in files:
+        logger.info(f"Limpando HTML: {file_path.name}")
+        
+        with open(file_path, "r", encoding="utf-8") as f:
+            html = f.read()
+            
+        cleaned_html = clean_html(html)
+        
+        if cleaned_html.strip():
+            output_path = OUTPUT_DIR / file_path.name
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(cleaned_html)
+        else:
+            logger.warning(f"Conteúdo vazio após limpeza: {file_path.name}")
+
+
+if __name__ == "__main__":
+    main()
+================ FILE: rag/step3_processor.py ================
+from markdownify import markdownify as md
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INPUT_DIR = Path("rag/cleaned")
+OUTPUT_DIR = Path("rag/processed")
+
+
+def main():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    files = list(INPUT_DIR.glob("*.html"))
+    if not files:
+        logger.warning(f"Nenhum arquivo limpo encontrado em {INPUT_DIR}. Rode o passo 2 primeiro.")
+        return
+
+    for file_path in files:
+        logger.info(f"Convertendo para Markdown: {file_path.name}")
+        
+        with open(file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        # Converte para Markdown formatado
+        markdown_text = md(html_content, heading_style="ATX", strip=["a", "img"])
+        
+        if markdown_text.strip():
+            output_path = OUTPUT_DIR / f"{file_path.stem}.md"
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(markdown_text)
+        else:
+            logger.warning(f"Markdown vazio para {file_path.name}")
+
+
+if __name__ == "__main__":
+    main()
+
+================ FILE: rag/step4_chunking.py ================
+import json
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INPUT_DIR = Path("rag/processed")
+OUTPUT_FILE = Path("rag/index/chunks.json")
+CHUNK_SIZE = 1000  # Caracteres
+CHUNK_OVERLAP = 200
+
+
+def split_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    chunks = []
+    start = 0
+    
+    if len(text) <= size:
+        return [text]
+        
+    while start < len(text):
+        end = min(start + size, len(text))
+        chunk = text[start:end]
+        chunks.append(chunk)
+        if end == len(text):
+            break
+        start += (size - overlap)
+        
+    return chunks
+
+
+def main():
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    all_chunks = []
+    
+    files = list(INPUT_DIR.glob("*.md"))
+    if not files:
+        logger.warning(f"Nenhum arquivo Markdown encontrado em {INPUT_DIR}. Rode o passo 3 primeiro.")
+        return
+
+    for file_path in files:
+        logger.info(f"Gerando chunks: {file_path.name}")
+        
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        text_chunks = split_text(content)
+        
+        for i, chunk_text in enumerate(text_chunks):
+            if len(chunk_text.strip()) < 50: # Ignora pedaços muito pequenos e sem significado
+                continue
+                
+            all_chunks.append({
+                "id": f"{file_path.stem}_{i}",
+                "source": file_path.name,
+                "content": chunk_text.strip(),
+                "metadata": {
+                    "file": str(file_path),
+                    "chunk_index": i,
+                    "length": len(chunk_text)
+                }
+            })
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(all_chunks, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"Total de chunks gerados: {len(all_chunks)}")
+
+
+if __name__ == "__main__":
+    main()
+================ FILE: rag/step5_embeddings.py ================
+import json
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import logging
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INPUT_FILE = Path("rag/index/chunks.json")
+OUTPUT_EMBEDDINGS = Path("rag/index/embeddings.npy")
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+
+def main():
+    if not INPUT_FILE.exists():
+        logger.error(f"Arquivo de chunks não encontrado: {INPUT_FILE}. Rode o passo 4 primeiro.")
+        return
+
+    with open(INPUT_FILE, "r", encoding="utf-8") as f:
+        chunks = json.load(f)
+
+    texts = [c["content"] for c in chunks]
+    logger.info(f"Gerando embeddings para {len(texts)} chunks...")
+
+    model = SentenceTransformer(MODEL_NAME)
+    
+    # Gerar vetores
+    embeddings = model.encode(texts, show_progress_bar=True)
+
+    # Salvar em formato numpy
+    np.save(OUTPUT_EMBEDDINGS, embeddings)
+    logger.info(f"Embeddings salvos com sucesso em {OUTPUT_EMBEDDINGS}")
+
+
+if __name__ == "__main__":
+    main()
+================ FILE: rag/step6_index.py ================
+import faiss
+import numpy as np
+import logging
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INPUT_EMBEDDINGS = Path("rag/index/embeddings.npy")
+OUTPUT_INDEX = Path("rag/index/faiss.index")
+
+
+def main():
+    if not INPUT_EMBEDDINGS.exists():
+        logger.error(f"Embeddings não encontrados em {INPUT_EMBEDDINGS}. Rode o passo 5 primeiro.")
+        return
+
+    # Carregar vetores gerados anteriormente
+    vectors = np.load(INPUT_EMBEDDINGS).astype("float32")
+    logger.info(f"Vetores carregados: {vectors.shape}")
+
+    # Inicializar índice FAISS (FlatL2 para precisão total em bases pequenas/médias)
+    dimension = vectors.shape[1]
+    index = faiss.IndexFlatL2(dimension)
+    
+    # Adicionar vetores ao índice
+    index.add(vectors)
+    
+    # Persistir o índice em disco
+    faiss.write_index(index, str(OUTPUT_INDEX))
+    logger.info(f"Índice FAISS persistido em {OUTPUT_INDEX}")
+
+
+if __name__ == "__main__":
+    main()
+================ FILE: rag/step7_query.py ================
+import faiss
+import json
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+INDEX_PATH = Path("rag/index/faiss.index")
+METADATA_PATH = Path("rag/index/chunks.json")
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+
+class Retriever:
+    """Classe responsável por transformar pergunta em vetor e buscar no índice."""
+    def __init__(self):
+        if not INDEX_PATH.exists() or not METADATA_PATH.exists():
+            raise FileNotFoundError("Índice ou Metadados não encontrados. Execute os passos 1-6.")
+            
+        self.model = SentenceTransformer(MODEL_NAME)
+        self.index = faiss.read_index(str(INDEX_PATH))
+        
+        with open(METADATA_PATH, "r", encoding="utf-8") as f:
+            self.metadata = json.load(f)
+
+    def search(self, query, k=3):
+        # 1. Vetorizar a pergunta
+        q_vec = self.model.encode([query]).astype("float32")
+
+        # 2. Pesquisar os k vizinhos mais próximos
+        distances, indices = self.index.search(q_vec, k)
+
+        results = []
+        for i in indices[0]:
+            if i != -1: # Valida se houve retorno do FAISS
+                results.append(self.metadata[i])
+
+        return results
+
+
+def main():
+    # Demonstração de busca
+    try:
+        retriever = Retriever()
+        query = "configuração de log do alloy"
+        print(f"\n[BUSCA] Pergunta: {query}")
+        
+        results = retriever.search(query)
+        for i, res in enumerate(results):
+            print(f"\n--- Resultado {i+1} (Fonte: {res['source']}) ---")
+            print(res['content'][:300] + "...")
+    except Exception as e:
+        logger.error(f"Erro ao inicializar retriever: {e}")
+
+
+if __name__ == "__main__":
+    main()
+================ FILE: rag/step8_generator.py ================
+import ollama
+from step7_query import Retriever
+import logging
+import sys
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+logger = logging.getLogger(__name__)
+
+# Configurações de modelo
+MODEL_LLM = "llama3"
+
+
+def ask_rag(query):
+    """Encapsula o fluxo completo de Geração Aumentada por Recuperação."""
+    try:
+        # 1. Recuperação do Contexto
+        retriever = Retriever()
+        context_chunks = retriever.search(query, k=4)
+        
+        if not context_chunks:
+            return "Não encontrei informações relevantes no contexto fornecido."
+
+        # Formatando contexto para o prompt
+        context_text = "\n\n".join([f"FONTE: {c['source']}\nCONTEÚDO: {c['content']}" for c in context_chunks])
+        
+        # 2. Construção do Prompt (RAG)
+        system_instruction = (
+            "Você é um engenheiro de SRE especialista em Grafana Alloy e Observabilidade. "
+            "Responda a pergunta baseando-se UNICAMENTE no contexto abaixo. "
+            "Se a informação não estiver presente, diga que não localizou nos documentos. "
+            "Sempre cite os nomes das fontes informadas no contexto."
+        )
+        
+        full_prompt = f"CONTEXTO RECUPERADO:\n{context_text}\n\nPERGUNTA: {query}"
+        
+        # 3. Geração via Ollama
+        response = ollama.chat(model=MODEL_LLM, messages=[
+            {'role': 'system', 'content': system_instruction},
+            {'role': 'user', 'content': full_prompt},
+        ])
+        
+        return response['message']['content']
+        
+    except FileNotFoundError:
+        return "Erro: Base de dados não inicializada. Rode os scripts de 1 a 6 primeiro."
+    except Exception as e:
+        return f"Ocorreu um erro na geração: {str(e)}"
+
+
+def chat_loop():
+    print("="*50)
+    print(" RAG SYSTEM - STACK LGTM (OLLAMA LOCAL) ")
+    print("="*50)
+    print("Digite sua pergunta ou 'sair' para encerrar.\n")
+    
+    while True:
+        try:
+            user_input = input("Pergunta > ")
+            
+            if user_input.lower() in ["sair", "exit", "quit", "q"]:
+                print("\nEncerrando...")
+                break
+                
+            if not user_input.strip():
+                continue
+                
+            print("\n[Pensando...]")
+            resposta = ask_rag(user_input)
+            print(f"\n[RESPOSTA]:\n{resposta}\n")
+            print("-" * 30)
+            
+        except KeyboardInterrupt:
+            print("\nInterrompido pelo usuário.")
+            break
+
+
+if __name__ == "__main__":
+    chat_loop()

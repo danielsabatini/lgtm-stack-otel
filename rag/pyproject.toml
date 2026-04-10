@@ -5,7 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "faiss-cpu>=1.13.2",
     "httpx>=0.28.1",
+    "markdownify>=1.2.2",
+    "numpy>=2.4.4",
+    "ollama>=0.6.1",
     "requests>=2.33.1",
     "ruff>=0.15.10",
+    "sentence-transformers>=5.4.0",
+    "tqdm>=4.67.3",
 ]
