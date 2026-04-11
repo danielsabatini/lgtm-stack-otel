@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict
 
-from rag.step7_query import search
+from step7_researcher import search
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,12 +34,14 @@ def alloy_rag_search(query: str, k: int = 4) -> List[Dict]:
         formatted = []
 
         for r in results:
-            formatted.append({
-                "content": r["content"],
-                "source": r["metadata"].get("source", "unknown"),
-                "chunk_id": r["metadata"].get("chunk"),
-                "length": r["metadata"].get("length", len(r["content"]))
-            })
+            formatted.append(
+                {
+                    "content": r["content"],
+                    "source": r["metadata"].get("source", "unknown"),
+                    "chunk_id": r["metadata"].get("chunk"),
+                    "length": r["metadata"].get("length", len(r["content"])),
+                }
+            )
 
         logger.info(f"[SKILL] Retornando {len(formatted)} chunks")
 

@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 import logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 INPUT_DIR = Path("rag/processed")
@@ -53,15 +55,17 @@ def main():
                 if len(chunk.strip()) < 100:
                     continue
 
-                all_chunks.append({
-                    "id": f"{file.stem}_{i}",
-                    "content": chunk,
-                    "metadata": {
-                        "source": file.name,
-                        "chunk": i,
-                        "length": len(chunk)
+                all_chunks.append(
+                    {
+                        "id": f"{file.stem}_{i}",
+                        "content": chunk,
+                        "metadata": {
+                            "source": file.name,
+                            "chunk": i,
+                            "length": len(chunk),
+                        },
                     }
-                })
+                )
                 valid_chunks += 1
 
             logger.info(f"[OK] {file.name} → {valid_chunks} chunks válidos")

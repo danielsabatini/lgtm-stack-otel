@@ -1,6 +1,5 @@
 import faiss
 import json
-import numpy as np
 from sentence_transformers import SentenceTransformer
 import logging
 from pathlib import Path
@@ -9,8 +8,7 @@ from pathlib import Path
 # LOGGING
 # ==============================
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ def search(query: str, k: int = 4):
     logger.info(f"[QUERY] {query}")
 
     try:
-        vec = model.encode([query]).astype("float32")
+        vec = model.encode([query], convert_to_numpy=True).astype("float32")
 
         distances, indices = index.search(vec, k)
 
@@ -80,4 +78,4 @@ def search(query: str, k: int = 4):
 
     except Exception as e:
         logger.error(f"[ERRO] Falha na busca: {e}")
-        return []        
+        return []

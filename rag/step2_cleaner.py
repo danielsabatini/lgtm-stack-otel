@@ -6,15 +6,14 @@ import logging
 # LOGGING
 # ==============================
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 # ==============================
 # CONFIG
 # ==============================
-INPUT_DIR = Path("rag/docs")
+INPUT_DIR = Path("rag/crawled")
 OUTPUT_DIR = Path("rag/cleaned")
 
 
@@ -72,9 +71,7 @@ def main():
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(cleaned)
 
-            logger.info(
-                f"[OK] {file.name} | {original_size} → {cleaned_size} chars"
-            )
+            logger.info(f"[OK] {file.name} | {original_size} → {cleaned_size} chars")
 
             processed += 1
 

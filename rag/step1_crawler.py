@@ -13,16 +13,18 @@ BASE_DOMAIN = "grafana.com"
 START_URL = "https://grafana.com/docs/grafana-cloud/send-data/alloy/"
 MAX_DEPTH = 2
 MAX_PAGES = 1000
-OUTPUT_DIR = Path("rag/docs")
+OUTPUT_DIR = Path("rag/crawled")
 
-CONCURRENCY = 5
-TIMEOUT = 20
-RETRIES = 3
+CONCURRENCY = 10
+TIMEOUT = 10
+RETRIES = 1
 
 # ==============================
 # LOGGING
 # ==============================
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # ==============================
@@ -68,8 +70,8 @@ async def fetch(client, url):
             response.raise_for_status()
             return response.text
         except Exception as e:
-            logger.warning(f"[retry {attempt+1}] {url} -> {e}")
-            await asyncio.sleep(2 ** attempt)
+            logger.warning(f"[retry {attempt + 1}] {url} -> {e}")
+            await asyncio.sleep(2**attempt)
 
     logger.error(f"[FAIL] {url}")
     return None
@@ -83,7 +85,7 @@ def extract_links(html: str, base_url: str):
     links = set()
 
     for tag in soup.find_all("a", href=True):
-        href = urljoin(base_url, tag["href"])
+        href = urljoin(base_url, str(tag["href"]))
         href = normalize_url(href)
 
         if is_valid_url(href):
@@ -137,8 +139,7 @@ async def crawl(start_url):
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
     async with httpx.AsyncClient(
-        headers={"User-Agent": "RAG-Crawler/1.0"},
-        follow_redirects=True
+        headers={"User-Agent": "RAG-Crawler/1.0"}, follow_redirects=True
     ) as client:
 
         async def worker():

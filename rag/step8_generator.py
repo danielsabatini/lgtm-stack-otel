@@ -1,5 +1,5 @@
 import ollama
-from step7_query import search
+from step7_researcher import search
 import logging
 import time
 
@@ -30,10 +30,7 @@ Responda baseado apenas no contexto:
 Pergunta: {query}
 """
 
-    response = ollama.chat(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    response = ollama.chat(model=MODEL, messages=[{"role": "user", "content": prompt}])
 
     duration = time.time() - start
 

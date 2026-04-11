@@ -3,7 +3,9 @@ import numpy as np
 import logging
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 INPUT = Path("rag/index/embeddings.npy")
@@ -20,7 +22,7 @@ def main():
     logger.info(f"Carregados {vectors.shape[0]} vetores (dim={vectors.shape[1]})")
 
     index = faiss.IndexFlatL2(vectors.shape[1])
-    index.add(vectors)
+    index.add(vectors)  # type: ignore
 
     faiss.write_index(index, str(OUTPUT))
 
