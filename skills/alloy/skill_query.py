@@ -1,13 +1,10 @@
 import logging
 import sys
-from pathlib import Path
 
 # Adiciona a raiz da URB ao path para importar as ferramentas como pacote
 URB_ROOT = "/home/debian/code/universal-rag-builder"
 if URB_ROOT not in sys.path:
     sys.path.append(URB_ROOT)
-
-from core.step7_researcher import DomainResearcher
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,11 +12,14 @@ logger = logging.getLogger(__name__)
 # Singleton do pesquisador para evitar recarregar o modelo em cada chamada
 _researcher = None
 
+
 def get_researcher():
     global _researcher
     if _researcher is None:
+        from core.step7_researcher import DomainResearcher
         _researcher = DomainResearcher(domain="alloy")
     return _researcher
+
 
 def alloy_rag_search(query: str, k: int = 4):
     """
@@ -28,7 +28,7 @@ def alloy_rag_search(query: str, k: int = 4):
     try:
         researcher = get_researcher()
         results = researcher.search(query, k=k)
-        
+
         formatted = []
         for r in results:
             formatted.append(
