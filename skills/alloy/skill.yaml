@@ -8,11 +8,11 @@ instructions:
 tools:
   - name: alloy_rag_search
     description: Busca semântica na documentação do Grafana Alloy
-    entrypoint: rag.skill_query.alloy_rag_search
+    entrypoint: skill_query.alloy_rag_search
 
 knowledge:
   - type: local
-    path: /home/debian/code/lgtm-stack/rag/rag/index
+    path: /home/debian/code/universal-rag-builder/data/alloy/index
 
 behavior:
   strict_mode: true
