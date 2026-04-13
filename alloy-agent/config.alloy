@@ -97,139 +97,193 @@ prometheus.relabel "default_metrics_relabel" {
 // 2. Logs
 // 2.1. Logs de Segurança (SEC)
 loki.source.journal "sec" {
-  forward_to = [loki.process.sec.receiver]
+  forward_to = [loki.relabel.sec_extract.receiver]
   matches    = "_SYSTEMD_UNIT=ssh.service"
 }
 
-loki.process "sec" {
-  forward_to = [loki.process.default_logs_process.receiver]
+loki.relabel "sec_extract" {
+  forward_to = [loki.process.sec.receiver]
 
-  stage.regex {
-    source     = "_SYSTEMD_UNIT"
-    expression = "(?P<service_name>.*)\\.service"
+  rule {
+    source_labels = ["__journal_PRIORITY"]
+    target_label  = "priority"
   }
-  stage.labels { values = { service_name = "service_name" } }
+}
 
-  stage.static_labels { values = { category = "sec" } }
+loki.process "sec" {
+  forward_to = [loki.relabel.default_logs_relabel.receiver]
+
+  stage.template {
+    source   = "level"
+    template = `
+      {{- if eq (index .Labels "priority") "0" -}}emergency
+      {{- else if eq (index .Labels "priority") "1" -}}alert
+      {{- else if eq (index .Labels "priority") "2" -}}critical
+      {{- else if eq (index .Labels "priority") "3" -}}error
+      {{- else if eq (index .Labels "priority") "4" -}}warning
+      {{- else if eq (index .Labels "priority") "5" -}}notice
+      {{- else if eq (index .Labels "priority") "6" -}}info
+      {{- else if eq (index .Labels "priority") "7" -}}debug
+      {{- else -}}unknown
+      {{- end -}}`
+  }
+  stage.labels      { values = { log_level = "level" } }
+  stage.label_drop  { values = ["priority"] }
+
+  stage.static_labels { values = { category = "sec", service_name = "ssh", dbg_pipeline = "v2" } }
 }
 
 // 2.2. Logs do Sistema (SYS)
 loki.source.journal "sys" {
-  forward_to = [loki.process.sys.receiver]
+  forward_to = [loki.relabel.sys_extract.receiver]
   matches    = "_TRANSPORT=kernel"
 }
 
+loki.relabel "sys_extract" {
+  forward_to = [loki.process.sys.receiver]
+
+  rule {
+    source_labels = ["__journal_PRIORITY"]
+    target_label  = "priority"
+  }
+}
+
 loki.process "sys" {
-  forward_to = [loki.process.default_logs_process.receiver]
+  forward_to = [loki.relabel.default_logs_relabel.receiver]
 
-  stage.regex {
-    source     = "SYSLOG_IDENTIFIER"
-    expression = "(?P<service_name>.+)"
-  }
-  stage.labels { values = { service_name = "service_name" } }
-
-  stage.drop {
-    source = "PRIORITY"
-    value  = "5"
-  }
-  stage.drop {
-    source = "PRIORITY"
-    value  = "6"
-  }
-  stage.drop {
-    source = "PRIORITY"
-    value  = "7"
+  stage.match {
+    selector = `{priority=~"5|6|7"}`
+    action   = "drop"
   }
 
-  stage.static_labels { values = { category = "sys" } }
+  stage.template {
+    source   = "level"
+    template = `
+      {{- if eq (index .Labels "priority") "0" -}}emergency
+      {{- else if eq (index .Labels "priority") "1" -}}alert
+      {{- else if eq (index .Labels "priority") "2" -}}critical
+      {{- else if eq (index .Labels "priority") "3" -}}error
+      {{- else if eq (index .Labels "priority") "4" -}}warning
+      {{- else if eq (index .Labels "priority") "5" -}}notice
+      {{- else if eq (index .Labels "priority") "6" -}}info
+      {{- else if eq (index .Labels "priority") "7" -}}debug
+      {{- else -}}unknown
+      {{- end -}}`
+  }
+  stage.labels      { values = { level = "level" } }
+  stage.label_drop  { values = ["priority"] }
+
+  stage.static_labels { values = { category = "sys", service_name = "kernel" } }
 }
 
 // 2.3. Logs de Serviços (SVC)
 loki.source.journal "svc_docker" {
-  forward_to = [loki.process.svc.receiver]
+  forward_to = [loki.relabel.svc_extract.receiver]
   matches    = "_SYSTEMD_UNIT=docker.service"
 }
 
 loki.source.journal "svc_containerd" {
-  forward_to = [loki.process.svc.receiver]
+  forward_to = [loki.relabel.svc_extract.receiver]
   matches    = "_SYSTEMD_UNIT=containerd.service"
 }
 
 loki.source.journal "svc_cron" {
-  forward_to = [loki.process.svc.receiver]
+  forward_to = [loki.relabel.svc_extract.receiver]
   matches    = "_SYSTEMD_UNIT=cron.service"
 }
 
 loki.source.journal "svc_timesyncd" {
-  forward_to = [loki.process.svc.receiver]
+  forward_to = [loki.relabel.svc_extract.receiver]
   matches    = "_SYSTEMD_UNIT=systemd-timesyncd.service"
 }
 
+loki.relabel "svc_extract" {
+  forward_to = [loki.process.svc.receiver]
+
+  rule {
+    source_labels = ["__journal_PRIORITY"]
+    target_label  = "priority"
+  }
+  rule {
+    source_labels = ["__journal__SYSTEMD_UNIT"]
+    target_label  = "unit"
+  }
+}
+
 loki.process "svc" {
-  forward_to = [loki.process.default_logs_process.receiver]
+  forward_to = [loki.relabel.default_logs_relabel.receiver]
 
-  stage.regex {
-    source     = "_SYSTEMD_UNIT"
-    expression = "(?P<service_name>.*)\\.service"
+  stage.match {
+    selector = `{priority=~"5|6|7"}`
+    action   = "drop"
   }
-  stage.labels { values = { service_name = "service_name" } }
 
-  stage.drop {
-    source = "PRIORITY"
-    value  = "5"
+  stage.template {
+    source   = "service_name"
+    template = `{{ Replace (index .Labels "unit") ".service" "" 1 }}`
   }
-  stage.drop {
-    source = "PRIORITY"
-    value  = "6"
+  stage.labels      { values = { service_name = "service_name" } }
+  stage.label_drop  { values = ["unit"] }
+
+  stage.template {
+    source   = "level"
+    template = `
+      {{- if eq (index .Labels "priority") "0" -}}emergency
+      {{- else if eq (index .Labels "priority") "1" -}}alert
+      {{- else if eq (index .Labels "priority") "2" -}}critical
+      {{- else if eq (index .Labels "priority") "3" -}}error
+      {{- else if eq (index .Labels "priority") "4" -}}warning
+      {{- else if eq (index .Labels "priority") "5" -}}notice
+      {{- else if eq (index .Labels "priority") "6" -}}info
+      {{- else if eq (index .Labels "priority") "7" -}}debug
+      {{- else -}}unknown
+      {{- end -}}`
   }
-  stage.drop {
-    source = "PRIORITY"
-    value  = "7"
-  }
+  stage.labels      { values = { level = "level" } }
+  stage.label_drop  { values = ["priority"] }
 
   stage.static_labels { values = { category = "svc" } }
 }
 
 // 2.4. Logs de Infraestrutura (INF)
 loki.source.journal "inf" {
-  forward_to = [loki.process.inf.receiver]
+  forward_to = [loki.relabel.inf_extract.receiver]
   matches    = "SYSLOG_IDENTIFIER=systemd"
 }
 
-loki.process "inf" {
-  forward_to = [loki.process.default_logs_process.receiver]
+loki.relabel "inf_extract" {
+  forward_to = [loki.process.inf.receiver]
 
-  stage.regex {
-    source     = "SYSLOG_IDENTIFIER"
-    expression = "(?P<service_name>.+)"
+  rule {
+    source_labels = ["__journal_PRIORITY"]
+    target_label  = "priority"
   }
-  stage.labels { values = { service_name = "service_name" } }
-
-  stage.static_labels { values = { category = "inf" } }
 }
 
-// 2.5. Logs Processamento Padrão
-loki.process "default_logs_process" {
+loki.process "inf" {
   forward_to = [loki.relabel.default_logs_relabel.receiver]
 
   stage.template {
-    source   = "PRIORITY"
+    source   = "level"
     template = `
-      {{- if eq .Value "0" -}}emergency
-      {{- else if eq .Value "1" -}}alert
-      {{- else if eq .Value "2" -}}critical
-      {{- else if eq .Value "3" -}}error
-      {{- else if eq .Value "4" -}}warning
-      {{- else if eq .Value "5" -}}notice
-      {{- else if eq .Value "6" -}}info
-      {{- else if eq .Value "7" -}}debug
+      {{- if eq (index .Labels "priority") "0" -}}emergency
+      {{- else if eq (index .Labels "priority") "1" -}}alert
+      {{- else if eq (index .Labels "priority") "2" -}}critical
+      {{- else if eq (index .Labels "priority") "3" -}}error
+      {{- else if eq (index .Labels "priority") "4" -}}warning
+      {{- else if eq (index .Labels "priority") "5" -}}notice
+      {{- else if eq (index .Labels "priority") "6" -}}info
+      {{- else if eq (index .Labels "priority") "7" -}}debug
       {{- else -}}unknown
       {{- end -}}`
   }
-  stage.labels { values = { level = "PRIORITY" } }
+  stage.labels      { values = { level = "level" } }
+  stage.label_drop  { values = ["priority"] }
+
+  stage.static_labels { values = { category = "inf", service_name = "systemd" } }
 }
 
-// 2.6. Logs Relabel Padrão
+// 2.5. Logs Relabel Padrão
 loki.relabel "default_logs_relabel" {
   forward_to = [loki.write.logs.receiver]
 
