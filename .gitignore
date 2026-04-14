@@ -18,11 +18,14 @@ env/
 # Logs
 *.log
 
-# IDEs
+# IDEs e ferramentas de desenvolvimento
 .vscode/
 .idea/
 *.swp
 *.swo
+.claude/
+.ruff_cache/
+notes.txt
 
 # OS
 .DS_Store
