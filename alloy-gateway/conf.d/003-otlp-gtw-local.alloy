@@ -1,0 +1,122 @@
+// =============================================================================
+// PIPELINE OTLP (APLICAÇÕES → GATEWAY → BACKENDS)
+//
+// Recebe traces, métricas e logs das aplicações via OpenTelemetry Protocol
+// e os encaminha para os backends da stack após filtragem e agrupamento.
+//
+// Fluxo:
+//   apps → receiver → memory_limiter → tail_sampling (traces)
+//                                    → batch ──────────────→ tempo  (traces)
+//                                                          → mimir  (métricas)
+//                                                          → loki   (logs)
+// =============================================================================
+
+// Collector (receiver): aceita sinais OTLP das aplicações (gRPC e HTTP).
+otelcol.receiver.otlp "apps" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+
+  output {
+    traces  = [otelcol.processor.memory_limiter.apps.input]
+    metrics = [otelcol.processor.memory_limiter.apps.input]
+    logs    = [otelcol.processor.memory_limiter.apps.input]
+  }
+}
+
+// =============================================================================
+// PROCESSADORES
+// =============================================================================
+
+// Transformer (memory_limiter): primeira barreira do pipeline. Rejeita sinais
+// quando o processo está próximo do limite de memória, evitando OOM em picos
+// de ingestão. Usa limite fixo (1 GiB) para evitar engasgos na detecção de cgroup.
+// Traces seguem para tail sampling; métricas e logs vão direto ao batch.
+otelcol.processor.memory_limiter "apps" {
+  check_interval = "1s"
+  limit          = "1GiB"
+  spike_limit    = "200MiB"
+
+  output {
+    traces  = [otelcol.processor.tail_sampling.apps_traces.input]
+    metrics = [otelcol.processor.batch.apps.input]
+    logs    = [otelcol.processor.batch.apps.input]
+  }
+}
+
+// Transformer (tail_sampling): amostragem inteligente de traces após coletar
+// o trace completo (decision_wait). Garante cobertura total de erros e lentidão,
+// descartando 95% do tráfego saudável para reduzir custo no Tempo.
+otelcol.processor.tail_sampling "apps_traces" {
+  // Aguarda até 10s para receber todos os spans do trace antes de decidir.
+  decision_wait = "10s"
+  // Capacidade máxima de traces em memória aguardando decisão.
+  num_traces    = 50000
+
+  // Política 1: manter 100% dos traces com erro (HTTP 5xx / exceptions).
+  policy {
+    name = "keep-errors"
+    type = "status_code"
+    status_code {
+      status_codes = ["ERROR"]
+    }
+  }
+
+  // Política 2: manter 100% dos traces lentos (latência > 1000ms).
+  policy {
+    name = "keep-slow"
+    type = "latency"
+    latency {
+      threshold_ms = 1000
+    }
+  }
+
+  // Política 3: amostrar 5% dos traces saudáveis e rápidos (drop de 95%).
+  policy {
+    name = "sample-ok"
+    type = "probabilistic"
+    probabilistic {
+      sampling_percentage = 5
+    }
+  }
+
+  output {
+    traces = [otelcol.processor.batch.apps.input]
+  }
+}
+
+// Transformer (batch): agrupa até 2000 itens ou flush a cada 5s, o que ocorrer
+// primeiro. Reduz o número de requisições e melhora o throughput de escrita.
+otelcol.processor.batch "apps" {
+  send_batch_size = 2000
+  timeout         = "5s"
+
+  output {
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.mimir.input]
+    logs    = [otelcol.exporter.loki.loki.input]
+  }
+}
+
+// =============================================================================
+// EXPORTADORES
+// =============================================================================
+
+// Writer: envia traces para o Tempo via OTLP gRPC.
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls { insecure = true }
+  }
+}
+
+// Writer: converte métricas OTLP e repassa para o remote_write do Mimir.
+// prometheus.remote_write.mimir definido em 001-agent-metrics.alloy
+otelcol.exporter.prometheus "mimir" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+// Writer: converte logs OTLP e repassa para o writer do Loki.
+// loki.write.loki definido em 002-agent-logs.alloy
+otelcol.exporter.loki "loki" {
+  forward_to = [loki.write.loki.receiver]
+}

@@ -1,0 +1,24 @@
+// =============================================================================
+// RECEPÇÃO DE MÉTRICAS (AGENT → GATEWAY → MIMIR)
+//
+// O alloy-agent envia métricas via HTTP para a porta 9999.
+// O gateway repassa diretamente para o Mimir sem transformações adicionais,
+// pois os labels já foram normalizados no agent (instance, environment, etc).
+// =============================================================================
+
+// Collector (receiver): escuta métricas Prometheus enviadas pelo alloy-agent.
+prometheus.receive_http "agent_metrics" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9999
+  }
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+// Writer (endpoint): envia métricas para o Mimir (remote write).
+// Compartilhado com o auto-monitoramento (000) e o exportador OTLP (003).
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}

@@ -55,6 +55,11 @@ loki.process "containers_normalize" {
     mapping = { "level" = "" }
   }
 
+  stage.template {
+    source   = "level"
+    template = "{{ if .Value }}{{ .Value }}{{ else }}unknown{{ end }}"
+  }
+
   stage.labels {
     values = { "level" = "" }
   }

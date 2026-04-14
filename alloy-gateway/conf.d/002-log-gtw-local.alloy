@@ -1,0 +1,24 @@
+// =============================================================================
+// RECEPÇÃO DE LOGS (AGENT → GATEWAY → LOKI)
+//
+// O alloy-agent envia logs via HTTP para a porta 9998.
+// O gateway repassa diretamente para o Loki sem transformações adicionais,
+// pois os labels já foram normalizados no agent (level, category, service_name, etc).
+// =============================================================================
+
+// Collector (receiver): escuta logs Loki enviados pelo alloy-agent.
+loki.source.api "agent_logs" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9998
+  }
+  forward_to = [loki.write.loki.receiver]
+}
+
+// Writer (endpoint): envia logs para o Loki.
+// Compartilhado com o exportador OTLP de logs (003).
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -57,13 +57,24 @@ docker compose down -v
 
 Loki, Mimir e Tempo não expõem portas no host. A justificativa está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Templates
+## Instalação em servidores remotos
 
-Os templates em [examples/](examples) são exemplos de agentes enxutos por plataforma.
+Para monitorar um servidor remoto, clone este repositório no servidor alvo
+e siga o guia de instalação da plataforma correspondente:
 
-- [examples/linux/config.alloy](examples/linux/config.alloy)
-- [examples/windows/config.alloy](examples/windows/config.alloy)
-- [examples/mysql/config.alloy](examples/mysql/config.alloy)
-- [examples/postgresql/config.alloy](examples/postgresql/config.alloy)
-- [examples/sqlserver/config.alloy](examples/sqlserver/config.alloy)
-- [examples/remote-scrape/README.md](examples/remote-scrape/README.md)
+```bash
+git clone <url-do-repositorio> lgtm-stack
+cd lgtm-stack/examples/<plataforma>
+# siga o INSTALL.md
+```
+
+| Plataforma | Guia |
+|------------|------|
+| Linux (Debian/Ubuntu) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
+| Windows | em breve |
+| MySQL | em breve |
+| PostgreSQL | em breve |
+| SQL Server | em breve |
+
+> Para atualizar as configurações em servidores já instalados: `git pull` no
+> diretório clonado e reinicie o serviço Alloy.

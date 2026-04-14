@@ -14,7 +14,7 @@ prometheus.scrape "docker_local_scrape" {
 // Transformer (relabel)
 prometheus.relabel "docker_local_transformer" {
   forward_to = [
-    prometheus.echo.docker_local_debug.receiver,
+    // prometheus.echo.docker_local_debug.receiver,
     prometheus.remote_write.docker_local_gateway.receiver,
     ]
 

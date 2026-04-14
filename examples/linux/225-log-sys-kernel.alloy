@@ -1,12 +1,12 @@
 // Logs
-// Collector (journal)
-loki.source.journal "docker" {
-  forward_to     = [loki.relabel.docker_transform.receiver]
-  matches        = "_SYSTEMD_UNIT=docker.service"
-  relabel_rules  = loki.relabel.docker_journal_labels.rules
+// Collector (journal): coleta mensagens do kernel via systemd journal.
+loki.source.journal "kernel" {
+  forward_to     = [loki.relabel.kernel_transform.receiver]
+  matches        = "_TRANSPORT=kernel"
+  relabel_rules  = loki.relabel.kernel_journal_labels.rules
 }
 
-loki.relabel "docker_journal_labels" {
+loki.relabel "kernel_journal_labels" {
   forward_to = []
 
   rule {
@@ -16,8 +16,8 @@ loki.relabel "docker_journal_labels" {
 }
 
 // Transformer (relabel)
-loki.relabel "docker_transform" {
-  forward_to = [loki.process.docker_normalize.receiver]
+loki.relabel "kernel_transform" {
+  forward_to = [loki.process.kernel_normalize.receiver]
 
   rule {
     source_labels = ["priority"]
@@ -88,33 +88,29 @@ loki.relabel "docker_transform" {
 }
 
 // Transformer (process)
-loki.process "docker_normalize" {
-  forward_to = [
-    // loki.echo.docker_debug.receiver,
-    loki.write.docker_gateway.receiver,
-  ]
+loki.process "kernel_normalize" {
+  forward_to = [loki.write.kernel_gateway.receiver]
 
   stage.match {
     selector = `{level=~"info|debug"}`
     action   = "drop"
   }
-  
+
   stage.label_drop {
     values = ["priority", "job"]
   }
 
   stage.static_labels {
     values = {
-      category = "application",
-      service_name = "docker",
+      category     = "system",
+      service_name = "kernel",
     }
   }
 }
 
-// Debug
-loki.echo "docker_debug" { }
-
 // Writer (endpoint)
-loki.write "docker_gateway" {
-  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+// Adicione "lgtm-stack" ao DNS ou em /etc/hosts apontando para o IP
+// do servidor que executa a stack LGTM (alloy-gateway porta 9998).
+loki.write "kernel_gateway" {
+  endpoint { url = "http://lgtm-stack:9998/loki/api/v1/push" }
 }

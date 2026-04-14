@@ -55,6 +55,13 @@ loki.relabel "containerd_transform" {
   }
 
   rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+
+  rule {
     target_label = "instance"
     replacement  = sys.env("HOSTNAME")
   }
