@@ -11,12 +11,12 @@ As entradas de log são:
 
 Cada log recebe um label `category` que classifica sua origem:
 
-| Category | Significado | Serviços |
-|---|---|---|
-| `sec` | security | ssh |
-| `sys` | system | kernel |
-| `app` | application | docker, containerd, cron |
-| `plt` | platform | systemd |
+| Category | Serviços |
+|---|---|
+| `security` | ssh |
+| `system` | kernel |
+| `application` | docker, containerd, cron |
+| `platform` | systemd |
 
 ## Coleta do host
 
@@ -26,12 +26,12 @@ Os arquivos seguem a convenção `<número>-log-<category>-<serviço>.alloy`:
 
 | Arquivo | Category | Serviço | Drop |
 |---|---|---|---|
-| `000-log-sec-ssh.alloy` | `sec` | ssh | — |
-| `050-log-sys-kernel.alloy` | `sys` | kernel | priority 5\|6\|7 |
-| `100-log-app-docker.alloy` | `app` | docker | priority 6\|7 |
-| `101-log-app-containerd.alloy` | `app` | containerd | priority 6\|7 |
-| `102-log-app-cron.alloy` | `app` | cron | priority 6\|7 |
-| `150-log-plt-systemd.alloy` | `plt` | systemd | priority 7 |
+| `200-log-sec-ssh.alloy` | `security` | ssh | — |
+| `225-log-sys-kernel.alloy` | `system` | kernel | priority 5\|6\|7 |
+| `250-log-app-docker.alloy` | `application` | docker | priority 6\|7 |
+| `251-log-app-containerd.alloy` | `application` | containerd | priority 6\|7 |
+| `252-log-app-cron.alloy` | `application` | cron | priority 6\|7 |
+| `275-log-plt-systemd.alloy` | `platform` | systemd | priority 5\|6\|7 |
 
 Cada arquivo segue o padrão de 4 componentes encadeados via `forward_to`:
 
@@ -50,7 +50,7 @@ Todos os logs do host incluem os seguintes labels:
 
 | Label | Origem | Exemplo |
 |---|---|---|
-| `category` | estático no pipeline | `sec`, `sys`, `app`, `plt` |
+| `category` | estático no pipeline | `security`, `system`, `application`, `platform` |
 | `service_name` | estático no pipeline | `ssh`, `kernel`, `docker` |
 | `level` | mapeado de `PRIORITY` do journal | `info`, `warning`, `error` |
 | `instance` | `HOSTNAME` env | `code` |

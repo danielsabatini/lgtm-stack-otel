@@ -1,12 +1,12 @@
 // Logs
 // Collector (journal)
-loki.source.journal "cron" {
-  forward_to    = [loki.relabel.cron_transform.receiver]
-  matches       = "_SYSTEMD_UNIT=cron.service"
-  relabel_rules = loki.relabel.cron_journal_labels.rules
+loki.source.journal "kernel" {
+  forward_to     = [loki.relabel.kernel_transform.receiver]
+  matches        = "_TRANSPORT=kernel"
+  relabel_rules  = loki.relabel.kernel_journal_labels.rules
 }
 
-loki.relabel "cron_journal_labels" {
+loki.relabel "kernel_journal_labels" {
   forward_to = []
 
   rule {
@@ -16,26 +16,12 @@ loki.relabel "cron_journal_labels" {
 }
 
 // Transformer (relabel)
-loki.relabel "cron_transform" {
-  forward_to = [loki.process.cron_normalize.receiver]
+loki.relabel "kernel_transform" {
+  forward_to = [loki.process.kernel_normalize.receiver]
 
   rule {
     source_labels = ["priority"]
-    regex         = "0"
-    target_label  = "level"
-    replacement   = "emergency"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "1"
-    target_label  = "level"
-    replacement   = "alert"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "2"
+    regex         = "[012]"
     target_label  = "level"
     replacement   = "critical"
   }
@@ -49,16 +35,9 @@ loki.relabel "cron_transform" {
 
   rule {
     source_labels = ["priority"]
-    regex         = "4"
+    regex         = "[45]"
     target_label  = "level"
-    replacement   = "warning"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "5"
-    target_label  = "level"
-    replacement   = "notice"
+    replacement   = "warn"
   }
 
   rule {
@@ -74,6 +53,7 @@ loki.relabel "cron_transform" {
     target_label  = "level"
     replacement   = "debug"
   }
+
   rule {
     target_label = "instance"
     replacement  = sys.env("HOSTNAME")
@@ -101,33 +81,33 @@ loki.relabel "cron_transform" {
 }
 
 // Transformer (process)
-loki.process "cron_normalize" {
+loki.process "kernel_normalize" {
   forward_to = [
-    // loki.echo.cron_stdout.receiver,
-    loki.write.cron_gateway.receiver,
+    // loki.echo.kernel_debug.receiver,
+    loki.write.kernel_gateway.receiver,
   ]
 
   stage.match {
-    selector = `{priority=~"6|7"}`
+    selector = `{level=~"info|debug"}`
     action   = "drop"
   }
-
+  
   stage.label_drop {
     values = ["priority", "job"]
   }
 
   stage.static_labels {
     values = {
-      category     = "application",
-      service_name = "cron",
+      category = "system",
+      service_name = "kernel",
     }
   }
 }
 
 // Debug
-loki.echo "cron_stdout" { }
+loki.echo "kernel_debug" { }
 
 // Writer (endpoint)
-loki.write "cron_gateway" {
+loki.write "kernel_gateway" {
   endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
 }

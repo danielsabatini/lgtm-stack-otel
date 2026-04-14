@@ -1,0 +1,68 @@
+// Metrics
+// Collector (exporter)
+prometheus.exporter.cadvisor "docker_local" {
+  docker_host = "unix:///var/run/docker.sock"
+}
+
+prometheus.scrape "docker_local_scrape" {
+  targets         = prometheus.exporter.cadvisor.docker_local.targets
+  forward_to      = [prometheus.relabel.docker_local_transformer.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+// Transformer (relabel)
+prometheus.relabel "docker_local_transformer" {
+  forward_to = [
+    prometheus.echo.docker_local_debug.receiver,
+    prometheus.remote_write.docker_local_gateway.receiver,
+    ]
+
+  rule {
+    source_labels = ["__name__"]
+    // container_start_time_seconds removido: não possui painel no dashboard.
+    // Para restaurar, adicione |start_time_seconds antes do parêntese de fechamento.
+    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|last_seen|oom_events_total)"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "cadvisor"
+  }
+  
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Debug
+prometheus.echo "docker_local_debug" {
+  format = "text"
+}
+
+// Writer (endpoint)
+prometheus.remote_write "docker_local_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}

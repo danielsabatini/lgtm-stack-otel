@@ -1,0 +1,64 @@
+// Metrics
+// Collector (exporter)
+prometheus.exporter.unix "node_local" {
+  procfs_path    = "/procfs"
+  sysfs_path     = "/sys"
+  rootfs_path    = "/rootfs"
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg", "uname", "os", "stat"]
+}
+
+prometheus.scrape "node_local_scrape" {
+  targets         = prometheus.exporter.unix.node_local.targets
+  forward_to      = [prometheus.relabel.node_local_transformer.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+// Transformer (relabel)
+prometheus.relabel "node_local_transformer" {
+  forward_to = [
+    prometheus.echo.node_local_debug.receiver,
+    prometheus.remote_write.node_local_gateway.receiver,
+    ]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(read_bytes_total|reads_completed_total|written_bytes_total)|filesystem_(avail_bytes|files|files_free|free_bytes|size_bytes)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapTotal_bytes)|network_(receive_bytes_total|receive_drop_total|receive_errs_total|transmit_bytes_total|transmit_drop_total|transmit_errs_total)|uname_info)"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "node-exporter"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Debug
+prometheus.echo "node_local_debug" {
+    format = "text"
+ }
+
+// Writer (endpoint)
+prometheus.remote_write "node_local_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}

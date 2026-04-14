@@ -1,0 +1,84 @@
+// Logs
+// Collector (discovery + source)
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  forward_to    = [loki.relabel.containers_transform.receiver]
+  relabel_rules = loki.relabel.containers_labels.rules
+}
+
+loki.relabel "containers_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+// Transformer (relabel)
+loki.relabel "containers_transform" {
+  forward_to = [loki.process.containers_normalize.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Transformer (process)
+loki.process "containers_normalize" {
+  forward_to = [loki.write.containers_gateway.receiver]
+
+  stage.logfmt {
+    mapping = { "level" = "" }
+  }
+
+  stage.labels {
+    values = { "level" = "" }
+  }
+
+  stage.match {
+    selector = `{level=~"info|debug"}`
+    action   = "drop"
+  }
+
+  stage.label_drop {
+    values = ["job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category = "application",
+    }
+  }
+}
+
+// Debug
+loki.echo "containers_debug" { }
+
+// Writer (endpoint)
+loki.write "containers_gateway" {
+  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+}

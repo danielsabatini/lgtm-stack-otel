@@ -1,12 +1,12 @@
 // Logs
 // Collector (journal)
-loki.source.journal "docker" {
-  forward_to     = [loki.relabel.docker_transform.receiver]
-  matches        = "_SYSTEMD_UNIT=docker.service"
-  relabel_rules  = loki.relabel.docker_journal_labels.rules
+loki.source.journal "containerd" {
+  forward_to    = [loki.relabel.containerd_transform.receiver]
+  matches       = "_SYSTEMD_UNIT=containerd.service"
+  relabel_rules = loki.relabel.containerd_journal_labels.rules
 }
 
-loki.relabel "docker_journal_labels" {
+loki.relabel "containerd_journal_labels" {
   forward_to = []
 
   rule {
@@ -16,26 +16,12 @@ loki.relabel "docker_journal_labels" {
 }
 
 // Transformer (relabel)
-loki.relabel "docker_transform" {
-  forward_to = [loki.process.docker_normalize.receiver]
+loki.relabel "containerd_transform" {
+  forward_to = [loki.process.containerd_normalize.receiver]
 
   rule {
     source_labels = ["priority"]
-    regex         = "0"
-    target_label  = "level"
-    replacement   = "emergency"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "1"
-    target_label  = "level"
-    replacement   = "alert"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "2"
+    regex         = "[012]"
     target_label  = "level"
     replacement   = "critical"
   }
@@ -49,16 +35,9 @@ loki.relabel "docker_transform" {
 
   rule {
     source_labels = ["priority"]
-    regex         = "4"
+    regex         = "[45]"
     target_label  = "level"
-    replacement   = "warning"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "5"
-    target_label  = "level"
-    replacement   = "notice"
+    replacement   = "warn"
   }
 
   rule {
@@ -74,6 +53,7 @@ loki.relabel "docker_transform" {
     target_label  = "level"
     replacement   = "debug"
   }
+
   rule {
     target_label = "instance"
     replacement  = sys.env("HOSTNAME")
@@ -101,33 +81,33 @@ loki.relabel "docker_transform" {
 }
 
 // Transformer (process)
-loki.process "docker_normalize" {
+loki.process "containerd_normalize" {
   forward_to = [
-    // loki.echo.docker_stdout.receiver,
-    loki.write.docker_gateway.receiver,
+    // loki.echo.containerd_debug.receiver,
+    loki.write.containerd_gateway.receiver,
   ]
 
   stage.match {
-    selector = `{priority=~"6|7"}`
+    selector = `{level=~"info|debug"}`
     action   = "drop"
   }
-  
+
   stage.label_drop {
     values = ["priority", "job"]
   }
 
   stage.static_labels {
     values = {
-      category = "application",
-      service_name = "docker",
+      category     = "application",
+      service_name = "containerd",
     }
   }
 }
 
 // Debug
-loki.echo "docker_stdout" { }
+loki.echo "containerd_debug" { }
 
 // Writer (endpoint)
-loki.write "docker_gateway" {
+loki.write "containerd_gateway" {
   endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
 }

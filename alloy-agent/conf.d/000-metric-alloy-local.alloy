@@ -1,0 +1,51 @@
+// Metrics
+// Collector (exporter)
+prometheus.exporter.self "alloy_local_exporter" { }
+
+prometheus.scrape "alloy_local_scrape" {
+  targets    = prometheus.exporter.self.alloy_local_exporter.targets
+  forward_to = [prometheus.relabel.alloy_local_transformer.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+// Transformer (relabel)
+prometheus.relabel "alloy_local_transformer" {
+  forward_to = [
+    prometheus.echo.alloy_local_debug.receiver,
+    prometheus.remote_write.alloy_local_gateway.receiver,
+    ]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Debug
+prometheus.echo "alloy_local_debug" {
+    format = "text"
+ }
+
+// Writer (endpoint)
+prometheus.remote_write "alloy_local_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}
