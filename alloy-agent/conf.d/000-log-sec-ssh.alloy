@@ -113,7 +113,7 @@ loki.process "ssh_normalize" {
 
   stage.static_labels {
     values = {
-      category = "sec",
+      category = "security",
       service_name = "ssh",
     }
   }

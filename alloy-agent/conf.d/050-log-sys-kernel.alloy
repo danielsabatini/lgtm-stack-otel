@@ -118,7 +118,7 @@ loki.process "kernel_normalize" {
 
   stage.static_labels {
     values = {
-      category = "sys",
+      category = "system",
       service_name = "kernel",
     }
   }

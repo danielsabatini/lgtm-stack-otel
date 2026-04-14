@@ -118,7 +118,7 @@ loki.process "docker_normalize" {
 
   stage.static_labels {
     values = {
-      category = "app",
+      category = "application",
       service_name = "docker",
     }
   }

@@ -121,7 +121,7 @@ loki.process "systemd_normalize" {
 
   stage.static_labels {
     values = {
-      category     = "plt",
+      category     = "platform",
       service_name = "systemd",
     }
   }
