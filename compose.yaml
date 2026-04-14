@@ -132,7 +132,9 @@ services:
       - CLOUD_REGION=${CLOUD_REGION:-br-se1}
       - CLOUD_AVAILABILITY_ZONE=${CLOUD_AVAILABILITY_ZONE:-a}
     volumes:
-      - ./alloy-agent/config.alloy:/etc/alloy/config.alloy:ro
+      # Volumes
+      - alloy-agent-data:/var/lib/alloy/data            
+      - ./alloy-agent/conf.d:/etc/alloy/conf.d:ro
       
       # Logs
       - /var/log/journal:/var/log/journal:ro
@@ -149,13 +151,11 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
       - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
-      - /docker:/docker:ro
-      
-      # Volume armazenado para dados do agente.
-      - alloy-agent-data:/var/lib/alloy/data
-    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+      - /docker:/docker:ro      
+
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/conf.d/"]
     ports:
-      - "12346:12345"  # UI do Alloy Agent
+      - "12346:12345"  # Alloy Web UI
     depends_on:
       - alloy-gateway
     networks:

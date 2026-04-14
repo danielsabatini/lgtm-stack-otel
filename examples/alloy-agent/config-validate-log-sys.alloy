@@ -1,0 +1,156 @@
+// =============================================================================
+// config-validate-log-svc.alloy — Debug isolado do pipeline SVC
+// =============================================================================
+
+loki.source.journal "svc" {
+  matches = "_SYSTEMD_UNIT=docker.service,_SYSTEMD_UNIT=containerd.service,_SYSTEMD_UNIT=cron.service,_SYSTEMD_UNIT=systemd-timesyncd.service"
+
+  relabel_rules = loki.relabel.svc_journal_labels.rules
+
+  forward_to = [
+    loki.echo.step_1_source.receiver,
+    loki.relabel.svc_extract.receiver,
+  ]
+}
+
+loki.relabel "svc_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.relabel "svc_extract" {
+  forward_to = [
+    loki.echo.step_2_relabel.receiver,
+    loki.process.svc.receiver,
+  ]
+
+  rule {
+    source_labels = ["priority"]
+    target_label  = "priority"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "0"
+    target_label  = "level"
+    replacement   = "emergency"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "1"
+    target_label  = "level"
+    replacement   = "alert"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "2"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "4"
+    target_label  = "level"
+    replacement   = "warning"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "5"
+    target_label  = "level"
+    replacement   = "notice"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+}
+
+loki.process "svc" {
+  forward_to = [
+    loki.echo.step_3_process.receiver,
+    loki.relabel.default_logs_relabel.receiver,
+  ]
+
+  stage.match {
+    selector = `{priority=~"5|6|7"}`
+    action   = "drop"
+  }
+
+  stage.template {
+    source   = "service_name"
+    template = `{{ Replace (index .Labels "unit") ".service" "" 1 }}`
+  }
+
+  stage.labels {
+    values = {
+      service_name = "service_name",
+    }
+  }
+
+  stage.label_drop {
+    values = ["priority", "unit"]
+  }
+
+  stage.static_labels {
+    values = {
+      category = "svc",
+    }
+  }
+}
+
+loki.relabel "default_logs_relabel" {
+  forward_to = [loki.echo.step_4_default_relabel.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+loki.echo "step_1_source" { }
+loki.echo "step_2_relabel" { }
+loki.echo "step_3_process" { }
+loki.echo "step_4_default_relabel" { }

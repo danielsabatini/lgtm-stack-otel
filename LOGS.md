@@ -7,24 +7,57 @@ As entradas de log são:
 1. Logs de aplicações via OTLP no Alloy Gateway.
 2. Logs locais do host e dos containers via Alloy Agent.
 
+## Categorias
+
+Cada log recebe um label `category` que classifica sua origem:
+
+| Category | Significado | Serviços |
+|---|---|---|
+| `sec` | security | ssh |
+| `sys` | system | kernel |
+| `app` | application | docker, containerd, cron |
+| `plt` | platform | systemd |
+
 ## Coleta do host
 
-O agent não lê o journald inteiro.
+O agent não lê o journald inteiro. Cada serviço monitorado tem seu próprio arquivo em `alloy-agent/conf.d/` e seu próprio pipeline isolado.
 
-- Cada serviço do systemd monitorado possui sua própria instância de `loki.source.journal`.
-- Hoje a coleta local cobre `docker.service` e `sshd.service`.
-- Todos esses fluxos convergem para o mesmo `loki.relabel`.
+Os arquivos seguem a convenção `<número>-log-<category>-<serviço>.alloy`:
 
-Se a topologia do agent mudar, a fonte da verdade é `alloy-agent/config.alloy`.
+| Arquivo | Category | Serviço | Drop |
+|---|---|---|---|
+| `000-log-sec-ssh.alloy` | `sec` | ssh | — |
+| `050-log-sys-kernel.alloy` | `sys` | kernel | priority 5\|6\|7 |
+| `100-log-app-docker.alloy` | `app` | docker | priority 6\|7 |
+| `101-log-app-containerd.alloy` | `app` | containerd | priority 6\|7 |
+| `102-log-app-cron.alloy` | `app` | cron | priority 6\|7 |
+| `150-log-plt-systemd.alloy` | `plt` | systemd | priority 7 |
 
-## Logs de containers
+Cada arquivo segue o padrão de 4 componentes encadeados via `forward_to`:
 
-O agent coleta `stdout` e `stderr` dos containers via Docker API.
+| Passo | Componente | Responsabilidade |
+|---|---|---|
+| SOURCE | `loki.source.journal` | coleta do journal filtrado por `_SYSTEMD_UNIT`; expõe campos `__journal_*` via `relabel_rules` |
+| TRANSFORM | `loki.relabel` | opera em labels (`priority` numérico → `level` textual, labels de ambiente) |
+| NORMALIZE | `loki.process` | opera no conteúdo do log (entry): drop por priority, labels estáticos finais |
+| WRITE | `loki.write` | envia para o alloy-gateway |
 
-- O nome do container é mapeado para `service_name`.
-- O mesmo nome também é copiado para `name` para compatibilidade com os dashboards provisionados.
-- O campo `level` é extraído do conteúdo do log e salvo como structured metadata do Loki.
-- O drop de `debug` e `trace` permanece opcional e comentado no `config.alloy`.
+A convenção de nomes dos componentes é `<serviço>_<passo>`, ex: `ssh_transform`, `ssh_normalize`, `ssh_gateway`.
+
+## Labels padrão
+
+Todos os logs do host incluem os seguintes labels:
+
+| Label | Origem | Exemplo |
+|---|---|---|
+| `category` | estático no pipeline | `sec`, `sys`, `app`, `plt` |
+| `service_name` | estático no pipeline | `ssh`, `kernel`, `docker` |
+| `level` | mapeado de `PRIORITY` do journal | `info`, `warning`, `error` |
+| `instance` | `HOSTNAME` env | `code` |
+| `environment` | `ENVIRONMENT` env | `prd` |
+| `cloud_provider` | `CLOUD_PROVIDER` env | `mgc` |
+| `cloud_region` | `CLOUD_REGION` env | `br-se1` |
+| `cloud_availability_zone` | `CLOUD_AVAILABILITY_ZONE` env | `a` |
 
 ## Retenção
 

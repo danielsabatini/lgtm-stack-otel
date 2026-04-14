@@ -1,0 +1,133 @@
+// Logs
+// Collector (journal)
+loki.source.journal "cron" {
+  forward_to    = [loki.relabel.cron_transform.receiver]
+  matches       = "_SYSTEMD_UNIT=cron.service"
+  relabel_rules = loki.relabel.cron_journal_labels.rules
+}
+
+loki.relabel "cron_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+// Transformer (relabel)
+loki.relabel "cron_transform" {
+  forward_to = [loki.process.cron_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "0"
+    target_label  = "level"
+    replacement   = "emergency"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "1"
+    target_label  = "level"
+    replacement   = "alert"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "2"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "4"
+    target_label  = "level"
+    replacement   = "warning"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "5"
+    target_label  = "level"
+    replacement   = "notice"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Transformer (process)
+loki.process "cron_normalize" {
+  forward_to = [
+    // loki.echo.cron_stdout.receiver,
+    loki.write.cron_gateway.receiver,
+  ]
+
+  stage.match {
+    selector = `{priority=~"6|7"}`
+    action   = "drop"
+  }
+
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "app",
+      service_name = "cron",
+    }
+  }
+}
+
+// Debug
+loki.echo "cron_stdout" { }
+
+// Writer (endpoint)
+loki.write "cron_gateway" {
+  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+}

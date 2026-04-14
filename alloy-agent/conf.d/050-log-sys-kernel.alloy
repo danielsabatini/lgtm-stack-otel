@@ -1,0 +1,133 @@
+// Logs
+// Collector (journal)
+loki.source.journal "kernel" {
+  forward_to     = [loki.relabel.kernel_transform.receiver]
+  matches        = "_TRANSPORT=kernel"
+  relabel_rules  = loki.relabel.kernel_journal_labels.rules
+}
+
+loki.relabel "kernel_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+// Transformer (relabel)
+loki.relabel "kernel_transform" {
+  forward_to = [loki.process.kernel_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "0"
+    target_label  = "level"
+    replacement   = "emergency"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "1"
+    target_label  = "level"
+    replacement   = "alert"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "2"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "4"
+    target_label  = "level"
+    replacement   = "warning"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "5"
+    target_label  = "level"
+    replacement   = "notice"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+// Transformer (process)
+loki.process "kernel_normalize" {
+  forward_to = [
+    // loki.echo.kernel_stdout.receiver,
+    loki.write.kernel_gateway.receiver,
+  ]
+
+  stage.match {
+    selector = `{priority=~"5|6|7"}`
+    action   = "drop"
+  }
+  
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category = "sys",
+      service_name = "kernel",
+    }
+  }
+}
+
+// Debug
+loki.echo "kernel_stdout" { }
+
+// Writer (endpoint)
+loki.write "kernel_gateway" {
+  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+}

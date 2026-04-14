@@ -1,0 +1,171 @@
+// =============================================================================
+// config-validate-log-sec.alloy — Debug isolado do pipeline SEC
+// =============================================================================
+//
+// Objetivo:
+//   Validar o pipeline de logs de segurança sem enviar dados para o Loki.
+//
+// Fluxo:
+//   loki.source.journal "sec"
+//     ├─► loki.echo "step_1_source"
+//     └─► loki.relabel "sec_extract"
+//           ├─► loki.echo "step_2_relabel"
+//           └─► loki.process "sec"
+//                 ├─► loki.echo "step_3_process"
+//                 └─► loki.relabel "default_logs_relabel"
+//                       └─► loki.echo "step_4_default_relabel"
+//
+// Como usar:
+//   docker run --rm \
+//     --name alloy-sec-validate \
+//     -e HOSTNAME="$(hostname)" \
+//     -e ENVIRONMENT="${ENVIRONMENT:-prd}" \
+//     -e CLOUD_PROVIDER="${CLOUD_PROVIDER:-local}" \
+//     -e CLOUD_REGION="${CLOUD_REGION:-local}" \
+//     -e CLOUD_AVAILABILITY_ZONE="${CLOUD_AVAILABILITY_ZONE:-local}" \
+//     -v "$PWD/./alloy-gateway/conf.d:/etc/alloy/conf.d:ro" \
+//     -v /var/log/journal:/var/log/journal:ro \
+//     -v /run/systemd/journal/socket:/run/systemd/journal/socket:ro \
+//     -v /etc/machine-id:/etc/machine-id:ro \
+//     grafana/alloy:v1.15.0 \
+//     run /etc/alloy/conf.d
+//
+// Em outro terminal, gere ou acompanhe eventos de SSH:
+//   sudo journalctl _SYSTEMD_UNIT=ssh.service -f --output=verbose
+// =============================================================================
+
+loki.source.journal "sec" {
+  matches = "_SYSTEMD_UNIT=ssh.service"
+
+  // As labels internas do journald precisam ser copiadas antes de sairem do source.
+  relabel_rules = loki.relabel.sec_journal_labels.rules
+
+  forward_to = [
+    loki.echo.step_1_source.receiver,
+    loki.relabel.sec_extract.receiver,
+  ]
+}
+
+loki.relabel "sec_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.relabel "sec_extract" {
+  forward_to = [
+    loki.echo.step_2_relabel.receiver,
+    loki.process.sec.receiver,
+  ]
+
+  // Mantido como etapa explicita para espelhar o pipeline principal.
+  rule {
+    source_labels = ["priority"]
+    target_label  = "priority"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "0"
+    target_label  = "level"
+    replacement   = "emergency"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "1"
+    target_label  = "level"
+    replacement   = "alert"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "2"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "4"
+    target_label  = "level"
+    replacement   = "warning"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "5"
+    target_label  = "level"
+    replacement   = "notice"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+}
+
+loki.process "sec" {
+  forward_to = [
+    loki.echo.step_3_process.receiver,
+    loki.relabel.default_logs_relabel.receiver,
+  ]
+
+  stage.label_drop {
+    values = ["priority", "unit"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "sec",
+      service_name = "ssh",
+    }
+  }
+}
+
+loki.relabel "default_logs_relabel" {
+  forward_to = [loki.echo.step_4_default_relabel.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cloud_provider"
+    replacement  = sys.env("CLOUD_PROVIDER")
+  }
+  rule {
+    target_label = "cloud_region"
+    replacement  = sys.env("CLOUD_REGION")
+  }
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+  }
+}
+
+loki.echo "step_1_source" { }
+loki.echo "step_2_relabel" { }
+loki.echo "step_3_process" { }
+loki.echo "step_4_default_relabel" { }
