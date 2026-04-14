@@ -32,6 +32,3 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
-
-# RAG data folder (Docs, processed, index)
-rag/rag/
