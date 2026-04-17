@@ -37,12 +37,18 @@ prometheus.scrape "alloy_gateway_scrape" {
 // Para restaurar uma família, adicione o prefixo ao regex com pipe:
 //   regex = "alloy_.+|go_.+|prometheus_.+"
 prometheus.relabel "alloy_gateway_transformer" {
-  // prometheus.remote_write.mimir definido em 001-agent-metrics.alloy
-  forward_to = [prometheus.remote_write.mimir.receiver]
+  forward_to = [prometheus.remote_write.alloy_gateway_mimir.receiver]
 
   rule {
     source_labels = ["__name__"]
     regex         = "alloy_.+"
     action        = "keep"
+  }
+}
+
+// Writer (endpoint)
+prometheus.remote_write "alloy_gateway_mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
   }
 }

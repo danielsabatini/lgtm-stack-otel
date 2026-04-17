@@ -15,7 +15,7 @@ Cada log recebe um label `category` que classifica sua origem:
 |---|---|
 | `security` | ssh |
 | `system` | kernel |
-| `application` | docker, containerd, cron |
+| `application` | container-engine, containerd, cron |
 | `platform` | systemd |
 
 ## Coleta do host
@@ -28,7 +28,7 @@ Os arquivos seguem a convenção `<número>-log-<category>-<serviço>.alloy`:
 |---|---|---|---|
 | `200-log-sec-ssh.alloy` | `security` | ssh | — |
 | `225-log-sys-kernel.alloy` | `system` | kernel | priority 5\|6\|7 |
-| `250-log-app-docker.alloy` | `application` | docker | priority 6\|7 |
+| `250-log-app-docker.alloy` | `application` | container-engine | priority 6\|7 |
 | `251-log-app-containerd.alloy` | `application` | containerd | priority 6\|7 |
 | `252-log-app-cron.alloy` | `application` | cron | priority 6\|7 |
 | `275-log-plt-systemd.alloy` | `platform` | systemd | priority 5\|6\|7 |
@@ -51,7 +51,7 @@ Todos os logs do host incluem os seguintes labels:
 | Label | Origem | Exemplo |
 |---|---|---|
 | `category` | estático no pipeline | `security`, `system`, `application`, `platform` |
-| `service_name` | estático no pipeline | `ssh`, `kernel`, `docker` |
+| `service_name` | estático no pipeline | `ssh`, `kernel`, `container-engine` |
 | `level` | mapeado de `PRIORITY` do journal | `info`, `warning`, `error` |
 | `instance` | `HOSTNAME` env | `code` |
 | `environment` | `ENVIRONMENT` env | `prd` |

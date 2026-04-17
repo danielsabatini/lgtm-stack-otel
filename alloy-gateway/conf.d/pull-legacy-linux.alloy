@@ -28,14 +28,14 @@ prometheus.scrape "linux_legacy" {
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
-    // {
-    //   "__address__"             = "192.168.10.56:9100",
-    //   "instance"                = "servidor-erp-legado",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "192.168.1.15:9100",
+      "instance"                = "srv-legado-02",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-se1",
+      "cloud_availability_zone" = "a",
+    },
   ]
 
   job_name        = "linux-legacy"

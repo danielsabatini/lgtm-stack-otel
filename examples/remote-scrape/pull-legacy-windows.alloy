@@ -15,16 +15,51 @@ prometheus.scrape "pull_windows_legado" {
 
   job_name        = "windows-legacy"
   scrape_interval = "60s"
-  forward_to      = [prometheus.remote_write.mimir.receiver]
+  forward_to      = [prometheus.relabel.windows_legacy_transformer.receiver]
+}
 
-  // =========================================================
-  // VÁLVULA DE SEGURANÇA (Relabeling Window Minimal)
-  // =========================================================
-  // Idêntico ao padrão Local (Push):
-  // enabled_collectors = ["cpu", "logical_disk", "net", "os", "system", "memory"]
-  metric_relabel {
+// Transformer (relabel): mantém apenas as mesmas métricas coletadas pelo Alloy agent
+// e adiciona labels de identidade do host.
+prometheus.relabel "windows_legacy_transformer" {
+  forward_to = [prometheus.relabel.windows_legacy_host_info.receiver]
+
+  rule {
     source_labels = ["__name__"]
     regex         = "^windows_(cpu|logical_disk|net|os|system|memory)_.*$"
     action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "windows-exporter"
+  }
+}
+
+// Host info extractor: adiciona informações do SO do servidor Windows
+prometheus.relabel "windows_legacy_host_info" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+
+  // Para windows_os_info: adiciona os = "windows"
+  rule {
+    source_labels = ["__name__"]
+    regex         = "windows_os_info"
+    target_label  = "os"
+    replacement   = "windows"
+  }
+
+  // Para windows_os_info: product → os_product
+  rule {
+    source_labels = ["__name__", "product"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_product"
+    replacement   = "$1"
+  }
+
+  // Para windows_os_info: version → os_version
+  rule {
+    source_labels = ["__name__", "version"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_version"
+    replacement   = "$1"
   }
 }

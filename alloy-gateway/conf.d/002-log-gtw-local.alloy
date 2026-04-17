@@ -7,7 +7,7 @@
 // =============================================================================
 
 // Collector (receiver): escuta logs Loki enviados pelo alloy-agent.
-loki.source.api "agent_logs" {
+loki.source.api "logs" {
   http {
     listen_address = "0.0.0.0"
     listen_port    = 9998
@@ -16,7 +16,6 @@ loki.source.api "agent_logs" {
 }
 
 // Writer (endpoint): envia logs para o Loki.
-// Compartilhado com o exportador OTLP de logs (003).
 loki.write "loki" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"

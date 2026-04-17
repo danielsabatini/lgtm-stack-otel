@@ -60,47 +60,22 @@ loki.relabel "kernel_transform" {
     target_label  = "level"
     replacement   = "unknown"
   }
-
-  rule {
-    target_label = "instance"
-    replacement  = sys.env("HOSTNAME")
-  }
-
-  rule {
-    target_label = "environment"
-    replacement  = sys.env("ENVIRONMENT")
-  }
-
-  rule {
-    target_label = "cloud_provider"
-    replacement  = sys.env("CLOUD_PROVIDER")
-  }
-
-  rule {
-    target_label = "cloud_region"
-    replacement  = sys.env("CLOUD_REGION")
-  }
-
-  rule {
-    target_label = "cloud_availability_zone"
-    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
-  }
 }
 
 // Transformer (process)
 loki.process "kernel_normalize" {
   forward_to = [
-    // loki.echo.kernel_debug.receiver,
-    loki.write.kernel_gateway.receiver,
+    // loki.echo.debug.receiver,
+    loki.relabel.global_identity.receiver,
   ]
 
   stage.match {
     selector = `{level=~"info|debug"}`
     action   = "drop"
   }
-  
+
   stage.label_drop {
-    values = ["priority", "job"]
+    values = ["priority"]
   }
 
   stage.static_labels {
@@ -111,10 +86,3 @@ loki.process "kernel_normalize" {
   }
 }
 
-// Debug
-loki.echo "kernel_debug" { }
-
-// Writer (endpoint)
-loki.write "kernel_gateway" {
-  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
-}

@@ -1,0 +1,528 @@
+// =============================================================================
+// Grafana Alloy — Configuração para servidor Linux
+// =============================================================================
+// Coleta métricas e logs do host e os envia para o alloy-gateway da stack LGTM.
+//
+// ANTES DE IMPLANTAR — edite os valores abaixo na seção GLOBAL:
+//
+//   instance                → sys.env("HOSTNAME") lê o hostname do SO automaticamente.
+//                             Substitua por uma string fixa se quiser nome personalizado:
+//                             replacement = "srv-web-01"
+//   environment             → altere "prd" para o ambiente correto (prd | stg | hml | dev)
+//   cloud_provider          → altere "mgc" para o provedor (aws | gcp | azure | mgc | on-premise)
+//   cloud_region            → altere "br-se1" para a região do servidor
+//   cloud_availability_zone → altere "a" para a zona de disponibilidade (a | b | c)
+//
+// Endpoints:
+//   Métricas → http://lgtm-stack:9999/api/v1/metrics/write
+//   Logs     → http://lgtm-stack:9998/loki/api/v1/push
+// =============================================================================
+
+
+// =============================================================================
+// MÉTRICAS
+// =============================================================================
+
+// --- Alloy —  saúde do agente
+prometheus.exporter.self "alloy" { }
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.relabel.alloy_labels.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.relabel "alloy_labels" {
+  forward_to = [prometheus.relabel.host_info_extractor.receiver]
+
+  rule {
+    target_label = "service_name"
+    replacement  = "alloy"
+  }
+}
+
+// --- Linux — métricas do host
+prometheus.exporter.unix "host" {
+  procfs_path    = "/proc"
+  sysfs_path     = "/sys"
+  rootfs_path    = "/"
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg", "uname", "os", "stat", "pressure"]
+}
+
+prometheus.scrape "linux_host" {
+  targets         = prometheus.exporter.unix.host.targets
+  forward_to      = [prometheus.relabel.linux_host_labels.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.relabel "linux_host_labels" {
+  forward_to = [prometheus.relabel.host_info_extractor.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(io_time_seconds_total|read_bytes_total|read_time_seconds_total|reads_completed_total|write_time_seconds_total|writes_completed_total|written_bytes_total)|filesystem_(avail_bytes|files|files_free|free_bytes|size_bytes)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapFree_bytes|SwapTotal_bytes)|network_(receive_bytes_total|receive_drop_total|receive_errs_total|transmit_bytes_total|transmit_drop_total|transmit_errs_total)|os_info|pressure_(cpu_waiting_seconds_total|io_(stalled|waiting)_seconds_total|memory_(stalled|waiting)_seconds_total)|uname_info)"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "node-exporter"
+  }
+}
+
+
+// =============================================================================
+// LOGS
+// =============================================================================
+
+// --- Segurança — SSH
+loki.relabel "ssh_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+loki.source.journal "ssh" {
+  forward_to    = [loki.relabel.ssh_labels.receiver]
+  matches       = "_SYSTEMD_UNIT=ssh.service"
+  relabel_rules = loki.relabel.ssh_journal_labels.rules
+}
+
+loki.relabel "ssh_labels" {
+  forward_to = [loki.process.ssh_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[012]"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[45]"
+    target_label  = "level"
+    replacement   = "warn"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+
+  rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+}
+
+loki.process "ssh_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "security",
+      service_name = "ssh",
+    }
+  }
+}
+
+// --- Sistema — kernel
+loki.relabel "kernel_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+loki.source.journal "kernel" {
+  forward_to    = [loki.relabel.kernel_labels.receiver]
+  matches       = "_TRANSPORT=kernel"
+  relabel_rules = loki.relabel.kernel_journal_labels.rules
+}
+
+loki.relabel "kernel_labels" {
+  forward_to = [loki.process.kernel_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[012]"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[45]"
+    target_label  = "level"
+    replacement   = "warn"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+
+  rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+}
+
+loki.process "kernel_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.match {
+    selector = `{level=~"info|debug"}`
+    action   = "drop"
+  }
+
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "system",
+      service_name = "kernel",
+    }
+  }
+}
+
+// --- Aplicação — cron
+loki.relabel "cron_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+loki.source.journal "cron" {
+  forward_to    = [loki.relabel.cron_labels.receiver]
+  matches       = "_SYSTEMD_UNIT=cron.service"
+  relabel_rules = loki.relabel.cron_journal_labels.rules
+}
+
+loki.relabel "cron_labels" {
+  forward_to = [loki.process.cron_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[012]"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[45]"
+    target_label  = "level"
+    replacement   = "warn"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+
+  rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+}
+
+loki.process "cron_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.match {
+    selector = `{level=~"info|debug"}`
+    action   = "drop"
+  }
+
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "application",
+      service_name = "cron",
+    }
+  }
+}
+
+// --- Plataforma — systemd
+loki.relabel "systemd_journal_labels" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "priority"
+  }
+}
+
+loki.source.journal "systemd" {
+  forward_to    = [loki.relabel.systemd_labels.receiver]
+  matches       = "SYSLOG_IDENTIFIER=systemd"
+  relabel_rules = loki.relabel.systemd_journal_labels.rules
+}
+
+loki.relabel "systemd_labels" {
+  forward_to = [loki.process.systemd_normalize.receiver]
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[012]"
+    target_label  = "level"
+    replacement   = "critical"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "[45]"
+    target_label  = "level"
+    replacement   = "warn"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+
+  rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+}
+
+loki.process "systemd_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.match {
+    selector = `{level=~"info|debug"}`
+    action   = "drop"
+  }
+
+  stage.label_drop {
+    values = ["priority", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "platform",
+      service_name = "systemd",
+    }
+  }
+}
+
+
+// =============================================================================
+// GLOBAL — labels de identidade
+// =============================================================================
+
+// Renomeia labels da métrica node_uname_info para valores mais intuitivos
+prometheus.relabel "host_info_extractor" {
+  forward_to = [prometheus.relabel.global_identity.receiver]
+
+  // Para node_uname_info: sysname → os (lowercase)
+  rule {
+    source_labels = ["__name__", "sysname"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "os"
+    replacement   = "$1"
+  }
+
+  rule {
+    source_labels = ["os"]
+    target_label  = "os"
+    action        = "lowercase"
+  }
+
+  // Para node_uname_info: machine → architecture
+  rule {
+    source_labels = ["__name__", "machine"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "architecture"
+    replacement   = "$1"
+  }
+
+  // Para node_uname_info: release → kernel_release
+  rule {
+    source_labels = ["__name__", "release"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "kernel_release"
+    replacement   = "$1"
+  }
+
+  // Para node_os_info: name → os_product
+  rule {
+    source_labels = ["__name__", "name"]
+    regex         = "node_os_info;(.*)"
+    target_label  = "os_product"
+    replacement   = "$1"
+  }
+
+  // Para node_os_info: version_id → os_version
+  rule {
+    source_labels = ["__name__", "version_id"]
+    regex         = "node_os_info;(.*)"
+    target_label  = "os_version"
+    replacement   = "$1"
+  }
+}
+
+prometheus.relabel "global_identity" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")  // ou substitua por nome fixo: "srv-web-01"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+loki.relabel "global_identity" {
+  forward_to = [loki.write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")  // ou substitua por nome fixo: "srv-web-01"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+
+// =============================================================================
+// ENDPOINTS
+// =============================================================================
+
+prometheus.remote_write "gateway" {
+  endpoint { url = "http://lgtm-stack:9999/api/v1/metrics/write" }
+}
+
+loki.write "gateway" {
+  endpoint { url = "http://lgtm-stack:9998/loki/api/v1/push" }
+}

@@ -1,12 +1,12 @@
 // Logs
 // Collector (journal)
-loki.source.journal "docker" {
-  forward_to     = [loki.relabel.docker_transform.receiver]
+loki.source.journal "container_engine" {
+  forward_to     = [loki.relabel.container_engine_transform.receiver]
   matches        = "_SYSTEMD_UNIT=docker.service"
-  relabel_rules  = loki.relabel.docker_journal_labels.rules
+  relabel_rules  = loki.relabel.container_engine_journal_labels.rules
 }
 
-loki.relabel "docker_journal_labels" {
+loki.relabel "container_engine_journal_labels" {
   forward_to = []
 
   rule {
@@ -16,8 +16,8 @@ loki.relabel "docker_journal_labels" {
 }
 
 // Transformer (relabel)
-loki.relabel "docker_transform" {
-  forward_to = [loki.process.docker_normalize.receiver]
+loki.relabel "container_engine_transform" {
+  forward_to = [loki.process.container_engine_normalize.receiver]
 
   rule {
     source_labels = ["priority"]
@@ -60,61 +60,29 @@ loki.relabel "docker_transform" {
     target_label  = "level"
     replacement   = "unknown"
   }
-
-  rule {
-    target_label = "instance"
-    replacement  = sys.env("HOSTNAME")
-  }
-
-  rule {
-    target_label = "environment"
-    replacement  = sys.env("ENVIRONMENT")
-  }
-
-  rule {
-    target_label = "cloud_provider"
-    replacement  = sys.env("CLOUD_PROVIDER")
-  }
-
-  rule {
-    target_label = "cloud_region"
-    replacement  = sys.env("CLOUD_REGION")
-  }
-
-  rule {
-    target_label = "cloud_availability_zone"
-    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
-  }
 }
 
 // Transformer (process)
-loki.process "docker_normalize" {
+loki.process "container_engine_normalize" {
   forward_to = [
-    // loki.echo.docker_debug.receiver,
-    loki.write.docker_gateway.receiver,
+    // loki.echo.debug.receiver,
+    loki.relabel.global_identity.receiver,
   ]
 
   stage.match {
     selector = `{level=~"info|debug"}`
     action   = "drop"
   }
-  
+
   stage.label_drop {
-    values = ["priority", "job"]
+    values = ["priority"]
   }
 
   stage.static_labels {
     values = {
       category = "application",
-      service_name = "docker",
+      service_name = "container-engine",
     }
   }
 }
 
-// Debug
-loki.echo "docker_debug" { }
-
-// Writer (endpoint)
-loki.write "docker_gateway" {
-  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
-}

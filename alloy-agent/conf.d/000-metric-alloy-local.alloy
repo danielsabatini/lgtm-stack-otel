@@ -3,49 +3,25 @@
 prometheus.exporter.self "alloy_local_exporter" { }
 
 prometheus.scrape "alloy_local_scrape" {
-  targets    = prometheus.exporter.self.alloy_local_exporter.targets
-  forward_to = [prometheus.relabel.alloy_local_transformer.receiver]
+  targets         = prometheus.exporter.self.alloy_local_exporter.targets
+  forward_to      = [prometheus.relabel.alloy_local_transformer.receiver]
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 }
 
-// Transformer (relabel)
+// Transformer (relabel): aplica identidade do container, sem passar pelo global_identity do host.
+// instance="alloy-agent" identifica o processo Alloy, distinto das métricas do host (instance="lgtm-stack").
 prometheus.relabel "alloy_local_transformer" {
-  forward_to = [
-    // prometheus.echo.alloy_local_debug.receiver,
-    prometheus.remote_write.alloy_local_gateway.receiver,
-    ]
+  forward_to = [prometheus.remote_write.gateway.receiver]
 
   rule {
     target_label = "instance"
-    replacement  = sys.env("HOSTNAME")
+    replacement  = "alloy-agent"
   }
-  
+
   rule {
-    target_label = "environment"
-    replacement  = sys.env("ENVIRONMENT")
-  }
-  
-  rule {
-    target_label = "cloud_provider"
-    replacement  = sys.env("CLOUD_PROVIDER")
-  }
-  rule {
-    target_label = "cloud_region"
-    replacement  = sys.env("CLOUD_REGION")
-  }
-  rule {
-    target_label = "cloud_availability_zone"
-    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
+    target_label = "service_name"
+    replacement  = "alloy"
   }
 }
 
-// Debug
-prometheus.echo "alloy_local_debug" {
-    format = "text"
- }
-
-// Writer (endpoint)
-prometheus.remote_write "alloy_local_gateway" {
-  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
-}

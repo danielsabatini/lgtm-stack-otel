@@ -4,6 +4,7 @@ services:
   loki:
     image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1}
     container_name: loki
+    hostname: loki
     restart: unless-stopped
     user: "10001:10001"
     environment:
@@ -27,6 +28,7 @@ services:
   mimir:
     image: grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.0.5}
     container_name: mimir
+    hostname: mimir
     restart: unless-stopped
     environment:
       - MIMIR_RETENTION=${MIMIR_RETENTION:-30d}
@@ -49,6 +51,7 @@ services:
   tempo:
     image: grafana/tempo:${GRAFANA_TEMPO_VERSION:-2.10.3}
     container_name: tempo
+    hostname: tempo
     restart: unless-stopped
     user: "10001:10001"
     environment:
@@ -70,8 +73,9 @@ services:
           memory: ${TEMPO_MEMORY:-6GB}
 
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-12.4.2}
+    image: grafana/grafana:${GRAFANA_VERSION:-13.0.0}
     container_name: grafana
+    hostname: grafana
     restart: unless-stopped
     user: "472:0"
     ports:
@@ -97,6 +101,7 @@ services:
   alloy-gateway:
     image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.15.0}
     container_name: alloy-gateway
+    hostname: alloy-gateway
     restart: unless-stopped
     volumes:
       - ./alloy-gateway/conf.d:/etc/alloy/conf.d:ro
@@ -104,6 +109,8 @@ services:
     command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
     ports:
       - "12345:12345"  # UI do Alloy Gateway
+      - "9999:9999"    # Recepção de métricas dos Alloy Agents
+      - "9998:9998"    # Recepção de logs dos Alloy Agents
       - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)
       - "4318:4318"    # OTLP HTTP (traces/metrics das aplicações)
     depends_on:
@@ -121,12 +128,12 @@ services:
   alloy-agent:
     image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.15.0}
     container_name: alloy-agent
+    hostname: alloy-agent
     restart: unless-stopped
     privileged: true
     user: root
     pid: host
     environment:
-      - HOSTNAME=code
       - ENVIRONMENT=${ENVIRONMENT:-prd}
       - CLOUD_PROVIDER=${CLOUD_PROVIDER:-mgc}
       - CLOUD_REGION=${CLOUD_REGION:-br-se1}
@@ -146,7 +153,7 @@ services:
       - /sys:/sys:ro
       - /proc:/procfs:ro
       
-      # Docker Exporter (cAdvisor usa /sys, /var/run e /var/lib/docker diretamente)
+      # Container Exporter (cAdvisor usa /sys, /var/run e /var/lib/docker diretamente)
       - /var/run:/var/run:rw
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro

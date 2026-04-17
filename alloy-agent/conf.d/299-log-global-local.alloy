@@ -1,0 +1,84 @@
+// =============================================================================
+// GLOBAL LOGS — Identity Labels & Gateway Endpoint
+// =============================================================================
+// Recepciona logs de todos os collectors e aplica labels globais de
+// identidade (instance, environment, cloud_provider, cloud_region,
+// cloud_availability_zone) antes de enviá-los para o alloy-gateway.
+// =============================================================================
+
+// Logs do host (ssh, kernel, cron, systemd)
+loki.relabel "global_identity" {
+  forward_to = [loki.write.gateway.receiver]
+
+  rule {
+    regex  = "job"
+    action = "labeldrop"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "lgtm-stack-node"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+// Logs de containers (docker.service, containerd, stdout/stderr dos containers)
+loki.relabel "global_identity_container" {
+  forward_to = [loki.write.gateway.receiver]
+
+  rule {
+    regex  = "job"
+    action = "labeldrop"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "lgtm-stack-container"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+loki.write "gateway" {
+  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+}
+
+// Debug
+loki.echo "debug" { }

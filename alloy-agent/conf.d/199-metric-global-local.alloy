@@ -1,0 +1,96 @@
+// =============================================================================
+// GLOBAL METRICS — Identity Labels & Gateway Endpoint
+// =============================================================================
+// Recepciona métricas de todos os exportadores e aplica labels globais de
+// identidade (instance, environment, cloud_provider, cloud_region,
+// cloud_availability_zone) antes de enviá-las para o alloy-gateway.
+// =============================================================================
+
+// Renomeia labels da métrica node_uname_info para valores mais intuitivos
+prometheus.relabel "host_info_extractor" {
+  forward_to = [prometheus.relabel.global_identity.receiver]
+
+  // Para node_uname_info: sysname → os (lowercase)
+  rule {
+    source_labels = ["__name__", "sysname"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "os"
+    replacement   = "$1"
+  }
+
+  rule {
+    source_labels = ["os"]
+    target_label  = "os"
+    action        = "lowercase"
+  }
+
+  // Para node_uname_info: machine → architecture
+  rule {
+    source_labels = ["__name__", "machine"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "architecture"
+    replacement   = "$1"
+  }
+
+  // Para node_uname_info: release → kernel_release
+  rule {
+    source_labels = ["__name__", "release"]
+    regex         = "node_uname_info;(.*)"
+    target_label  = "kernel"
+    replacement   = "$1"
+  }
+
+  // Para node_os_info: name → os_product
+  rule {
+    source_labels = ["__name__", "name"]
+    regex         = "node_os_info;(.*)"
+    target_label  = "os_product"
+    replacement   = "$1"
+  }
+
+  // Para node_os_info: version_id → os_version
+  rule {
+    source_labels = ["__name__", "version_id"]
+    regex         = "node_os_info;(.*)"
+    target_label  = "os_version"
+    replacement   = "$1"
+  }
+}
+
+prometheus.relabel "global_identity" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = "lgtm-stack-node"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+prometheus.remote_write "gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}
+
+// Debug
+prometheus.echo "debug" {
+  format = "text"
+}

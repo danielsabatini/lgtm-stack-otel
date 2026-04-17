@@ -4,7 +4,7 @@ prometheus.exporter.unix "node_local" {
   procfs_path    = "/procfs"
   sysfs_path     = "/sys"
   rootfs_path    = "/rootfs"
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg", "uname", "os", "stat"]
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg", "uname", "os", "stat", "pressure"]
 }
 
 prometheus.scrape "node_local_scrape" {
@@ -17,13 +17,13 @@ prometheus.scrape "node_local_scrape" {
 // Transformer (relabel)
 prometheus.relabel "node_local_transformer" {
   forward_to = [
-    // prometheus.echo.node_local_debug.receiver,
-    prometheus.remote_write.node_local_gateway.receiver,
+    // prometheus.echo.debug.receiver,
+    prometheus.relabel.host_info_extractor.receiver,
     ]
 
   rule {
     source_labels = ["__name__"]
-    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(read_bytes_total|reads_completed_total|written_bytes_total)|filesystem_(avail_bytes|files|files_free|free_bytes|size_bytes)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapTotal_bytes)|network_(receive_bytes_total|receive_drop_total|receive_errs_total|transmit_bytes_total|transmit_drop_total|transmit_errs_total)|uname_info)"
+    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(io_time_seconds_total|read_bytes_total|read_time_seconds_total|reads_completed_total|write_time_seconds_total|writes_completed_total|written_bytes_total)|filesystem_(avail_bytes|files|files_free|free_bytes|size_bytes)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapFree_bytes|SwapTotal_bytes)|network_(receive_bytes_total|receive_drop_total|receive_errs_total|transmit_bytes_total|transmit_drop_total|transmit_errs_total)|os_info|pressure_(cpu_waiting_seconds_total|io_(stalled|waiting)_seconds_total|memory_(stalled|waiting)_seconds_total)|uname_info)"
     action        = "keep"
   }
 
@@ -31,34 +31,5 @@ prometheus.relabel "node_local_transformer" {
     target_label = "service_name"
     replacement  = "node-exporter"
   }
-  rule {
-    target_label = "instance"
-    replacement  = sys.env("HOSTNAME")
-  }
-  rule {
-    target_label = "environment"
-    replacement  = sys.env("ENVIRONMENT")
-  }
-  rule {
-    target_label = "cloud_provider"
-    replacement  = sys.env("CLOUD_PROVIDER")
-  }
-  rule {
-    target_label = "cloud_region"
-    replacement  = sys.env("CLOUD_REGION")
-  }
-  rule {
-    target_label = "cloud_availability_zone"
-    replacement  = sys.env("CLOUD_AVAILABILITY_ZONE")
-  }
 }
 
-// Debug
-prometheus.echo "node_local_debug" {
-    format = "text"
- }
-
-// Writer (endpoint)
-prometheus.remote_write "node_local_gateway" {
-  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
-}

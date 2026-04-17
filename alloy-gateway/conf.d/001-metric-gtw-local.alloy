@@ -7,7 +7,7 @@
 // =============================================================================
 
 // Collector (receiver): escuta métricas Prometheus enviadas pelo alloy-agent.
-prometheus.receive_http "agent_metrics" {
+prometheus.receive_http "metrics" {
   http {
     listen_address = "0.0.0.0"
     listen_port    = 9999
@@ -16,7 +16,6 @@ prometheus.receive_http "agent_metrics" {
 }
 
 // Writer (endpoint): envia métricas para o Mimir (remote write).
-// Compartilhado com o auto-monitoramento (000) e o exportador OTLP (003).
 prometheus.remote_write "mimir" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"

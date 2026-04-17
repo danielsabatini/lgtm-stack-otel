@@ -33,18 +33,19 @@ cd lgtm-stack/examples/linux
 ## 2. Configurar resolução de nome
 
 O Alloy usará o hostname `lgtm-stack` para se conectar ao `alloy-gateway`.
-Adicione uma entrada no `/etc/hosts` apontando para o IP do servidor que
-executa a stack LGTM:
+Defina o IP do servidor LGTM e adicione a entrada no `/etc/hosts`:
 
 ```bash
-sudo nano /etc/hosts
+LGTM_IP="<IP_DO_SERVIDOR_LGTM>"
+echo "$LGTM_IP  lgtm-stack" | sudo tee -a /etc/hosts
 ```
 
-Adicione a linha:
-
-```
-<IP_DO_SERVIDOR_LGTM>  lgtm-stack
-```
+> Se estiver acessando este servidor via SSH a partir da máquina LGTM,
+> o IP pode ser obtido automaticamente:
+> ```bash
+> LGTM_IP=$(echo $SSH_CLIENT | awk '{print $1}')
+> echo "$LGTM_IP  lgtm-stack" | sudo tee -a /etc/hosts
+> ```
 
 Teste a resolução:
 
@@ -56,115 +57,132 @@ ping -c 1 lgtm-stack
 
 ## 3. Instalar o Grafana Alloy
 
-### Adicionar o repositório Grafana
+Procedimento baseado na [documentação oficial](https://grafana.com/docs/alloy/latest/set-up/install/linux/).
+
+### Debian / Ubuntu
+
+#### Adicionar o repositório Grafana
 
 ```bash
-sudo apt-get install -y apt-transport-https software-properties-common wget
+sudo apt-get install -y gpg
 
-sudo mkdir -p /etc/apt/keyrings/
-wget -q -O - https://apt.grafana.com/gpg.key \
-  | gpg --dearmor \
-  | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+sudo mkdir -p /etc/apt/keyrings
+sudo wget -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
+sudo chmod 644 /etc/apt/keyrings/grafana.asc
 
-echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
+echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" \
   | sudo tee /etc/apt/sources.list.d/grafana.list
 ```
 
-### Instalar a versão compatível com a stack
+#### Instalar a versão compatível com a stack
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y alloy=1.15.0-1
+sudo apt-get install -y alloy=1.15.1-1
 ```
 
-> **Versão de referência:** `v1.15.0` — mesma utilizada pelo `alloy-agent` na stack.
 > Para consultar as versões disponíveis: `apt-cache madison alloy`
 
 ---
 
-## 4. Configurar variáveis de ambiente
+### Red Hat / CentOS / Fedora
 
-As variáveis abaixo são usadas pelos pipelines para enriquecer os labels
-de todas as métricas e logs enviados.
-
-Edite o arquivo de ambiente do serviço:
+#### Adicionar o repositório Grafana
 
 ```bash
-sudo nano /etc/default/alloy
+wget -q -O gpg.key https://rpm.grafana.com/gpg.key
+sudo rpm --import gpg.key
+
+sudo tee /etc/yum.repos.d/grafana.repo << 'EOF'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+EOF
 ```
 
-Adicione o conteúdo abaixo, ajustando os valores para este servidor:
+#### Instalar a versão compatível com a stack
 
 ```bash
-# Identidade do servidor
-HOSTNAME=nome-do-servidor         # ex: web-01, db-prod-01
+sudo dnf install -y alloy-1.15.1-1
+```
 
-# Ambiente (ex: prd, stg, dev, hml)
-ENVIRONMENT=prd
+> Para consultar as versões disponíveis: `dnf list --showduplicates alloy`
 
-# Provedor de nuvem (ex: aws, gcp, azure, mgc, on-premise)
-CLOUD_PROVIDER=mgc
+---
 
-# Região (ex: us-east-1, br-se1, eastus)
-CLOUD_REGION=br-se1
+> **Versão de referência:** `v1.15.1` — mesma utilizada pelo `alloy-agent` na stack.
 
-# Zona de disponibilidade (ex: a, b, c)
-CLOUD_AVAILABILITY_ZONE=a
+---
+
+## 4. Verificar o arquivo de ambiente do serviço
+
+O arquivo `/etc/default/alloy` criado pelo pacote define variáveis lidas pelo
+serviço. O Alloy já aponta para `/etc/alloy/config.alloy` por padrão — confirme
+que o arquivo não foi alterado e que `HOSTNAME` está disponível:
+
+```bash
+cat /etc/default/alloy
+```
+
+O `HOSTNAME` é lido automaticamente do ambiente do sistema pelo `config.alloy`
+via `sys.env("HOSTNAME")`. Se o valor retornado for vazio ou incorreto, defina-o
+explicitamente no `/etc/default/alloy`:
+
+```bash
+# Adicionar apenas se sys.env("HOSTNAME") não retornar o nome correto
+echo "HOSTNAME=$(hostname)" | sudo tee -a /etc/default/alloy
 ```
 
 ---
 
-## 5. Configurar o Alloy para usar conf.d
+## 5. Copiar o arquivo de configuração
 
-Por padrão o Alloy lê um único arquivo. Configure-o para usar um diretório
-`conf.d/`, igual ao padrão da stack.
-
-Edite o arquivo de serviço (override):
+O arquivo já está disponível no repositório clonado no passo 1.
+Copie-o para o diretório do Alloy:
 
 ```bash
-sudo systemctl edit alloy
+sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
 ```
 
-Adicione o conteúdo:
+### O que o `config.alloy` coleta
 
-```ini
-[Service]
-ExecStart=
-ExecStart=/usr/bin/alloy run /etc/alloy/conf.d/
-```
+| Seção | O que coleta |
+|-------|-------------|
+| Alloy | Métricas de saúde do próprio agente |
+| Linux host | Métricas do host (CPU, memória, disco, rede) |
+| Segurança | Logs do SSH (autenticações, sessões) |
+| Sistema | Logs do kernel (erros, warnings) |
+| Aplicação | Logs do cron (falhas de jobs) |
+| Plataforma | Logs do systemd (falhas de units) |
 
-Salve e crie o diretório de configuração:
+### Labels disponíveis para filtragem no Grafana
 
-```bash
-sudo mkdir -p /etc/alloy/conf.d
-```
+O `config.alloy` extrai automaticamente informações do sistema como labels, permitindo filtrar métricas no Grafana:
+
+| Label | Fonte | Valor de exemplo | Uso |
+|-------|-------|------------------|-----|
+| `os` | `node_uname_info` | `"Linux"` | Filtrar por sistema operacional |
+| `architecture` | `node_uname_info` | `"x86_64"`, `"aarch64"` | Filtrar por arquitetura (32-bit, 64-bit, ARM) |
+| `kernel_release` | `node_uname_info` | `"6.12.74+deb13+1-amd64"` | Filtrar por versão específica do kernel |
+| `instance` | config.alloy | `"srv-producao-01"` | Identificar o servidor (configurado no deploy) |
+| `environment` | config.alloy | `"prd"`, `"stg"`, `"dev"` | Filtrar por ambiente |
+| `cloud_provider` | config.alloy | `"aws"`, `"gcp"`, `"azure"`, `"mgc"` | Filtrar por provedor de nuvem |
+| `cloud_region` | config.alloy | `"br-se1"`, `"us-east-1"` | Filtrar por região |
+| `cloud_availability_zone` | config.alloy | `"a"`, `"b"`, `"c"` | Filtrar por zona de disponibilidade |
+
+Os labels `os`, `architecture` e `kernel_release` são extraídos automaticamente da métrica
+`node_uname_info` coletada pelo node_exporter. Os demais labels são configuráveis no
+`config.alloy` durante o deployment.
 
 ---
 
-## 6. Copiar os arquivos de configuração
-
-Os arquivos já estão disponíveis no repositório clonado no passo 1.
-Copie-os para o diretório do Alloy:
-
-```bash
-sudo cp ~/lgtm-stack/examples/linux/*.alloy /etc/alloy/conf.d/
-sudo chmod 644 /etc/alloy/conf.d/*.alloy
-```
-
-### Arquivos instalados
-
-| Arquivo | O que coleta |
-|---------|-------------|
-| `000-metric-alloy-local.alloy` | Métricas de saúde do próprio Alloy |
-| `001-metric-node-local.alloy` | Métricas do host (CPU, memória, disco, rede) |
-| `200-log-sec-ssh.alloy` | Logs do SSH (autenticações, sessões) |
-| `225-log-sys-kernel.alloy` | Logs do kernel (erros, warnings) |
-| `252-log-app-cron.alloy` | Logs do cron (falhas de jobs) |
-| `275-log-plt-systemd.alloy` | Logs do systemd (falhas de units) |
-
----
-
-## 7. Permissão para leitura do journal
+## 6. Permissão para leitura do journal
 
 O usuário do serviço Alloy precisa de acesso aos logs do systemd:
 
@@ -174,10 +192,9 @@ sudo usermod -aG systemd-journal alloy
 
 ---
 
-## 8. Iniciar e habilitar o serviço
+## 7. Iniciar e habilitar o serviço
 
 ```bash
-sudo systemctl daemon-reload
 sudo systemctl enable alloy
 sudo systemctl start alloy
 ```
@@ -190,7 +207,7 @@ sudo systemctl status alloy
 
 ---
 
-## 9. Verificar o envio de dados
+## 8. Verificar o envio de dados
 
 ### Logs do Alloy em tempo real
 
@@ -208,7 +225,7 @@ msg="Successfully flushed" url=http://lgtm-stack:9998/loki/api/v1/push
 ### Confirmar no Grafana
 
 1. Acesse o Grafana da stack (`http://<IP_DO_SERVIDOR_LGTM>:3000`)
-2. Abra o dashboard **Node Exporter (Remote)**
+2. Abra o dashboard **Node Exporter Linux (Remote)**
 3. Selecione o `instance` correspondente ao novo servidor
 4. Verifique se métricas e logs estão chegando
 
@@ -221,7 +238,7 @@ Quando houver atualizações nos arquivos de configuração do repositório:
 ```bash
 cd ~/lgtm-stack
 git pull
-sudo cp examples/linux/*.alloy /etc/alloy/conf.d/
+sudo cp examples/linux/config.alloy /etc/alloy/config.alloy
 sudo systemctl restart alloy
 ```
 
@@ -229,8 +246,21 @@ sudo systemctl restart alloy
 
 ## Solução de problemas
 
+**Verificar conectividade com o gateway antes de iniciar o Alloy**
+```bash
+# Métricas (deve retornar HTTP 204 ou 400 — qualquer resposta confirma conectividade)
+curl -s -o /dev/null -w "%{http_code}" -X POST http://lgtm-stack:9999/api/v1/metrics/write
+
+# Logs (deve retornar HTTP 204 ou 400)
+curl -s -o /dev/null -w "%{http_code}" -X POST http://lgtm-stack:9998/loki/api/v1/push
+```
+
 **Alloy não conecta em `lgtm-stack`**
 ```bash
+# Verifique se a entrada existe em /etc/hosts
+grep lgtm-stack /etc/hosts
+
+# Teste a porta diretamente
 curl -v http://lgtm-stack:9999/api/v1/metrics/write
 # Verifique /etc/hosts e se a porta está acessível (firewall)
 ```
@@ -246,5 +276,5 @@ sudo systemctl restart alloy
 
 **Verificar configuração sem reiniciar**
 ```bash
-alloy fmt /etc/alloy/conf.d/
+alloy fmt /etc/alloy/config.alloy
 ```

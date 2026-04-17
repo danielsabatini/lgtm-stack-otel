@@ -110,13 +110,23 @@ otelcol.exporter.otlp "tempo" {
 }
 
 // Writer: converte métricas OTLP e repassa para o remote_write do Mimir.
-// prometheus.remote_write.mimir definido em 001-agent-metrics.alloy
 otelcol.exporter.prometheus "mimir" {
-  forward_to = [prometheus.remote_write.mimir.receiver]
+  forward_to = [prometheus.remote_write.otlp_mimir.receiver]
+}
+
+prometheus.remote_write "otlp_mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
 }
 
 // Writer: converte logs OTLP e repassa para o writer do Loki.
-// loki.write.loki definido em 002-agent-logs.alloy
 otelcol.exporter.loki "loki" {
-  forward_to = [loki.write.loki.receiver]
+  forward_to = [loki.write.otlp_loki.receiver]
+}
+
+loki.write "otlp_loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
 }

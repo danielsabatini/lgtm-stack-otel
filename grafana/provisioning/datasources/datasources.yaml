@@ -12,6 +12,13 @@ datasources:
       httpMethod: POST
       prometheusType: Mimir
       manageAlerts: true
+      # Querying incremental: reutiliza cache de janelas anteriores em ranges longos (v13+)
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: "10m"
+      # Link Exemplar -> Trace (clique em exemplar no gráfico abre o trace no Tempo)
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
 
   # --- LOKI ---
   - name: Loki
@@ -26,6 +33,7 @@ datasources:
           matcherRegex: "trace_id=(\\w+)"
           name: TraceID
           url: "$${__value.raw}"
+          urlDisplayLabel: "Ver trace no Tempo"
 
   # --- TEMPO ---
   - name: Tempo
@@ -35,10 +43,25 @@ datasources:
     access: proxy
     jsonData:
       httpMethod: GET
-      # Link reverso Trace -> Logs
-      lokiSearch:
+      # Link Trace -> Logs (formato v2, mais completo)
+      tracesToLogsV2:
         datasourceUid: loki
-      # Link Trace -> Métricas (Service Graph)
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: false
+      # Link Trace -> Métricas (Service Graph via Mimir)
+      tracesToMetrics:
+        datasourceUid: mimir
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        queries:
+          - name: "Request rate"
+            query: "rate(traces_spanmetrics_calls_total{$$__tags}[5m])"
+          - name: "Request duration p95"
+            query: "histogram_quantile(0.95, sum(rate(traces_spanmetrics_duration_milliseconds_bucket{$$__tags}[5m])) by (le))"
+      # Service Map via Mimir
       serviceMap:
         datasourceUid: mimir
       nodeGraph:
