@@ -55,9 +55,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -256,8 +254,7 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull",
-                  "max"
+                  "lastNotNull"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -292,10 +289,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_disk_read_bytes_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "read ({{device}})",
+                      "legendFormat": "{{device}} read",
                       "range": true
                     },
                     "version": "v0"
@@ -314,10 +311,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_disk_written_bytes_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "write ({{device}})",
+                      "legendFormat": "{{device}} write",
                       "range": true
                     },
                     "version": "v0"
@@ -326,9 +323,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -460,8 +455,7 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull",
-                  "max"
+                  "lastNotNull"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -496,10 +490,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_disk_reads_completed_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "read ({{device}})",
+                      "legendFormat": "{{device}} read",
                       "range": true
                     },
                     "version": "v0"
@@ -518,10 +512,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_disk_writes_completed_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "write ({{device}})",
+                      "legendFormat": "{{device}} write",
                       "range": true
                     },
                     "version": "v0"
@@ -530,9 +524,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -648,8 +640,7 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull",
-                  "max"
+                  "lastNotNull"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -684,10 +675,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_filesystem_size_bytes{instance=\"lgtm-stack-node\"} - node_filesystem_avail_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "used ({{mountpoint}})",
+                      "legendFormat": "{{mountpoint}} used",
                       "range": true
                     },
                     "version": "v0"
@@ -706,10 +697,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_filesystem_avail_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "free ({{mountpoint}})",
+                      "legendFormat": "{{mountpoint}} available",
                       "range": true
                     },
                     "version": "v0"
@@ -718,9 +709,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -871,10 +860,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_filesystem_files{instance=\"lgtm-stack-node\"} - node_filesystem_files_free{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "used ({{mountpoint}})",
+                      "legendFormat": "{{mountpoint}} used",
                       "range": true
                     },
                     "version": "v0"
@@ -893,10 +882,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_filesystem_files_free{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "free ({{mountpoint}})",
+                      "legendFormat": "{{mountpoint}} free",
                       "range": true
                     },
                     "version": "v0"
@@ -905,9 +894,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1048,10 +1035,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
-                      "expr": "rate(node_network_receive_bytes_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "code",
+                      "expr": "rate(node_network_receive_bytes_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "in ({{device}})",
+                      "legendFormat": "In ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1070,10 +1057,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_network_transmit_bytes_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "out ({{device}})",
+                      "legendFormat": "Out ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1082,9 +1069,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1190,6 +1175,21 @@
                       "value": 20
                     }
                   ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "eth0 Upload"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
                 }
               ]
             },
@@ -1236,10 +1236,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_network_receive_errs_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "in errors ({{device}})",
+                      "legendFormat": "In Errors ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1258,10 +1258,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_network_transmit_errs_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "out errors ({{device}})",
+                      "legendFormat": "Out Errors ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1280,10 +1280,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_network_receive_drop_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "in drops ({{device}})",
+                      "legendFormat": "In Drops ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1302,10 +1302,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "rate(node_network_transmit_drop_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "out drops ({{device}})",
+                      "legendFormat": "Out Drops ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1314,9 +1314,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1505,7 +1503,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "count(node_cpu_seconds_total{instance=\"lgtm-stack-node\", mode=\"idle\"})",
                       "legendFormat": "__auto",
                       "range": true
@@ -1516,9 +1514,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1588,7 +1584,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_memory_SwapTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
@@ -1599,9 +1595,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1623,7 +1617,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "text",
+                      "color": "#ffffff",
                       "value": 0
                     }
                   ]
@@ -1672,7 +1666,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_filesystem_size_bytes{instance=\"lgtm-stack-node\", mountpoint=\"/\"}",
                       "legendFormat": "__auto",
                       "range": true
@@ -1706,7 +1700,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "text",
+                      "color": "#ffffff",
                       "value": 0
                     }
                   ]
@@ -1758,7 +1752,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
@@ -1769,9 +1763,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1842,7 +1834,7 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "builder",
+                      "editorMode": "code",
                       "expr": "time() - node_boot_time_seconds{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
@@ -1853,9 +1845,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -1937,9 +1927,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -2104,7 +2092,6 @@
             },
             "options": {
               "dedupStrategy": "none",
-              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2114,10 +2101,9 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
-              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": true
+              "wrapLogMessage": false
             }
           },
           "version": "13.0.0"
@@ -2171,7 +2157,6 @@
             },
             "options": {
               "dedupStrategy": "none",
-              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2181,10 +2166,9 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
-              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": true
+              "wrapLogMessage": false
             }
           },
           "version": "13.0.0"
@@ -2238,7 +2222,6 @@
             },
             "options": {
               "dedupStrategy": "none",
-              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2248,10 +2231,9 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
-              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": true
+              "wrapLogMessage": false
             }
           },
           "version": "13.0.0"
@@ -2307,7 +2289,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "30s"
+              "interval": "1m"
             },
             "transformations": []
           }
@@ -2417,7 +2399,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "30s"
+              "interval": "1m"
             },
             "transformations": []
           }
@@ -2517,7 +2499,7 @@
                       "editorMode": "builder",
                       "expr": "node_load1{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "load (1m)",
+                      "legendFormat": "Load 1m",
                       "range": true
                     },
                     "version": "v0"
@@ -2539,7 +2521,7 @@
                       "editorMode": "builder",
                       "expr": "node_load5{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "load (5m)",
+                      "legendFormat": "Load 5m",
                       "range": true
                     },
                     "version": "v0"
@@ -2561,7 +2543,7 @@
                       "editorMode": "builder",
                       "expr": "node_load15{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "load (15m)",
+                      "legendFormat": "Load 15m",
                       "range": true
                     },
                     "version": "v0"
@@ -2583,7 +2565,7 @@
                       "editorMode": "builder",
                       "expr": "count(count by(cpu) (node_cpu_seconds_total{instance=\"lgtm-stack-node\"}))",
                       "instant": false,
-                      "legendFormat": "cores",
+                      "legendFormat": "Cores",
                       "range": true
                     },
                     "version": "v0"
@@ -2592,9 +2574,7 @@
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -2660,8 +2640,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "cores",
-                    "scope": "series"
+                    "options": "Cores"
                   },
                   "properties": [
                     {
@@ -2741,7 +2720,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "30s"
+              "interval": "1m"
             },
             "transformations": []
           }
@@ -2841,12 +2820,12 @@
                       "editorMode": "code",
                       "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"} - node_memory_MemFree_bytes{instance=\"lgtm-stack-node\"} - (node_memory_Cached_bytes{instance=\"lgtm-stack-node\"} + node_memory_Buffers_bytes{instance=\"lgtm-stack-node\"} + node_memory_SReclaimable_bytes{instance=\"lgtm-stack-node\"})",
                       "instant": false,
-                      "legendFormat": "used",
+                      "legendFormat": "Used",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "used"
+                  "refId": "A"
                 }
               },
               {
@@ -2863,12 +2842,12 @@
                       "editorMode": "code",
                       "expr": "node_memory_Cached_bytes{instance=\"lgtm-stack-node\"} + node_memory_Buffers_bytes{instance=\"lgtm-stack-node\"} + node_memory_SReclaimable_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "cache",
+                      "legendFormat": "Cache",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "cache"
+                  "refId": "B"
                 }
               },
               {
@@ -2885,12 +2864,12 @@
                       "editorMode": "code",
                       "expr": "node_memory_MemFree_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "free",
+                      "legendFormat": "Free",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "free"
+                  "refId": "C"
                 }
               },
               {
@@ -2907,18 +2886,16 @@
                       "editorMode": "code",
                       "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "total",
+                      "legendFormat": "Total",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "total"
+                  "refId": "D"
                 }
               }
             ],
-            "queryOptions": {
-              "interval": "30s"
-            },
+            "queryOptions": {},
             "transformations": []
           }
         },
@@ -2970,7 +2947,6 @@
                   }
                 },
                 "decimals": 2,
-                "min": 0,
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2986,8 +2962,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "total",
-                    "scope": "series"
+                    "options": "Total"
                   },
                   "properties": [
                     {
@@ -3019,8 +2994,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "used",
-                    "scope": "series"
+                    "options": "Used"
                   },
                   "properties": [
                     {
@@ -3035,8 +3009,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "cache",
-                    "scope": "series"
+                    "options": "Cache"
                   },
                   "properties": [
                     {
@@ -3051,8 +3024,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "free",
-                    "scope": "series"
+                    "options": "Free"
                   },
                   "properties": [
                     {
@@ -3259,6 +3231,19 @@
                       "x": 0,
                       "y": 8
                     }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-19"
+                      },
+                      "height": 8,
+                      "width": 24,
+                      "x": 0,
+                      "y": 16
+                    }
                   }
                 ]
               }
@@ -3386,25 +3371,12 @@
                     "spec": {
                       "element": {
                         "kind": "ElementReference",
-                        "name": "panel-19"
-                      },
-                      "height": 8,
-                      "width": 24,
-                      "x": 0,
-                      "y": 0
-                    }
-                  },
-                  {
-                    "kind": "GridLayoutItem",
-                    "spec": {
-                      "element": {
-                        "kind": "ElementReference",
                         "name": "panel-20"
                       },
                       "height": 8,
                       "width": 24,
                       "x": 0,
-                      "y": 8
+                      "y": 0
                     }
                   }
                 ]
@@ -3486,8 +3458,7 @@
   "liveNow": false,
   "preload": false,
   "tags": [
-    "node",
-    "linux"
+    "node"
   ],
   "timeSettings": {
     "autoRefresh": "",
@@ -3504,7 +3475,7 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-12h",
+    "from": "now-5m",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"

@@ -44,7 +44,7 @@ prometheus.relabel "alloy_labels" {
 
 // --- Windows — métricas do host
 prometheus.exporter.windows "host" {
-  enabled_collectors = ["cpu", "logical_disk", "net", "os", "system", "memory"]
+  enabled_collectors = ["cpu", "logical_disk", "net", "os", "system", "memory", "pagefile"]
 }
 
 prometheus.scrape "windows_host" {
@@ -59,7 +59,13 @@ prometheus.relabel "windows_host_labels" {
 
   rule {
     source_labels = ["__name__"]
-    regex         = "windows_(cpu_time_total|logical_disk_(free_bytes|idle_seconds_total|read_bytes_total|read_seconds_total|reads_total|size_bytes|write_bytes_total|write_seconds_total|writes_total)|memory_(available_bytes|cache_bytes|commit_limit|committed_bytes|page_faults_total|physical_total_bytes|pool_nonpaged_bytes|pool_paged_bytes|swap_page_reads_total|swap_page_writes_total)|net_(bytes_received_total|bytes_sent_total|packets_outbound_discarded_total|packets_outbound_errors_total|packets_received_discarded_total|packets_received_errors_total|packets_received_total|packets_sent_total)|os_info|system_(boot_time_timestamp|processor_queue_length|threads))"
+    regex         = "windows_(cpu_time_total|logical_disk_(free_bytes|idle_seconds_total|read_bytes_total|read_seconds_total|reads_total|size_bytes|write_bytes_total|write_seconds_total|writes_total)|memory_(available_bytes|cache_bytes|commit_limit|committed_bytes|page_faults_total|physical_total_bytes|pool_nonpaged_bytes|pool_paged_bytes|swap_page_reads_total|swap_page_writes_total)|net_(bytes_received_total|bytes_sent_total|packets_outbound_discarded_total|packets_outbound_errors_total|packets_received_discarded_total|packets_received_errors_total|packets_received_total|packets_sent_total)|os_info|pagefile_(current_bytes|free_bytes|limit_bytes)|system_(boot_time_timestamp|processor_queue_length|threads))"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["volume"]
+    regex         = "^([A-Z]:|)$"
     action        = "keep"
   }
 

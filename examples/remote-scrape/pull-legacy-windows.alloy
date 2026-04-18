@@ -30,6 +30,12 @@ prometheus.relabel "windows_legacy_transformer" {
   }
 
   rule {
+    source_labels = ["volume"]
+    regex         = "^([A-Z]:|)$"
+    action        = "keep"
+  }
+
+  rule {
     target_label = "service_name"
     replacement  = "windows-exporter"
   }

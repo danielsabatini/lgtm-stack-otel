@@ -35,7 +35,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Percentual de uso de CPU agregado do host. Calculado como 1 \u2212 tempo idle m\u00e9dio de todos os cores. Thresholds: verde < 70 %, amarelo 70\u201380 %, laranja 80\u201390 %, vermelho > 90 %.",
+          "description": "Percentual de uso de CPU agregado do host. Calculado como 1 − tempo idle médio de todos os cores. Thresholds: verde < 70 %, amarelo 70–80 %, laranja 80–90 %, vermelho > 90 %.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -77,7 +77,7 @@
             "y": 1
           },
           "id": 4,
-          "interval": "1m",
+          "interval": "30s",
           "options": {
             "minVizHeight": 75,
             "minVizWidth": 75,
@@ -122,7 +122,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Percentual de RAM em uso. Calculado como (MemTotal \u2212 MemAvailable) / MemTotal. Inclui cache e buffers reaproveit\u00e1veis pelo kernel, portanto o valor real consumido por aplica\u00e7\u00f5es tende a ser menor.",
+          "description": "Percentual de RAM em uso. Calculado como (MemTotal − MemAvailable) / MemTotal. Inclui cache e buffers reaproveitáveis pelo kernel, portanto o valor real consumido por aplicações tende a ser menor.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -164,7 +164,7 @@
             "y": 1
           },
           "id": 8,
-          "interval": "1m",
+          "interval": "30s",
           "options": {
             "minVizHeight": 75,
             "minVizWidth": 75,
@@ -204,7 +204,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Percentual do espa\u00e7o utilizado no filesystem raiz (/). Thresholds indicam proximidade com esgotamento; ao atingir 100 % o sistema pode travar processos de escrita.",
+          "description": "Percentual do espaço utilizado no filesystem raiz (/). Thresholds indicam proximidade com esgotamento; ao atingir 100 % o sistema pode travar processos de escrita.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -246,7 +246,7 @@
             "y": 1
           },
           "id": 5,
-          "interval": "1m",
+          "interval": "30s",
           "options": {
             "minVizHeight": 75,
             "minVizWidth": 75,
@@ -285,7 +285,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Tempo decorrido desde a \u00faltima inicializa\u00e7\u00e3o do sistema operacional, derivado de node_boot_time_seconds. Reboots n\u00e3o planejados aparecem como queda brusca neste valor.",
+          "description": "Tempo decorrido desde a última inicialização do sistema operacional, derivado de node_boot_time_seconds. Reboots não planejados aparecem como queda brusca neste valor.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -312,6 +312,7 @@
             "y": 1
           },
           "id": 27,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -347,7 +348,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "N\u00famero de vCPUs / threads l\u00f3gicas vis\u00edveis ao SO. Base de normaliza\u00e7\u00e3o para percentual de utiliza\u00e7\u00e3o: utilize este valor ao avaliar CPU Utilization (%).",
+          "description": "Número de vCPUs / threads lógicas visíveis ao SO. Base de normalização para percentual de utilização: utilize este valor ao avaliar CPU Utilization (%).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -373,6 +374,7 @@
             "y": 1
           },
           "id": 21,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -409,7 +411,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Capacidade total de RAM instalada, conforme reportada pelo kernel via /proc/meminfo (MemTotal). Refer\u00eancia para dimensionar memory_limit de containers.",
+          "description": "Capacidade total de RAM instalada, conforme reportada pelo kernel via /proc/meminfo (MemTotal). Referência para dimensionar memory_limit de containers.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -437,6 +439,7 @@
             "y": 1
           },
           "id": 26,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -472,7 +475,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Zona de disponibilidade do host, extra\u00edda de node_uname_info. \u00datil para correla\u00e7\u00e3o em ambientes multi-regi\u00e3o ou multi-AZ.",
+          "description": "Zona de disponibilidade do host, extraída de node_uname_info. Útil para correlação em ambientes multi-região ou multi-AZ.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -498,6 +501,7 @@
             "y": 4
           },
           "id": 28,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -538,7 +542,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Tamanho total do filesystem raiz (/) em bytes. Compare com Root Disk Space (%) para estimar o volume de espa\u00e7o livre absoluto.",
+          "description": "Tamanho total do filesystem raiz (/) em bytes. Compare com Root Disk Space (%) para estimar o volume de espaço livre absoluto.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -567,6 +571,7 @@
             "y": 4
           },
           "id": 24,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -605,7 +610,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Capacidade total de swap configurada. Uso elevado de swap indica press\u00e3o severa de RAM; monitorar em conjunto com Memory Utilization (%).",
+          "description": "Capacidade total de swap configurada. Uso elevado de swap indica pressão severa de RAM; monitorar em conjunto com Memory Utilization (%).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -633,6 +638,7 @@
             "y": 4
           },
           "id": 23,
+          "interval": "30s",
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -682,7 +688,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "S\u00e9rie temporal do consumo de CPU decomposto por modo: user (processos de espa\u00e7o de usu\u00e1rio), system (chamadas de kernel), iowait (aguardando I/O de disco), idle (ocioso). Alto iowait indica gargalo de I/O, n\u00e3o de CPU.",
+          "description": "Série temporal do consumo de CPU decomposto por modo: user (processos de espaço de usuário), system (chamadas de kernel), iowait (aguardando I/O de disco), idle (ocioso). Alto iowait indica gargalo de I/O, não de CPU.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -871,6 +877,7 @@
             "y": 88
           },
           "id": 1,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -911,63 +918,45 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "N\u00famero m\u00e9dio de processos prontos para execu\u00e7\u00e3o aguardando tempo de CPU (equivalente ao load average do Linux).",
+          "description": "Número de threads prontas para execução aguardando tempo de CPU.\n\nThresholds (Microsoft): sustentado acima de 2 por core indica gargalo.\nAtenção: > 2 x cores   Crítico: > 4 x cores",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
                 "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
+                "spanNulls": false
               },
-              "decimals": 2,
-              "mappings": [],
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 4
+                  },
+                  {
+                    "color": "red",
+                    "value": 8
                   }
                 ]
-              }
+              },
+              "unit": "short"
             },
             "overrides": [
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Cores"
+                  "options": "Queue Length (avg 5m)"
                 },
                 "properties": [
                   {
@@ -981,11 +970,8 @@
                     }
                   },
                   {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "#ffffff",
-                      "mode": "fixed"
-                    }
+                    "id": "custom.lineWidth",
+                    "value": 2
                   }
                 ]
               }
@@ -998,6 +984,7 @@
             "y": 104
           },
           "id": 6,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1020,48 +1007,22 @@
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "editorMode": "builder",
+              "editorMode": "code",
               "expr": "windows_system_processor_queue_length{instance=\"$instance\"}",
-              "instant": false,
-              "legendFormat": "Load 1m",
+              "legendFormat": "Queue Length (raw)",
               "range": true,
-              "refId": "1"
+              "refId": "A"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "editorMode": "builder",
-              "expr": "windows_system_processor_queue_length{instance=\"$instance\"}",
-              "instant": false,
-              "legendFormat": "Load 5m",
+              "editorMode": "code",
+              "expr": "avg_over_time(windows_system_processor_queue_length{instance=\"$instance\"}[5m])",
+              "legendFormat": "Queue Length (avg 5m)",
               "range": true,
-              "refId": "5"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "mimir"
-              },
-              "editorMode": "builder",
-              "expr": "windows_system_processor_queue_length{instance=\"$instance\"}",
-              "instant": false,
-              "legendFormat": "Load 15m",
-              "range": true,
-              "refId": "15"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "mimir"
-              },
-              "editorMode": "builder",
-              "expr": "count(count(windows_cpu_time_total{instance=\"$instance\"}) by (cpu))",
-              "instant": false,
-              "legendFormat": "Cores",
-              "range": true,
-              "refId": "cpus"
+              "refId": "B"
             }
           ],
           "title": "Processor Queue Length",
@@ -1086,7 +1047,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Breakdown detalhado do uso de RAM: total, em uso, dispon\u00edvel, buffers, cache e slab reclaimable. Permite distinguir consumo real de aplica\u00e7\u00f5es do cache de disco gerenciado pelo kernel.",
+          "description": "Breakdown detalhado do uso de RAM: total, em uso, disponível, buffers, cache e slab reclaimable. Permite distinguir consumo real de aplicações do cache de disco gerenciado pelo kernel.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1226,6 +1187,7 @@
             "y": 89
           },
           "id": 9,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1314,7 +1276,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Taxa de leitura e escrita em bytes/s por dispositivo de bloco f\u00edsico. Valores pr\u00f3ximos ao limite de throughput do disco (ex: 200 MB/s em HDD) indicam satura\u00e7\u00e3o de I/O.",
+          "description": "Taxa de leitura e escrita em bytes/s por dispositivo de bloco físico. Valores próximos ao limite de throughput do disco (ex: 200 MB/s em HDD) indicam saturação de I/O.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1436,6 +1398,7 @@
             "y": 166
           },
           "id": 13,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1486,7 +1449,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Opera\u00e7\u00f5es de I/O completadas por segundo (leituras + escritas) por dispositivo. Alto IOPS com baixo throughput indica opera\u00e7\u00f5es pequenas e aleat\u00f3rias \u2014 padr\u00e3o t\u00edpico de bancos de dados como Mimir e Loki.",
+          "description": "Operações de I/O completadas por segundo (leituras + escritas) por dispositivo. Alto IOPS com baixo throughput indica operações pequenas e aleatórias — padrão típico de bancos de dados como Mimir e Loki.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1592,6 +1555,7 @@
             "y": 226
           },
           "id": 14,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1656,7 +1620,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Espa\u00e7o total, usado e dispon\u00edvel por ponto de montagem. Filtro exclui filesystems virtuais (tmpfs, overlay, devtmpfs). Acompanhe para evitar esgotamento de disco nos volumes de dados.",
+          "description": "Espaço total, usado e disponível por ponto de montagem. Filtro exclui filesystems virtuais (tmpfs, overlay, devtmpfs). Acompanhe para evitar esgotamento de disco nos volumes de dados.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1762,6 +1726,7 @@
             "y": 167
           },
           "id": 16,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1826,7 +1791,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Taxa de tr\u00e1fego de rede em bytes/s separada por interface e dire\u00e7\u00e3o (recebimento / envio). Indica satura\u00e7\u00e3o de banda; compare com a capacidade nominal da interface (ex: 1 Gbps = ~125 MB/s).",
+          "description": "Taxa de tráfego de rede em bytes/s separada por interface e direção (recebimento / envio). Indica saturação de banda; compare com a capacidade nominal da interface (ex: 1 Gbps = ~125 MB/s).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1947,6 +1912,7 @@
             "y": 168
           },
           "id": 19,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -1998,7 +1964,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "description": "Contagem de erros e pacotes descartados por interface de rede. Valores crescentes indicam problemas de hardware, congestionamento de fila, ou configura\u00e7\u00e3o incorreta de buffer (ring buffer, txqueue).",
+          "description": "Contagem de erros e pacotes descartados por interface de rede. Valores crescentes indicam problemas de hardware, congestionamento de fila, ou configuração incorreta de buffer (ring buffer, txqueue).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2141,6 +2107,7 @@
             "y": 176
           },
           "id": 20,
+          "interval": "30s",
           "options": {
             "legend": {
               "calcs": [
@@ -2244,6 +2211,7 @@
         "y": 7
       },
       "id": 30,
+      "interval": "30s",
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
@@ -2288,6 +2256,7 @@
         "y": 15
       },
       "id": 31,
+      "interval": "30s",
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
@@ -2332,6 +2301,7 @@
         "y": 23
       },
       "id": 32,
+      "interval": "30s",
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
@@ -2376,6 +2346,7 @@
         "y": 31
       },
       "id": 33,
+      "interval": "30s",
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
@@ -2442,8 +2413,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Windows Exporter (Remote)",
+  "title": "Windows Exporter (remote)",
   "uid": "windows-exporter-remote",
-  "version": 5,
   "weekStart": ""
 }

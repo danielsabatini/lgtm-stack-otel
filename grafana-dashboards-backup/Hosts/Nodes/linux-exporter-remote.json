@@ -43,7 +43,7 @@
                     "spec": {
                       "editorMode": "builder",
                       "exemplar": false,
-                      "expr": "avg by(mode) (rate(node_cpu_seconds_total{instance=\"$instance\"}[$__rate_interval]))",
+                      "expr": "avg by(mode) (rate(node_cpu_seconds_total{instance=\"lgtm-stack-node\"}[$__rate_interval]))",
                       "instant": false,
                       "interval": "",
                       "legendFormat": "{{mode}}",
@@ -55,7 +55,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -254,7 +256,8 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull"
+                  "lastNotNull",
+                  "max"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -289,10 +292,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_disk_read_bytes_total{instance=\"$instance\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_disk_read_bytes_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "{{device}} read",
+                      "legendFormat": "read ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -311,10 +314,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_disk_written_bytes_total{instance=\"$instance\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_disk_written_bytes_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "{{device}} write",
+                      "legendFormat": "write ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -323,7 +326,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -455,7 +460,8 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull"
+                  "lastNotNull",
+                  "max"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -490,10 +496,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_disk_reads_completed_total{instance=\"$instance\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_disk_reads_completed_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "{{device}} read",
+                      "legendFormat": "read ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -512,10 +518,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_disk_writes_completed_total{instance=\"$instance\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_disk_writes_completed_total{instance=\"lgtm-stack-node\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "{{device}} write",
+                      "legendFormat": "write ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -524,7 +530,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -640,7 +648,8 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull"
+                  "lastNotNull",
+                  "max"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -675,10 +684,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_filesystem_size_bytes{instance=\"$instance\"} - node_filesystem_avail_bytes{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_filesystem_size_bytes{instance=\"lgtm-stack-node\"} - node_filesystem_avail_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "{{mountpoint}} used",
+                      "legendFormat": "used ({{mountpoint}})",
                       "range": true
                     },
                     "version": "v0"
@@ -697,10 +706,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_filesystem_avail_bytes{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_filesystem_avail_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "{{mountpoint}} available",
+                      "legendFormat": "free ({{mountpoint}})",
                       "range": true
                     },
                     "version": "v0"
@@ -709,7 +718,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -860,10 +871,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_filesystem_files{instance=\"$instance\"} - node_filesystem_files_free{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_filesystem_files{instance=\"lgtm-stack-node\"} - node_filesystem_files_free{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "{{mountpoint}} used",
+                      "legendFormat": "used ({{mountpoint}})",
                       "range": true
                     },
                     "version": "v0"
@@ -882,10 +893,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_filesystem_files_free{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_filesystem_files_free{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "{{mountpoint}} free",
+                      "legendFormat": "free ({{mountpoint}})",
                       "range": true
                     },
                     "version": "v0"
@@ -894,7 +905,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1035,10 +1048,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_receive_bytes_total{instance=\"$instance\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_receive_bytes_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "In ({{device}})",
+                      "legendFormat": "in ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1057,10 +1070,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_transmit_bytes_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_transmit_bytes_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "Out ({{device}})",
+                      "legendFormat": "out ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1069,7 +1082,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1175,21 +1190,6 @@
                       "value": 20
                     }
                   ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "eth0 Upload"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
                 }
               ]
             },
@@ -1236,10 +1236,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_receive_errs_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_receive_errs_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "In Errors ({{device}})",
+                      "legendFormat": "in errors ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1258,10 +1258,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_transmit_errs_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_transmit_errs_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "Out Errors ({{device}})",
+                      "legendFormat": "out errors ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1280,10 +1280,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_receive_drop_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_receive_drop_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "In Drops ({{device}})",
+                      "legendFormat": "in drops ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1302,10 +1302,10 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "rate(node_network_transmit_drop_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
+                      "editorMode": "builder",
+                      "expr": "rate(node_network_transmit_drop_total{instance=\"lgtm-stack-node\", device!=\"lo\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "Out Drops ({{device}})",
+                      "legendFormat": "out drops ({{device}})",
                       "range": true
                     },
                     "version": "v0"
@@ -1314,7 +1314,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1503,8 +1505,8 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "count(node_cpu_seconds_total{instance=\"$instance\", mode=\"idle\"})",
+                      "editorMode": "builder",
+                      "expr": "count(node_cpu_seconds_total{instance=\"lgtm-stack-node\", mode=\"idle\"})",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -1514,7 +1516,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1584,8 +1588,8 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_memory_SwapTotal_bytes{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_memory_SwapTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -1595,7 +1599,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1617,7 +1623,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "#ffffff",
+                      "color": "text",
                       "value": 0
                     }
                   ]
@@ -1666,8 +1672,8 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_filesystem_size_bytes{instance=\"$instance\", mountpoint=\"/\"}",
+                      "editorMode": "builder",
+                      "expr": "node_filesystem_size_bytes{instance=\"lgtm-stack-node\", mountpoint=\"/\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -1700,7 +1706,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "#ffffff",
+                      "color": "text",
                       "value": 0
                     }
                   ]
@@ -1752,8 +1758,8 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -1763,7 +1769,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1834,8 +1842,8 @@
                     "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
-                      "editorMode": "code",
-                      "expr": "time() - node_boot_time_seconds{instance=\"$instance\"}",
+                      "editorMode": "builder",
+                      "expr": "time() - node_boot_time_seconds{instance=\"lgtm-stack-node\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -1845,7 +1853,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1916,7 +1926,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "node_uname_info{instance=\"$instance\"}",
+                      "expr": "node_uname_info{instance=\"lgtm-stack-node\"}",
                       "instant": false,
                       "legendFormat": "{{cloud_region}}-{{cloud_availability_zone}}",
                       "range": true
@@ -1927,7 +1937,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -1998,7 +2010,7 @@
                     "spec": {
                       "direction": "backward",
                       "editorMode": "builder",
-                      "expr": "{instance=\"$instance\", category=\"security\"} |= ``",
+                      "expr": "{instance=\"lgtm-stack-node\", category=\"security\"} |= ``",
                       "queryType": "range"
                     },
                     "version": "v0"
@@ -2065,7 +2077,7 @@
                     "spec": {
                       "direction": "backward",
                       "editorMode": "builder",
-                      "expr": "{instance=\"$instance\", category=\"system\"} |= ``",
+                      "expr": "{instance=\"lgtm-stack-node\", category=\"system\"} |= ``",
                       "queryType": "range"
                     },
                     "version": "v0"
@@ -2092,6 +2104,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2101,9 +2114,10 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
+              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": false
+              "wrapLogMessage": true
             }
           },
           "version": "13.0.0"
@@ -2130,7 +2144,7 @@
                     "spec": {
                       "direction": "backward",
                       "editorMode": "builder",
-                      "expr": "{instance=\"$instance\", category=\"application\"} |= ``",
+                      "expr": "{instance=\"lgtm-stack-node\", category=\"application\"} |= ``",
                       "queryType": "range"
                     },
                     "version": "v0"
@@ -2157,6 +2171,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2166,9 +2181,10 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
+              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": false
+              "wrapLogMessage": true
             }
           },
           "version": "13.0.0"
@@ -2195,7 +2211,7 @@
                     "spec": {
                       "direction": "backward",
                       "editorMode": "builder",
-                      "expr": "{instance=\"$instance\", category=\"platform\"} |= ``",
+                      "expr": "{instance=\"lgtm-stack-node\", category=\"platform\"} |= ``",
                       "queryType": "range"
                     },
                     "version": "v0"
@@ -2222,6 +2238,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -2231,9 +2248,10 @@
               "showLevel": true,
               "showTime": true,
               "sortOrder": "Descending",
+              "syntaxHighlighting": true,
               "timestampResolution": "ms",
               "unwrappedColumns": false,
-              "wrapLogMessage": false
+              "wrapLogMessage": true
             }
           },
           "version": "13.0.0"
@@ -2259,7 +2277,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "avg(rate(node_cpu_seconds_total{instance=\"$instance\", mode=\"idle\"}[$__rate_interval]))",
+                      "expr": "avg(rate(node_cpu_seconds_total{instance=\"lgtm-stack-node\", mode=\"idle\"}[$__rate_interval]))",
                       "legendFormat": "idle",
                       "range": true
                     },
@@ -2289,7 +2307,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "1m"
+              "interval": "30s"
             },
             "transformations": []
           }
@@ -2387,7 +2405,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "(node_filesystem_size_bytes{mountpoint=\"/\", instance=\"$instance\"} - node_filesystem_free_bytes{mountpoint=\"/\", instance=\"$instance\"}) / node_filesystem_size_bytes{mountpoint=\"/\", instance=\"$instance\"}",
+                      "expr": "(node_filesystem_size_bytes{mountpoint=\"/\", instance=\"lgtm-stack-node\"} - node_filesystem_free_bytes{mountpoint=\"/\", instance=\"lgtm-stack-node\"}) / node_filesystem_size_bytes{mountpoint=\"/\", instance=\"lgtm-stack-node\"}",
                       "instant": false,
                       "legendFormat": "utilization",
                       "range": true
@@ -2399,7 +2417,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "1m"
+              "interval": "30s"
             },
             "transformations": []
           }
@@ -2497,9 +2515,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "node_load1{instance=\"$instance\"}",
+                      "expr": "node_load1{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Load 1m",
+                      "legendFormat": "load (1m)",
                       "range": true
                     },
                     "version": "v0"
@@ -2519,9 +2537,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "node_load5{instance=\"$instance\"}",
+                      "expr": "node_load5{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Load 5m",
+                      "legendFormat": "load (5m)",
                       "range": true
                     },
                     "version": "v0"
@@ -2541,9 +2559,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "node_load15{instance=\"$instance\"}",
+                      "expr": "node_load15{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Load 15m",
+                      "legendFormat": "load (15m)",
                       "range": true
                     },
                     "version": "v0"
@@ -2563,9 +2581,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "count(count by(cpu) (node_cpu_seconds_total{instance=\"$instance\"}))",
+                      "expr": "count(count by(cpu) (node_cpu_seconds_total{instance=\"lgtm-stack-node\"}))",
                       "instant": false,
-                      "legendFormat": "Cores",
+                      "legendFormat": "cores",
                       "range": true
                     },
                     "version": "v0"
@@ -2574,7 +2592,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -2640,7 +2660,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "Cores"
+                    "options": "cores",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -2708,7 +2729,7 @@
                     "spec": {
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "(node_memory_MemTotal_bytes{instance=\"$instance\"} - node_memory_MemAvailable_bytes{instance=\"$instance\"}) / node_memory_MemTotal_bytes{instance=\"$instance\"}",
+                      "expr": "(node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"} - node_memory_MemAvailable_bytes{instance=\"lgtm-stack-node\"}) / node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
                       "legendFormat": "utilization",
                       "range": true
@@ -2720,7 +2741,7 @@
               }
             ],
             "queryOptions": {
-              "interval": "1m"
+              "interval": "30s"
             },
             "transformations": []
           }
@@ -2818,14 +2839,14 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"} - node_memory_MemFree_bytes{instance=\"$instance\"} - (node_memory_Cached_bytes{instance=\"$instance\"} + node_memory_Buffers_bytes{instance=\"$instance\"} + node_memory_SReclaimable_bytes{instance=\"$instance\"})",
+                      "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"} - node_memory_MemFree_bytes{instance=\"lgtm-stack-node\"} - (node_memory_Cached_bytes{instance=\"lgtm-stack-node\"} + node_memory_Buffers_bytes{instance=\"lgtm-stack-node\"} + node_memory_SReclaimable_bytes{instance=\"lgtm-stack-node\"})",
                       "instant": false,
-                      "legendFormat": "Used",
+                      "legendFormat": "used",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "A"
+                  "refId": "used"
                 }
               },
               {
@@ -2840,14 +2861,14 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "node_memory_Cached_bytes{instance=\"$instance\"} + node_memory_Buffers_bytes{instance=\"$instance\"} + node_memory_SReclaimable_bytes{instance=\"$instance\"}",
+                      "expr": "node_memory_Cached_bytes{instance=\"lgtm-stack-node\"} + node_memory_Buffers_bytes{instance=\"lgtm-stack-node\"} + node_memory_SReclaimable_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Cache",
+                      "legendFormat": "cache",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "B"
+                  "refId": "cache"
                 }
               },
               {
@@ -2862,14 +2883,14 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "node_memory_MemFree_bytes{instance=\"$instance\"}",
+                      "expr": "node_memory_MemFree_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Free",
+                      "legendFormat": "free",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "C"
+                  "refId": "free"
                 }
               },
               {
@@ -2884,18 +2905,20 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"}",
+                      "expr": "node_memory_MemTotal_bytes{instance=\"lgtm-stack-node\"}",
                       "instant": false,
-                      "legendFormat": "Total",
+                      "legendFormat": "total",
                       "range": true
                     },
                     "version": "v0"
                   },
-                  "refId": "D"
+                  "refId": "total"
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -2947,6 +2970,7 @@
                   }
                 },
                 "decimals": 2,
+                "min": 0,
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2962,7 +2986,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "Total"
+                    "options": "total",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -2994,7 +3019,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "Used"
+                    "options": "used",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -3009,7 +3035,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "Cache"
+                    "options": "cache",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -3024,7 +3051,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "Free"
+                    "options": "free",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -3231,19 +3259,6 @@
                       "x": 0,
                       "y": 8
                     }
-                  },
-                  {
-                    "kind": "GridLayoutItem",
-                    "spec": {
-                      "element": {
-                        "kind": "ElementReference",
-                        "name": "panel-19"
-                      },
-                      "height": 8,
-                      "width": 24,
-                      "x": 0,
-                      "y": 16
-                    }
                   }
                 ]
               }
@@ -3371,12 +3386,25 @@
                     "spec": {
                       "element": {
                         "kind": "ElementReference",
-                        "name": "panel-20"
+                        "name": "panel-19"
                       },
                       "height": 8,
                       "width": 24,
                       "x": 0,
                       "y": 0
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-20"
+                      },
+                      "height": 8,
+                      "width": 24,
+                      "x": 0,
+                      "y": 8
                     }
                   }
                 ]
@@ -3458,7 +3486,8 @@
   "liveNow": false,
   "preload": false,
   "tags": [
-    "node"
+    "node",
+    "linux"
   ],
   "timeSettings": {
     "autoRefresh": "",
@@ -3475,11 +3504,11 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-5m",
+    "from": "now-12h",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"
   },
-  "title": "Node Exporter ($instance)",
+  "title": "Node Exporter (lgtm-stack)",
   "variables": []
 }
