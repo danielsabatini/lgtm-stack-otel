@@ -1,0 +1,132 @@
+// =============================================================================
+// EXEMPLO ALLOY GATEWAY - PULL DE WINDOWS + MSSQL EXPORTER LEGADO
+//
+// Como Usar:
+// Copie este arquivo para 'lgtm-stack/alloy-gateway/conf.d/' e reinicie o Gateway.
+// Esta configuração faz o scraping de servidores Windows que expõem métricas do
+// host Windows E do Microsoft SQL Server via windows_exporter com o coletor
+// 'mssql' habilitado (porta padrão 9182).
+//
+// Pré-requisito: habilitar o coletor mssql no windows_exporter:
+//   --collectors.enabled=cpu,logical_disk,memory,net,os,system,mssql
+//
+// Para coleta completa (Windows + MSSQL via Alloy agent), use examples/mssql/config.alloy.
+// =============================================================================
+
+prometheus.scrape "pull_windows_mssql_legado" {
+  // Lista EXPLÍCITA de servidores Windows legados com windows_exporter na porta 9182
+  targets = [
+    {
+      "__address__"             = "192.168.1.39:9182",
+      "instance"                = "windows-mssql-legacy",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-se1",
+      "cloud_availability_zone" = "a",
+    },
+    // {
+    //   "__address__"             = "10.0.0.100:9182",
+    //   "instance"                = "win-sql-server-02",
+    //   "environment"             = "prd",
+    //   "cloud_provider"          = "mgc",
+    //   "cloud_region"            = "br-se1",
+    //   "cloud_availability_zone" = "a",
+    // },
+  ]
+
+  job_name        = "windows-mssql-legacy"
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+  forward_to      = [
+    prometheus.relabel.windows_mssql_legacy_transformer.receiver,
+    prometheus.relabel.windows_mssql_legacy_mssql_transformer.receiver,
+  ]
+}
+
+
+// =============================================================================
+// WINDOWS HOST
+// =============================================================================
+
+// Transformer (relabel): mantém apenas as mesmas métricas coletadas pelo Alloy agent
+// e adiciona labels de identidade do host.
+prometheus.relabel "windows_mssql_legacy_transformer" {
+  forward_to = [prometheus.relabel.windows_mssql_legacy_host_info.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "^windows_(cpu|logical_disk|net|os|system|memory|pagefile)_.*$"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["volume"]
+    regex         = "^([A-Z]:|)$"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "windows-exporter"
+  }
+}
+
+// Host info extractor: adiciona informações do SO do servidor Windows
+prometheus.relabel "windows_mssql_legacy_host_info" {
+  forward_to = [prometheus.remote_write.windows_mssql_legacy_gateway.receiver]
+
+  // Para windows_os_info: adiciona os = "windows"
+  rule {
+    source_labels = ["__name__"]
+    regex         = "windows_os_info"
+    target_label  = "os"
+    replacement   = "windows"
+  }
+
+  // Para windows_os_info: product → os_product
+  rule {
+    source_labels = ["__name__", "product"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_product"
+    replacement   = "$1"
+  }
+
+  // Para windows_os_info: version → os_version
+  rule {
+    source_labels = ["__name__", "version"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_version"
+    replacement   = "$1"
+  }
+}
+
+
+// =============================================================================
+// MSSQL SERVER
+// =============================================================================
+
+// Transformer (relabel): mantém apenas métricas do SQL Server (coletor mssql do
+// windows_exporter) e adiciona service_name.
+prometheus.relabel "windows_mssql_legacy_mssql_transformer" {
+  forward_to = [prometheus.remote_write.windows_mssql_legacy_gateway.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "^windows_mssql_.*$"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "mssql-exporter"
+  }
+}
+
+
+// =============================================================================
+// ENDPOINT
+// =============================================================================
+
+prometheus.remote_write "windows_mssql_legacy_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}

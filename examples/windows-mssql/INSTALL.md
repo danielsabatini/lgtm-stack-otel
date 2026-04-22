@@ -1,13 +1,15 @@
-# Grafana Alloy — Instalação em Servidor Windows (Modo Agent)
+# Grafana Alloy — Instalação em Servidor Windows + SQL Server (Modo Agent)
 
-Guia para instalar o Grafana Alloy em um servidor Windows remoto e configurá-lo
-para enviar métricas e logs para o `alloy-gateway` da stack LGTM.
+Guia para instalar o Grafana Alloy em um servidor Windows que executa o Microsoft
+SQL Server, configurando a coleta de métricas e logs do host Windows e do SQL Server
+para o `alloy-gateway` da stack LGTM.
 
 ---
 
 ## Pré-requisitos
 
-- Sistema operacional: Windows Server 2016 ou superior (ou Windows 10/11)
+- Sistema operacional: Windows Server 2016 ou superior
+- Microsoft SQL Server instalado e em execução
 - Acesso de Administrador
 - Servidor LGTM com `alloy-gateway` acessível na rede
 - PowerShell 5.1 ou superior
@@ -77,7 +79,7 @@ depois sobrescreva o arquivo de configuração padrão do Alloy:
 
 ```powershell
 # Ajuste o caminho de origem se necessário
-Copy-Item -Path "C:\lgtm-stack\examples\windows\config.alloy" `
+Copy-Item -Path "C:\lgtm-stack\examples\windows-mssql\config.alloy" `
           -Destination "C:\Program Files\GrafanaLabs\Alloy\config.alloy" `
           -Force
 ```
@@ -99,38 +101,41 @@ $env:COMPUTERNAME
 |-------|-------------|
 | Alloy | Métricas de saúde do próprio agente |
 | Windows host | Métricas do host (CPU, memória, disco, rede, arquivo de paginação) |
+| SQL Server — métricas | `windows_mssql_*` via coletor WMI (accessmethods, bufman, databases, genstats, locks, memmgr, sqlstats, transactions, waitstats) |
 | Segurança | Eventos de logon, autenticação e alterações de conta |
 | Sistema | Eventos de hardware, drivers e erros do SO |
 | Aplicação | Falhas do Agendador de Tarefas |
 | Plataforma | Falhas de serviços Windows (SCM) |
+| SQL Server — logs | Erros e alertas do engine MSSQL (Application Event Log, Provider `MSSQLSERVER`) |
 
-> **Collector `pagefile`:** o `config.alloy` habilita o collector `pagefile` do
-> `windows_exporter`, que expõe métricas de uso do arquivo de paginação
+> **Coletor `mssql`:** as métricas do SQL Server são coletadas via WMI pelo
+> `windows_exporter` embutido no Alloy — não requer credenciais de banco de dados
+> nem conexão ODBC. O SQL Server precisa estar em execução localmente no mesmo servidor.
+>
+> **Coletor `pagefile`:** expõe métricas de uso do arquivo de paginação
 > (`windows_pagefile_current_bytes`, `windows_pagefile_free_bytes`,
 > `windows_pagefile_limit_bytes`).
 >
-> **Filtro de volumes:** o relabel do `config.alloy` aplica um filtro que mantém
-> apenas volumes com letra de unidade (`C:`, `D:`, etc.), descartando entradas do
-> tipo `HarddiskVolume*` geradas internamente pelo Windows.
+> **Filtro de volumes:** o relabel mantém apenas volumes com letra de unidade
+> (`C:`, `D:`, etc.), descartando entradas do tipo `HarddiskVolume*` geradas
+> internamente pelo Windows.
 
 ### Labels disponíveis para filtragem no Grafana
-
-O `config.alloy` extrai automaticamente informações do sistema como labels, permitindo filtrar métricas e logs no Grafana:
 
 | Label | Fonte | Valor de exemplo | Uso |
 |-------|-------|------------------|-----|
 | `os` | `windows_os_info` | `"windows"` | Filtrar por sistema operacional |
-| `os_product` | `windows_os_info` | `"Windows Server 2022 Datacenter"`, `"Windows 10 Professional"` | Filtrar por versão/edição do Windows |
+| `os_product` | `windows_os_info` | `"Windows Server 2022 Datacenter"` | Filtrar por versão/edição do Windows |
 | `os_version` | `windows_os_info` | `"10.0.20348"` | Filtrar por versão do SO |
-| `instance` | config.alloy | `"win-srv-01"` | Identificar o servidor (automaticamente de `COMPUTERNAME` ou configurado manualmente) |
+| `mssql_instance` | `windows_mssql_*` | `"MSSQLSERVER"`, `"SQLEXPRESS"` | Filtrar por instância SQL Server |
+| `instance` | config.alloy | `"win-srv-01"` | Identificar o servidor |
 | `environment` | config.alloy | `"prd"`, `"stg"`, `"dev"` | Filtrar por ambiente |
 | `cloud_provider` | config.alloy | `"aws"`, `"gcp"`, `"azure"`, `"mgc"` | Filtrar por provedor de nuvem |
 | `cloud_region` | config.alloy | `"br-se1"`, `"us-east-1"` | Filtrar por região |
 | `cloud_availability_zone` | config.alloy | `"a"`, `"b"`, `"c"` | Filtrar por zona de disponibilidade |
 
-Os labels `os`, `os_product` e `os_version` são extraídos automaticamente da métrica
-`windows_os_info` coletada pelo windows_exporter. Os demais labels são configuráveis no
-`config.alloy` durante o deployment.
+Os labels `os`, `os_product`, `os_version` e `mssql_instance` são extraídos
+automaticamente das métricas do windows_exporter e não requerem configuração adicional.
 
 ---
 
@@ -226,8 +231,8 @@ componentes carregados.
 ### Confirmar no Grafana
 
 1. Acesse o Grafana da stack (`http://<IP_DO_SERVIDOR_LGTM>:3000`)
-2. Abra o dashboard **Windows Node Exporter**
-3. Selecione o `instance` correspondente ao novo servidor
+2. Abra o dashboard **Windows + MSSQL Exporter (remote)**
+3. Selecione o `instance` e o `mssql_instance` correspondentes ao novo servidor
 4. Verifique se métricas e logs estão chegando
 
 ---
@@ -236,7 +241,7 @@ componentes carregados.
 
 Execute os comandos abaixo para gerar eventos em cada categoria e validar o
 pipeline completo até o Grafana. Aguarde ~30 segundos após cada bloco e verifique
-o painel correspondente no dashboard **Windows Exporter (remote)**.
+o painel correspondente no dashboard **Windows + MSSQL Exporter (remote)**.
 
 ### Security — falha de login (EventID 4625)
 
@@ -245,7 +250,7 @@ net use \\127.0.0.1\IPC$ /user:AlloyTestUser WrongPassword123! 2>$null
 net use \\127.0.0.1\IPC$ /delete 2>$null
 ```
 
-Verifica se o Audit Policy está ativo antes de testar:
+Verifique se o Audit Policy está ativo antes de testar:
 
 ```powershell
 auditpol /get /subcategory:"Logon"
@@ -295,6 +300,39 @@ sc.exe delete AlloyTestSvc
 O Service Control Manager registrará EventID 7000 (Level=2, Error) no canal System
 quando o binário do serviço não for encontrado.
 
+### SQL Server — erro no Application Event Log
+
+Gera um evento de erro no Application Event Log com o provider `MSSQLSERVER`:
+
+```powershell
+sqlcmd -S localhost -Q "RAISERROR('Teste monitoramento LGTM stack', 17, 1) WITH LOG;"
+```
+
+Se o SQL Server usar autenticação SQL:
+
+```powershell
+sqlcmd -S localhost -U sa -P "<senha>" -Q "RAISERROR('Teste monitoramento LGTM stack', 17, 1) WITH LOG;"
+```
+
+> `WITH LOG` é obrigatório para o evento aparecer no Windows Event Log.
+> Severity ≥ 17 faz o SQL Server escrever com Level=2 (Error) no Application Log.
+
+Confirme o evento gerado:
+
+```powershell
+Get-WinEvent -FilterHashtable @{
+  LogName      = 'Application'
+  ProviderName = 'MSSQLSERVER'
+  Level        = 2
+} -MaxEvents 3 | Format-List TimeCreated, LevelDisplayName, Message
+```
+
+Verifique no Loki com a query:
+
+```logql
+{service_name="mssql", category="database"} | = "Teste monitoramento"
+```
+
 ---
 
 ## Atualizar configurações
@@ -302,7 +340,7 @@ quando o binário do serviço não for encontrado.
 Quando houver atualizações no arquivo de configuração do repositório:
 
 ```powershell
-Copy-Item -Path "C:\lgtm-stack\examples\windows\config.alloy" `
+Copy-Item -Path "C:\lgtm-stack\examples\windows-mssql\config.alloy" `
           -Destination "C:\Program Files\GrafanaLabs\Alloy\config.alloy" `
           -Force
 
@@ -360,6 +398,33 @@ $env:COMPUTERNAME
 # por:
 # replacement = "nome-desejado"
 Restart-Service -Name Alloy
+```
+
+**Métricas `windows_mssql_*` não aparecem**
+
+```powershell
+# Confirmar que o SQL Server está rodando
+Get-Service -Name MSSQLSERVER
+
+# Verificar se o coletor mssql está expondo métricas localmente
+Invoke-WebRequest -Uri http://localhost:12345/metrics -UseBasicParsing |
+  Select-Object -ExpandProperty Content | Select-String "windows_mssql" | Select-Object -First 5
+```
+
+> O coletor `mssql` do windows_exporter coleta via WMI e não requer configuração
+> adicional se o SQL Server estiver em execução na mesma máquina.
+
+**Logs do SQL Server não aparecem (category=database)**
+
+```powershell
+# Verificar se existem eventos do MSSQLSERVER no Application Log
+Get-WinEvent -FilterHashtable @{
+  LogName      = 'Application'
+  ProviderName = 'MSSQLSERVER'
+} -MaxEvents 5 | Format-List TimeCreated, LevelDisplayName, Message
+
+# Gerar evento de teste (severity 17+ escreve no Event Log com Level=Error)
+sqlcmd -S localhost -Q "RAISERROR('Teste', 17, 1) WITH LOG;"
 ```
 
 **Eventos de segurança não aparecem**

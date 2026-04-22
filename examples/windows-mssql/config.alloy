@@ -1,0 +1,390 @@
+// =============================================================================
+// Grafana Alloy — Configuração para servidor Windows + Microsoft SQL Server
+// =============================================================================
+// Coleta métricas e logs do host Windows e do SQL Server e os envia para o
+// alloy-gateway da stack LGTM.
+//
+// ANTES DE IMPLANTAR — edite os valores abaixo na seção GLOBAL:
+//
+//   instance                → sys.env("COMPUTERNAME") lê o nome do computador automaticamente.
+//                             Substitua por uma string fixa se quiser nome personalizado:
+//                             replacement = "win-srv-01"
+//   environment             → altere "prd" para o ambiente correto (prd | stg | hml | dev)
+//   cloud_provider          → altere "mgc" para o provedor (aws | gcp | azure | mgc | on-premise)
+//   cloud_region            → altere "br-se1" para a região do servidor
+//   cloud_availability_zone → altere "a" para a zona de disponibilidade (a | b | c)
+//
+// Endpoints:
+//   Métricas → http://lgtm-stack:9999/api/v1/metrics/write
+//   Logs     → http://lgtm-stack:9998/loki/api/v1/push
+// =============================================================================
+
+
+// =============================================================================
+// MÉTRICAS
+// =============================================================================
+
+// --- Alloy — saúde do agente
+prometheus.exporter.self "alloy" { }
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.relabel.alloy_labels.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.relabel "alloy_labels" {
+  forward_to = [prometheus.relabel.host_info_extractor.receiver]
+
+  rule {
+    target_label = "service_name"
+    replacement  = "alloy"
+  }
+}
+
+// --- Windows — métricas do host e SQL Server
+prometheus.exporter.windows "host" {
+  enabled_collectors = ["cpu", "logical_disk", "net", "os", "system", "memory", "pagefile", "mssql"]
+}
+
+prometheus.scrape "windows_host" {
+  targets         = prometheus.exporter.windows.host.targets
+  forward_to      = [
+    prometheus.relabel.windows_host_labels.receiver,
+    prometheus.relabel.windows_mssql_labels.receiver,
+  ]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.relabel "windows_host_labels" {
+  forward_to = [prometheus.relabel.host_info_extractor.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "^windows_(cpu|logical_disk|net|os|system|memory|pagefile)_.*$"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["volume"]
+    regex         = "^([A-Z]:|)$"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "windows-exporter"
+  }
+}
+
+prometheus.relabel "windows_mssql_labels" {
+  forward_to = [prometheus.relabel.host_info_extractor.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "^windows_mssql_.*$"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "mssql-exporter"
+  }
+}
+
+
+// =============================================================================
+// LOGS
+// =============================================================================
+
+// --- Segurança — Security Event Log
+loki.source.windowsevent "security" {
+  eventlog_name = "Security"
+  xpath_query   = "*[System[((EventID=4624) or (EventID=4625) or (EventID=4634) or (EventID=4647) or (EventID=4648) or (EventID=4672) or (EventID=4720) or (EventID=4725) or (EventID=4726) or (EventID=4740) or (EventID=4767))]]"
+  bookmark_path = "C:/ProgramData/GrafanaLabs/Alloy/bookmarks/security.xml"
+  forward_to    = [loki.process.security_normalize.receiver]
+}
+
+loki.process "security_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.regex {
+    expression = `"levelText":"(?P<level_text>[^"]+)"`
+  }
+
+  stage.template {
+    source   = "level_text"
+    template = `{{ if eq .Value "Critical" }}critical{{ else if eq .Value "Error" }}error{{ else if eq .Value "Warning" }}warn{{ else if eq .Value "Verbose" }}debug{{ else }}info{{ end }}`
+  }
+
+  stage.labels {
+    values = { "level" = "level_text" }
+  }
+
+  stage.label_drop {
+    values = ["channel", "computer", "source", "event_id", "keywords", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "security",
+      service_name = "windows-security",
+    }
+  }
+}
+
+// --- Sistema — System Event Log
+loki.source.windowsevent "system" {
+  eventlog_name = "System"
+  xpath_query   = "*[System[Level=1 or Level=2 or Level=3]]"
+  bookmark_path = "C:/ProgramData/GrafanaLabs/Alloy/bookmarks/system.xml"
+  forward_to    = [loki.process.system_normalize.receiver]
+}
+
+loki.process "system_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.regex {
+    expression = `"levelText":"(?P<level_text>[^"]+)"`
+  }
+
+  stage.template {
+    source   = "level_text"
+    template = `{{ if eq .Value "Critical" }}critical{{ else if eq .Value "Error" }}error{{ else if eq .Value "Warning" }}warn{{ else }}unknown{{ end }}`
+  }
+
+  stage.labels {
+    values = { "level" = "level_text" }
+  }
+
+  stage.label_drop {
+    values = ["channel", "computer", "source", "event_id", "keywords", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "system",
+      service_name = "windows-system",
+    }
+  }
+}
+
+// --- Aplicação — Task Scheduler
+loki.source.windowsevent "task_scheduler" {
+  eventlog_name = "Microsoft-Windows-TaskScheduler/Operational"
+  xpath_query   = "*[System[((Level=1) or (Level=2) or (Level=3))]]"
+  bookmark_path = "C:/ProgramData/GrafanaLabs/Alloy/bookmarks/task-scheduler.xml"
+  forward_to    = [loki.process.task_scheduler_normalize.receiver]
+}
+
+loki.process "task_scheduler_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.regex {
+    expression = `"levelText":"(?P<level_text>[^"]+)"`
+  }
+
+  stage.template {
+    source   = "level_text"
+    template = `{{ if eq .Value "Critical" }}critical{{ else if eq .Value "Error" }}error{{ else if eq .Value "Warning" }}warn{{ else }}unknown{{ end }}`
+  }
+
+  stage.labels {
+    values = { "level" = "level_text" }
+  }
+
+  stage.label_drop {
+    values = ["channel", "computer", "source", "event_id", "keywords", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "application",
+      service_name = "windows-task-scheduler",
+    }
+  }
+}
+
+// --- Plataforma — Service Control Manager
+loki.source.windowsevent "services" {
+  eventlog_name = "System"
+  xpath_query   = "*[System[(Provider[@Name='Service Control Manager'] and ((Level=1) or (Level=2) or (Level=3)))]]"
+  bookmark_path = "C:/ProgramData/GrafanaLabs/Alloy/bookmarks/services.xml"
+  forward_to    = [loki.process.services_normalize.receiver]
+}
+
+loki.process "services_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.regex {
+    expression = `"levelText":"(?P<level_text>[^"]+)"`
+  }
+
+  stage.template {
+    source   = "level_text"
+    template = `{{ if eq .Value "Critical" }}critical{{ else if eq .Value "Error" }}error{{ else if eq .Value "Warning" }}warn{{ else }}unknown{{ end }}`
+  }
+
+  stage.labels {
+    values = { "level" = "level_text" }
+  }
+
+  stage.label_drop {
+    values = ["channel", "computer", "source", "event_id", "keywords", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "platform",
+      service_name = "windows-services",
+    }
+  }
+}
+
+
+// =============================================================================
+// MSSQL SERVER
+// =============================================================================
+
+// --- SQL Server — Application Event Log (erros e alertas do engine)
+loki.source.windowsevent "mssql" {
+  eventlog_name = "Application"
+  xpath_query   = "*[System[Provider[@Name='MSSQLSERVER'] and (Level=1 or Level=2 or Level=3)]]"
+  bookmark_path = "C:/ProgramData/GrafanaLabs/Alloy/bookmarks/mssql.xml"
+  forward_to    = [loki.process.mssql_normalize.receiver]
+}
+
+loki.process "mssql_normalize" {
+  forward_to = [loki.relabel.global_identity.receiver]
+
+  stage.regex {
+    expression = `"levelText":"(?P<level_text>[^"]+)"`
+  }
+
+  stage.template {
+    source   = "level_text"
+    template = `{{ if eq .Value "Critical" }}critical{{ else if eq .Value "Error" }}error{{ else if eq .Value "Warning" }}warn{{ else }}unknown{{ end }}`
+  }
+
+  stage.labels {
+    values = { "level" = "level_text" }
+  }
+
+  stage.label_drop {
+    values = ["channel", "computer", "source", "event_id", "keywords", "job"]
+  }
+
+  stage.static_labels {
+    values = {
+      category     = "database",
+      service_name = "mssql",
+    }
+  }
+}
+
+
+// =============================================================================
+// GLOBAL — labels de identidade
+// =============================================================================
+
+// Adiciona informações do host a partir de windows_os_info
+prometheus.relabel "host_info_extractor" {
+  forward_to = [prometheus.relabel.global_identity.receiver]
+
+  // Para windows_os_info: adiciona os = "windows"
+  rule {
+    source_labels = ["__name__"]
+    regex         = "windows_os_info"
+    target_label  = "os"
+    replacement   = "windows"
+  }
+
+  // Para windows_os_info: product → os_product
+  rule {
+    source_labels = ["__name__", "product"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_product"
+    replacement   = "$1"
+  }
+
+  // Para windows_os_info: version → os_version
+  rule {
+    source_labels = ["__name__", "version"]
+    regex         = "windows_os_info;(.*)"
+    target_label  = "os_version"
+    replacement   = "$1"
+  }
+}
+
+prometheus.relabel "global_identity" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("COMPUTERNAME")  // ou substitua por nome fixo: "win-srv-01"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+loki.relabel "global_identity" {
+  forward_to = [loki.write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("COMPUTERNAME")  // ou substitua por nome fixo: "win-srv-01"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
+
+// =============================================================================
+// ENDPOINTS
+// =============================================================================
+
+prometheus.remote_write "gateway" {
+  endpoint { url = "http://lgtm-stack:9999/api/v1/metrics/write" }
+}
+
+loki.write "gateway" {
+  endpoint { url = "http://lgtm-stack:9998/loki/api/v1/push" }
+}

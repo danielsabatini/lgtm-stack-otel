@@ -11,7 +11,8 @@ Nossa configuração do *Gateway* no docker compose atua como um leitor de "Fold
 *   `00-core.alloy`: O Arquivo core que o Gateway usa para as pipelines OTLP.
 *   `[X]-legacy.alloy` (Opcional): Cópias baseadas nos templates desta pasta (`examples/remote-scrape`). 
 
-Sinta-se livre para clonar qualquer arquivo desta pasta `[pull-legacy-linux.alloy]` pra dentro do diretório `/alloy-gateway/conf.d/`.
+Sinta-se livre para clonar qualquer arquivo desta pasta (`pull-legacy-linux.alloy`, `pull-legacy-windows.alloy`, etc.) pra dentro do diretório `/alloy-gateway/conf.d/`.
 
 *   `Não` existe *Network Discovery/Scan* oculto.
 *   Você **precisa declarar** manual e explicitamente o range de Targets nos blocos.
+*   Todo `prometheus.remote_write` deve apontar para `http://alloy-gateway:9999/api/v1/metrics/write`. **Nunca escreva diretamente em `mimir:9009`** — o gateway é o único ponto de entrada de ingestão.

@@ -64,7 +64,7 @@ prometheus.relabel "linux_legacy_transformer" {
 
 // Host info extractor: renomeia labels da métrica node_uname_info para valores mais intuitivos
 prometheus.relabel "linux_legacy_host_info" {
-  forward_to = [prometheus.remote_write.linux_legacy_mimir.receiver]
+  forward_to = [prometheus.remote_write.linux_legacy_gateway.receiver]
 
   // Para node_uname_info: sysname → os (lowercase)
   rule {
@@ -113,10 +113,6 @@ prometheus.relabel "linux_legacy_host_info" {
   }
 }
 
-// Writer: envia métricas diretamente para o Mimir via rede interna do container.
-// Nome dedicado para não conflitar com outros remote_write definidos no conf.d.
-prometheus.remote_write "linux_legacy_mimir" {
-  endpoint {
-    url = "http://mimir:9009/api/v1/push"
-  }
+prometheus.remote_write "linux_legacy_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
 }

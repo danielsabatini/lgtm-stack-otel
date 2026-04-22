@@ -37,6 +37,11 @@ Roda sem privilégios elevados e é o único ponto de entrada de ingestão.
 - Recebe logs do agent em `9998`.
 - Encaminha métricas para Mimir, logs para Loki e traces para Tempo.
 
+> **Regra arquitetural:** todo `prometheus.remote_write` — seja do Alloy Agent local,
+> de agentes remotos (modo push) ou do próprio gateway (pull legado) — deve apontar
+> para `http://alloy-gateway:9999/api/v1/metrics/write`. **Nunca escreva diretamente
+> em `mimir:9009`**. O gateway é o único ponto de entrada de ingestão de métricas.
+
 Detalhes da política de traces ficam em [TRACES.md](TRACES.md).
 
 > **HTTP Bind (Alloy v1.x):** A partir do Alloy v1.0, o servidor HTTP faz bind padrão em `127.0.0.1:12345` (loopback). O flag `--server.http.listen-addr=0.0.0.0:12345` declarado no `compose.yaml` é obrigatório para que o port mapping do Docker funcione e a UI seja acessível externamente.

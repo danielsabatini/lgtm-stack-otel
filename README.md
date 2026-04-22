@@ -71,7 +71,7 @@ cd lgtm-stack/examples/<plataforma>
 | Plataforma | Guia |
 |------------|------|
 | Linux (Debian/Ubuntu) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
-| Windows | em breve |
+| Windows | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
 | MySQL | em breve |
 | PostgreSQL | em breve |
 | SQL Server | em breve |

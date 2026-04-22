@@ -15,12 +15,15 @@ Servidor remoto                   Servidor LGTM
 │  :9100          │               │  (conf.d/pull-legacy-*.alloy)│
 └─────────────────┘               │         │                    │
                                   │         ▼                    │
-                                  │       Mimir                  │
+                                  │  alloy-gateway:9999          │
+                                  │       (→ Mimir)              │
                                   └──────────────────────────────┘
 ```
 
 O `alloy-gateway` faz scrape ativo nos exporters instalados nos servidores remotos,
-filtra as métricas via regex e encaminha para o Mimir. Os labels de identidade
+filtra as métricas via regex e encaminha para o Mimir via `http://alloy-gateway:9999/api/v1/metrics/write`.
+O gateway é o único ponto de entrada de ingestão — nenhum arquivo de configuração deve
+escrever diretamente em `mimir:9009`. Os labels de identidade
 (`instance`, `environment`, `cloud_provider`, etc.) são definidos diretamente nos
 targets, pois o gateway não possui as variáveis de ambiente do agente.
 
@@ -32,8 +35,13 @@ cron e systemd, instale o Alloy agent seguindo `examples/linux/INSTALL.md`.
 ## Pré-requisito no servidor LGTM
 
 O arquivo `001-metric-gtw-local.alloy` (já presente em `alloy-gateway/conf.d/`)
-define o componente `prometheus.remote_write "mimir"` que todos os arquivos de pull
-abaixo referenciam. Não remova esse arquivo.
+define a recepção de métricas na porta `9999` e o remote_write interno para o Mimir.
+Não remova esse arquivo.
+
+Cada arquivo de pull legado (`pull-legacy-linux.alloy`, `pull-legacy-windows.alloy`, etc.)
+possui seu próprio bloco `prometheus.remote_write` apontando para
+`http://alloy-gateway:9999/api/v1/metrics/write`, que é o próprio gateway recebendo
+os dados e repassando ao Mimir.
 
 ---
 
@@ -198,11 +206,15 @@ $url = "https://github.com/prometheus-community/windows_exporter/releases/downlo
 Invoke-WebRequest -Uri $url -OutFile windows_exporter.msi
 
 msiexec /i windows_exporter.msi `
-  ENABLED_COLLECTORS="cpu,logical_disk,net,os,system,memory" `
+  ENABLED_COLLECTORS="cpu,logical_disk,net,os,system,memory,pagefile" `
   /qn
 ```
 
 3. O serviço `windows_exporter` sobe automaticamente na porta `9182`.
+
+> **Collector `pagefile`:** o collector `pagefile` expõe métricas de uso do arquivo
+> de paginação (swap do Windows), como `windows_pagefile_current_bytes`,
+> `windows_pagefile_free_bytes` e `windows_pagefile_limit_bytes`.
 
 #### Verificar
 
@@ -226,6 +238,11 @@ curl -s http://<IP>:9182/metrics | head -5
 | Sistema operacional | `windows_os_*` |
 | Sistema | `windows_system_*` |
 | Memória | `windows_memory_*` |
+| Arquivo de paginação | `windows_pagefile_*` |
+
+> **Filtro de volumes:** o `pull-legacy-windows.alloy` aplica um filtro de relabel
+> que mantém apenas volumes com letra de unidade (`C:`, `D:`, etc.), descartando
+> entradas do tipo `HarddiskVolume*` geradas internamente pelo Windows.
 
 ### Labels automáticos — Sistema Operacional
 
@@ -241,6 +258,92 @@ permitindo filtrar métricas no Grafana:
 
 Esses labels são extraídos automaticamente da métrica `windows_os_info` e não requerem
 configuração adicional. Estão disponíveis para filtragem em todas as métricas do servidor.
+
+### Firewall
+
+```powershell
+New-NetFirewallRule -DisplayName "windows_exporter" -Direction Inbound `
+  -Protocol TCP -LocalPort 9182 -Action Allow
+```
+
+---
+
+## Windows + SQL Server — `pull-legacy-windows-mssql.alloy`
+
+**Arquivo:** `examples/remote-scrape/pull-legacy-windows-mssql.alloy`
+**Porta padrão:** `9182`
+
+Coleta métricas do host Windows **e** do Microsoft SQL Server a partir de um único
+windows_exporter com o coletor `mssql` habilitado. Indicado para servidores Windows
+que rodam o SQL Server e onde não é possível instalar o Alloy agent.
+
+### Instalar o windows_exporter com coletor MSSQL
+
+```powershell
+# PowerShell (executar como Administrador)
+$version = "0.30.4"
+$url = "https://github.com/prometheus-community/windows_exporter/releases/download/v$version/windows_exporter-$version-amd64.msi"
+Invoke-WebRequest -Uri $url -OutFile windows_exporter.msi
+
+msiexec /i windows_exporter.msi `
+  ENABLED_COLLECTORS="cpu,logical_disk,memory,net,os,system,mssql,pagefile" `
+  /qn
+```
+
+O serviço `windows_exporter` sobe automaticamente na porta `9182`.
+
+> **Coletor `mssql`:** coleta métricas do SQL Server via WMI — não requer credenciais
+> de banco de dados. O SQL Server deve estar acessível localmente no servidor onde o
+> windows_exporter está instalado.
+
+#### Verificar
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:9182/metrics -UseBasicParsing |
+  Select-Object -ExpandProperty Content | Select-String "windows_mssql" | Select-Object -First 5
+```
+
+Ou de outro host:
+
+```bash
+curl -s http://<IP>:9182/metrics | grep ^windows_mssql | head -5
+```
+
+### Métricas coletadas
+
+**Host Windows:**
+
+| Grupo | Prefixo |
+|-------|---------|
+| CPU | `windows_cpu_*` |
+| Disco | `windows_logical_disk_*` |
+| Rede | `windows_net_*` |
+| Sistema operacional | `windows_os_*` |
+| Sistema | `windows_system_*` |
+| Memória | `windows_memory_*` |
+| Arquivo de paginação | `windows_pagefile_*` |
+
+**SQL Server:**
+
+| Grupo | Prefixo |
+|-------|---------|
+| Access Methods | `windows_mssql_accessmethods_*` |
+| Buffer Manager | `windows_mssql_bufman_*` |
+| Databases | `windows_mssql_databases_*` |
+| General Statistics | `windows_mssql_genstats_*` |
+| Locks | `windows_mssql_locks_*` |
+| Memory Manager | `windows_mssql_memmgr_*` |
+| SQL Statistics | `windows_mssql_sqlstats_*` |
+| Transactions | `windows_mssql_transactions_*` |
+| Wait Statistics | `windows_mssql_waitstats_*` |
+
+### Labels automáticos — Sistema Operacional
+
+| Label | Fonte | Valor de exemplo |
+|-------|-------|------------------|
+| `os` | `windows_os_info` | `"windows"` |
+| `os_product` | `windows_os_info` | `"Windows Server 2019"` |
+| `os_version` | `windows_os_info` | `"17763"` |
 
 ### Firewall
 

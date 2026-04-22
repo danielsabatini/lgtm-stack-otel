@@ -10,11 +10,27 @@
 prometheus.scrape "pull_windows_legado" {
   // Lista EXPLÍCITA de servidores legados na porta padrão do windows_exporter
   targets = [
-    {"__address__" = "10.0.0.99:9182", "instance" = "win-ad-server"},
+    {
+      "__address__"             = "10.0.0.99:9182",
+      "instance"                = "win-ad-server",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-se1",
+      "cloud_availability_zone" = "a",
+    },
+    // {
+    //   "__address__"             = "10.0.0.100:9182",
+    //   "instance"                = "win-srv-02",
+    //   "environment"             = "prd",
+    //   "cloud_provider"          = "mgc",
+    //   "cloud_region"            = "br-se1",
+    //   "cloud_availability_zone" = "a",
+    // },
   ]
 
   job_name        = "windows-legacy"
-  scrape_interval = "60s"
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
   forward_to      = [prometheus.relabel.windows_legacy_transformer.receiver]
 }
 
@@ -25,7 +41,7 @@ prometheus.relabel "windows_legacy_transformer" {
 
   rule {
     source_labels = ["__name__"]
-    regex         = "^windows_(cpu|logical_disk|net|os|system|memory)_.*$"
+    regex         = "^windows_(cpu|logical_disk|net|os|system|memory|pagefile)_.*$"
     action        = "keep"
   }
 
@@ -43,7 +59,7 @@ prometheus.relabel "windows_legacy_transformer" {
 
 // Host info extractor: adiciona informações do SO do servidor Windows
 prometheus.relabel "windows_legacy_host_info" {
-  forward_to = [prometheus.remote_write.mimir.receiver]
+  forward_to = [prometheus.remote_write.windows_legacy_gateway.receiver]
 
   // Para windows_os_info: adiciona os = "windows"
   rule {
@@ -68,4 +84,8 @@ prometheus.relabel "windows_legacy_host_info" {
     target_label  = "os_version"
     replacement   = "$1"
   }
+}
+
+prometheus.remote_write "windows_legacy_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
 }
