@@ -1,65 +1,167 @@
 // =============================================================================
 // GLOBAL LOGS — Identity Labels & Gateway Endpoint
 // =============================================================================
-// Recepciona logs de todos os collectors e aplica labels globais de
-// identidade (instance, environment, cloud_provider, cloud_region,
-// cloud_availability_zone) antes de enviá-los para o alloy-gateway.
+//
+// Recebe logs dos collectors locais e aplica labels globais antes do envio
+// ao alloy-gateway.
+//
+// Pipelines:
+//
+// Host logs:
+// ssh, kernel, cron, systemd
+//   -> global_identity
+//
+// Container logs:
+// docker engine, containers
+//   -> global_identity_container
+//
+// Global labels:
+// - instance
+// - environment
+// - cloud_provider
+// - cloud_region
+// - cloud_availability_zone
 // =============================================================================
 
-// Logs do host (ssh, kernel, cron, systemd)
-loki.relabel "global_identity" {
-  forward_to = [loki.write.gateway.receiver]
 
+
+// =============================================================================
+// SEVERITY NORMALIZATION (Journal Priority -> Log Level)
+// =============================================================================
+//
+// syslog priorities:
+// 0 emergency, 1 alert, 2 critical -> critical
+// 3 error -> error
+// 4 warning, 5 notice -> warn
+// 6 info -> info
+// 7 debug -> debug
+// =============================================================================
+
+loki.relabel "severity_normalizer" {
+
+  forward_to = [
+    loki.process.log_standardizer.receiver,
+  ]
+
+  // Critical
   rule {
-    regex  = "job"
-    action = "labeldrop"
+    source_labels = ["priority"]
+    regex         = "[012]"
+    target_label  = "level"
+    replacement   = "critical"
   }
+
+  // Error
+  rule {
+    source_labels = ["priority"]
+    regex         = "3"
+    target_label  = "level"
+    replacement   = "error"
+  }
+
+  // Warning
+  rule {
+    source_labels = ["priority"]
+    regex         = "[45]"
+    target_label  = "level"
+    replacement   = "warn"
+  }
+
+  // Info
+  rule {
+    source_labels = ["priority"]
+    regex         = "6"
+    target_label  = "level"
+    replacement   = "info"
+  }
+
+  // Debug
+  rule {
+    source_labels = ["priority"]
+    regex         = "7"
+    target_label  = "level"
+    replacement   = "debug"
+  }
+
+  // Fallback
+  rule {
+    source_labels = ["level"]
+    regex         = "^$"
+    target_label  = "level"
+    replacement   = "unknown"
+  }
+}
+
+
+
+
+// =============================================================================
+// LOG STANDARDIZATION
+// =============================================================================
+
+loki.process "log_standardizer" {
+
+  forward_to = [
+    loki.relabel.global_identity_node.receiver,
+  ]
+
+  stage.label_drop {
+    values = ["priority"]
+  }
+}
+
+
+
+
+// =============================================================================
+// GLOBAL IDENTITY — SPECIFIC
+// =============================================================================
+
+loki.relabel "global_identity_node" {
+  forward_to = [loki.relabel.global_identity_shared.receiver]
 
   rule {
     target_label = "instance"
     replacement  = "lgtm-stack-node"
   }
-
-  rule {
-    target_label = "environment"
-    replacement  = "prd"
-  }
-
-  rule {
-    target_label = "cloud_provider"
-    replacement  = "mgc"
-  }
-
-  rule {
-    target_label = "cloud_region"
-    replacement  = "br-se1"
-  }
-
-  rule {
-    target_label = "cloud_availability_zone"
-    replacement  = "a"
-  }
 }
 
-// Logs de containers (docker.service, containerd, stdout/stderr dos containers)
-loki.relabel "global_identity_container" {
-  forward_to = [loki.write.gateway.receiver]
 
-  rule {
-    regex  = "job"
-    action = "labeldrop"
-  }
+loki.relabel "global_identity_container" {
+  forward_to = [loki.relabel.global_identity_shared.receiver]
 
   rule {
     target_label = "instance"
     replacement  = "lgtm-stack-container"
   }
+}
 
+
+
+
+// =============================================================================
+// GLOBAL IDENTITY — SHARED
+// =============================================================================
+
+loki.relabel "global_identity_shared" {
+
+  forward_to = [
+    loki.write.gateway.receiver,
+  ]
+
+  // Drop transient labels
+  rule {
+    regex  = "job"
+    action = "labeldrop"
+  }
+
+  // Environment
   rule {
     target_label = "environment"
     replacement  = "prd"
   }
 
+  // Cloud Metadata
   rule {
     target_label = "cloud_provider"
     replacement  = "mgc"
@@ -76,9 +178,24 @@ loki.relabel "global_identity_container" {
   }
 }
 
+
+
+
+// =============================================================================
+// OUTPUT
+// =============================================================================
+
 loki.write "gateway" {
-  endpoint { url = "http://alloy-gateway:9998/loki/api/v1/push" }
+  endpoint {
+    url = "http://alloy-gateway:9998/loki/api/v1/push"
+  }
 }
 
-// Debug
-loki.echo "debug" { }
+
+
+
+// =============================================================================
+// DEBUG
+// =============================================================================
+
+loki.echo "debug" {}

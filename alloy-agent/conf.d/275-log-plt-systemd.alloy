@@ -1,10 +1,18 @@
-// Logs
-// Collector (journal)
+// =============================================================================
+// LOGS — Platform / systemd
+// =============================================================================
+// Pipeline: journal -> systemd_filters -> severity_normalizer -> log_standardizer -> global_identity
+// =============================================================================
+
 loki.source.journal "systemd" {
-  forward_to    = [loki.relabel.systemd_transform.receiver]
+  forward_to = [
+    loki.process.systemd_filters.receiver,
+  ]
+
   matches       = "SYSLOG_IDENTIFIER=systemd"
   relabel_rules = loki.relabel.systemd_journal_labels.rules
 }
+
 
 loki.relabel "systemd_journal_labels" {
   forward_to = []
@@ -13,78 +21,27 @@ loki.relabel "systemd_journal_labels" {
     source_labels = ["__journal_priority"]
     target_label  = "priority"
   }
-}
-
-// Transformer (relabel)
-loki.relabel "systemd_transform" {
-  forward_to = [loki.process.systemd_normalize.receiver]
 
   rule {
-    source_labels = ["priority"]
-    regex         = "[012]"
-    target_label  = "level"
-    replacement   = "critical"
+    target_label = "category"
+    replacement  = "platform"
   }
 
   rule {
-    source_labels = ["priority"]
-    regex         = "3"
-    target_label  = "level"
-    replacement   = "error"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "[45]"
-    target_label  = "level"
-    replacement   = "warn"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "6"
-    target_label  = "level"
-    replacement   = "info"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "7"
-    target_label  = "level"
-    replacement   = "debug"
-  }
-
-  rule {
-    source_labels = ["level"]
-    regex         = "^$"
-    target_label  = "level"
-    replacement   = "unknown"
+    target_label = "service_name"
+    replacement  = "systemd"
   }
 }
 
-// Transformer (process)
-// Nota: systemd gera volume alto de eventos de ciclo de vida de units (priority=6).
-//       Para capturar apenas falhas, altere o selector para `{priority=~"5|6|7"}`.
-loki.process "systemd_normalize" {
+
+loki.process "systemd_filters" {
   forward_to = [
-    // loki.echo.debug.receiver,
-    loki.relabel.global_identity.receiver,
+    loki.relabel.severity_normalizer.receiver,
   ]
 
+  // Noise reduction: Drop info/debug to reduce noise from unit lifecycle events
   stage.match {
-    selector = `{level=~"info|debug"}`
+    selector = `{priority=~"6|7"}`
     action   = "drop"
   }
-
-  stage.label_drop {
-    values = ["priority"]
-  }
-
-  stage.static_labels {
-    values = {
-      category     = "platform",
-      service_name = "systemd",
-    }
-  }
 }
-

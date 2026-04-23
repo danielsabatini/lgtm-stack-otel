@@ -1,35 +1,112 @@
-// Metrics
-// Collector (exporter)
+// =============================================================================
+// METRICS — Linux Host (Node Exporter)
+// =============================================================================
+// Pipeline: unix_exporter -> scrape -> node_filter -> host_info_extractor -> global_identity_node
+// =============================================================================
+
 prometheus.exporter.unix "node_local" {
-  procfs_path    = "/procfs"
-  sysfs_path     = "/sys"
-  rootfs_path    = "/rootfs"
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "netdev", "loadavg", "uname", "os", "stat", "pressure"]
+  procfs_path = "/procfs"
+  sysfs_path  = "/sys"
+  rootfs_path = "/rootfs"
+
+  set_collectors = [
+    "cpu",
+    "diskstats",
+    "filesystem",
+    "meminfo",
+    "netclass",
+    "netdev",
+    "loadavg",
+    "uname",
+    "stat",
+    "pressure",
+    "os",
+  ]
 }
 
+
 prometheus.scrape "node_local_scrape" {
-  targets         = prometheus.exporter.unix.node_local.targets
-  forward_to      = [prometheus.relabel.node_local_transformer.receiver]
+  targets    = prometheus.exporter.unix.node_local.targets
+  forward_to = [prometheus.relabel.node_local_transformer.receiver]
+
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 }
 
-// Transformer (relabel)
+
 prometheus.relabel "node_local_transformer" {
   forward_to = [
-    // prometheus.echo.debug.receiver,
     prometheus.relabel.host_info_extractor.receiver,
-    ]
+  ]
 
+  // ---------------------------------------------------------------------------
+  // METRICS SELECTION (Keep list)
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__"]
-    regex         = "node_(boot_time_seconds|cpu_seconds_total|disk_(io_time_seconds_total|read_bytes_total|read_time_seconds_total|reads_completed_total|write_time_seconds_total|writes_completed_total|written_bytes_total)|filesystem_(avail_bytes|files|files_free|free_bytes|size_bytes)|load(1|5|15)|memory_(Buffers_bytes|Cached_bytes|MemAvailable_bytes|MemFree_bytes|MemTotal_bytes|SReclaimable_bytes|SwapFree_bytes|SwapTotal_bytes)|network_(receive_bytes_total|receive_drop_total|receive_errs_total|transmit_bytes_total|transmit_drop_total|transmit_errs_total)|os_info|pressure_(cpu_waiting_seconds_total|io_(stalled|waiting)_seconds_total|memory_(stalled|waiting)_seconds_total)|uname_info)"
     action        = "keep"
+    regex         = 
+      // Core & Metadata
+      "node_boot_time_seconds|" +
+      "node_uname_info|" +
+      "node_os_info|" +
+
+      // CPU & Load
+      "node_cpu_seconds_total|" +
+      "node_load1|" +
+      "node_load5|" +
+      "node_load15|" +
+
+      // Memory
+      "node_memory_Buffers_bytes|" +
+      "node_memory_Cached_bytes|" +
+      "node_memory_MemAvailable_bytes|" +
+      "node_memory_MemFree_bytes|" +
+      "node_memory_MemTotal_bytes|" +
+      "node_memory_SReclaimable_bytes|" +
+      "node_memory_SwapFree_bytes|" +
+      "node_memory_SwapTotal_bytes|" +
+
+      // System Pressure
+      "node_pressure_cpu.*|" +
+      "node_pressure_io.*|" +
+      "node_pressure_memory.*|" +
+
+      // Disk & Filesystem
+      "node_disk_read.*|" +
+      "node_disk_write.*|" +
+      "node_disk_io_time.*|" +
+      "node_filesystem_avail_bytes|" +
+      "node_filesystem_files|" +
+      "node_filesystem_files_free|" +
+      "node_filesystem_free_bytes|" +
+      "node_filesystem_size_bytes|" +
+
+      // Network
+      "node_network_receive_bytes_total|" +
+      "node_network_receive_drop_total|" +
+      "node_network_receive_errs_total|" +
+      "node_network_speed_bytes|" +
+      "node_network_transmit_bytes_total|" +
+      "node_network_transmit_drop_total|" +
+      "node_network_transmit_errs_total"
   }
 
+
+  // ---------------------------------------------------------------------------
+  // DATA CLEANUP
+  // ---------------------------------------------------------------------------
+
+  // Drop pseudo devices
+  rule {
+    source_labels = ["device"]
+    regex         = "^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$"
+    action        = "drop"
+  }
+
+  // Common Labels
   rule {
     target_label = "service_name"
     replacement  = "node-exporter"
   }
 }
-

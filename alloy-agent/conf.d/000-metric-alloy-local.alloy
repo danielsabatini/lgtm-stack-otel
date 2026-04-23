@@ -1,19 +1,34 @@
-// Metrics
-// Collector (exporter)
-prometheus.exporter.self "alloy_local_exporter" { }
+// =============================================================================
+// METRICS — Alloy Local (Self Monitoring)
+// =============================================================================
+// Pipeline: self_exporter -> scrape -> alloy_filter -> remote_write.gateway
+// =============================================================================
+
+prometheus.exporter.self "alloy_local_exporter" {}
+
 
 prometheus.scrape "alloy_local_scrape" {
   targets         = prometheus.exporter.self.alloy_local_exporter.targets
   forward_to      = [prometheus.relabel.alloy_local_transformer.receiver]
+
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 }
 
-// Transformer (relabel): aplica identidade do container, sem passar pelo global_identity do host.
-// instance="alloy-agent" identifica o processo Alloy, distinto das métricas do host (instance="lgtm-stack").
-prometheus.relabel "alloy_local_transformer" {
-  forward_to = [prometheus.remote_write.gateway.receiver]
 
+prometheus.relabel "alloy_local_transformer" {
+  forward_to = [
+    prometheus.remote_write.gateway.receiver,
+  ]
+
+  // Keep only Alloy self-metrics
+  rule {
+    source_labels = ["__name__"]
+    regex         = "alloy_.+"
+    action        = "keep"
+  }
+
+  // Identity
   rule {
     target_label = "instance"
     replacement  = "alloy-agent"
@@ -24,4 +39,3 @@ prometheus.relabel "alloy_local_transformer" {
     replacement  = "alloy"
   }
 }
-

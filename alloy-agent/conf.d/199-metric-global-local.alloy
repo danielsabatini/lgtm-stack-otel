@@ -1,16 +1,43 @@
 // =============================================================================
 // GLOBAL METRICS — Identity Labels & Gateway Endpoint
 // =============================================================================
-// Recepciona métricas de todos os exportadores e aplica labels globais de
-// identidade (instance, environment, cloud_provider, cloud_region,
-// cloud_availability_zone) antes de enviá-las para o alloy-gateway.
+//
+// exporters
+//   -> host_info_extractor
+//   -> global_identity
+//   -> remote_write
+//
+// Global labels:
+// - instance
+// - environment
+// - cloud_provider
+// - cloud_region
+// - cloud_availability_zone
+//
+// Derived metadata:
+// - os
+// - architecture
+// - kernel
+// - os_product
+// - os_version
 // =============================================================================
 
-// Renomeia labels da métrica node_uname_info para valores mais intuitivos
-prometheus.relabel "host_info_extractor" {
-  forward_to = [prometheus.relabel.global_identity.receiver]
 
-  // Para node_uname_info: sysname → os (lowercase)
+
+// =============================================================================
+// HOST INFO EXTRACTION
+// =============================================================================
+
+prometheus.relabel "host_info_extractor" {
+
+  forward_to = [
+    prometheus.relabel.global_identity_node.receiver,
+  ]
+
+
+  // ---------------------------------------------------------------------------
+  // node_uname_info -> os
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__", "sysname"]
     regex         = "node_uname_info;(.*)"
@@ -24,7 +51,10 @@ prometheus.relabel "host_info_extractor" {
     action        = "lowercase"
   }
 
-  // Para node_uname_info: machine → architecture
+
+  // ---------------------------------------------------------------------------
+  // node_uname_info -> architecture
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__", "machine"]
     regex         = "node_uname_info;(.*)"
@@ -32,7 +62,10 @@ prometheus.relabel "host_info_extractor" {
     replacement   = "$1"
   }
 
-  // Para node_uname_info: release → kernel_release
+
+  // ---------------------------------------------------------------------------
+  // node_uname_info -> kernel
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__", "release"]
     regex         = "node_uname_info;(.*)"
@@ -40,7 +73,10 @@ prometheus.relabel "host_info_extractor" {
     replacement   = "$1"
   }
 
-  // Para node_os_info: name → os_product
+
+  // ---------------------------------------------------------------------------
+  // node_os_info -> os_product
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__", "name"]
     regex         = "node_os_info;(.*)"
@@ -48,7 +84,10 @@ prometheus.relabel "host_info_extractor" {
     replacement   = "$1"
   }
 
-  // Para node_os_info: version_id → os_version
+
+  // ---------------------------------------------------------------------------
+  // node_os_info -> os_version
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__", "version_id"]
     regex         = "node_os_info;(.*)"
@@ -57,19 +96,54 @@ prometheus.relabel "host_info_extractor" {
   }
 }
 
-prometheus.relabel "global_identity" {
-  forward_to = [prometheus.remote_write.gateway.receiver]
+
+
+
+// =============================================================================
+// GLOBAL IDENTITY — SPECIFIC
+// =============================================================================
+
+prometheus.relabel "global_identity_node" {
+  forward_to = [prometheus.relabel.global_identity_shared.receiver]
 
   rule {
     target_label = "instance"
     replacement  = "lgtm-stack-node"
   }
+}
 
+
+prometheus.relabel "global_identity_container" {
+  forward_to = [prometheus.relabel.global_identity_shared.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = "lgtm-stack-container"
+  }
+}
+
+
+
+
+// =============================================================================
+// GLOBAL IDENTITY — SHARED
+// =============================================================================
+
+prometheus.relabel "global_identity_shared" {
+
+  forward_to = [
+    prometheus.remote_write.gateway.receiver,
+  ]
+
+
+  // Environment
   rule {
     target_label = "environment"
     replacement  = "prd"
   }
 
+
+  // Cloud Metadata
   rule {
     target_label = "cloud_provider"
     replacement  = "mgc"
@@ -86,11 +160,24 @@ prometheus.relabel "global_identity" {
   }
 }
 
+
+
+// =============================================================================
+// OUTPUT
+// =============================================================================
+
 prometheus.remote_write "gateway" {
-  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+  endpoint {
+    url = "http://alloy-gateway:9999/api/v1/metrics/write"
+  }
 }
 
-// Debug
+
+
+// =============================================================================
+// DEBUG
+// =============================================================================
+
 prometheus.echo "debug" {
   format = "text"
 }

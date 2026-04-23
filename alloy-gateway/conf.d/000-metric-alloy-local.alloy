@@ -1,54 +1,31 @@
 // =============================================================================
-// AUTO-MONITORAMENTO DO ALLOY GATEWAY
-//
-// Coleta métricas de saúde do próprio processo Alloy (componentes ativos,
-// filas, erros de pipeline) e envia para o Mimir.
+// METRICS — Alloy Gateway Self Monitoring
+// =============================================================================
+// Pipeline: self_exporter -> scrape -> transformer -> 999-outputs (Mimir)
 // =============================================================================
 
-// Collector (exporter): expõe métricas internas do processo Alloy.
 prometheus.exporter.self "alloy_gateway_exporter" {}
 
-// Collector (scrape): raspa o exporter a cada 30s.
+
 prometheus.scrape "alloy_gateway_scrape" {
-  targets         = prometheus.exporter.self.alloy_gateway_exporter.targets
-  forward_to      = [prometheus.relabel.alloy_gateway_transformer.receiver]
+  targets    = prometheus.exporter.self.alloy_gateway_exporter.targets
+  forward_to = [prometheus.relabel.alloy_gateway_transformer.receiver]
+
   job_name        = "alloy-gateway"
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 }
 
-// Transformer (relabel): allowlist — mantém apenas métricas alloy_* (saúde
-// dos componentes do pipeline). O exporter expõe ~256 séries do runtime
-// interno sem dashboard associado que apenas inflacionam a cardinalidade.
-//
-// Famílias descartadas e motivo:
-//   go_*            (31 séries) — runtime Go: GC, heap, goroutines, threads
-//   prometheus_*   (121 séries) — internos do Alloy: WAL, remote_write, scrape engine
-//   loki_*          (29 séries) — write path do componente loki.write
-//   otelcol_*       (14 séries) — pipeline OpenTelemetry: tail sampling, exporter queue
-//   process_*        (9 séries) — recursos do processo: CPU, memória, file descriptors
-//   remotecfg_*      (9 séries) — sistema de configuração remota do Alloy
-//   net_conntrack_*  (4 séries) — tracking de conexões TCP dos dialers internos
-//   scrape_*         (4 séries) — meta-métricas de scraping (duração, amostras)
-//   promhttp_*       (2 séries) — handler HTTP do Prometheus
-//   deprecated_*     (1 série)  — flags deprecated em uso
-//   up               (1 série)  — saúde de scrape targets (redundante com alloy_*)
-//
-// Para restaurar uma família, adicione o prefixo ao regex com pipe:
-//   regex = "alloy_.+|go_.+|prometheus_.+"
-prometheus.relabel "alloy_gateway_transformer" {
-  forward_to = [prometheus.remote_write.alloy_gateway_mimir.receiver]
 
+prometheus.relabel "alloy_gateway_transformer" {
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+
+  // Keep only Alloy self metrics
   rule {
     source_labels = ["__name__"]
     regex         = "alloy_.+"
     action        = "keep"
-  }
-}
-
-// Writer (endpoint)
-prometheus.remote_write "alloy_gateway_mimir" {
-  endpoint {
-    url = "http://mimir:9009/api/v1/push"
   }
 }

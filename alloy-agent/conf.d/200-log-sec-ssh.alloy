@@ -1,83 +1,39 @@
-// Logs
-// Collector (journal)
+// =============================================================================
+// LOGS — Security / SSH
+// =============================================================================
+// Pipeline: journal -> severity_normalizer -> log_standardizer -> global_identity
+// =============================================================================
+
 loki.source.journal "ssh" {
-  forward_to     = [loki.relabel.ssh_transform.receiver]
-  matches        = "_SYSTEMD_UNIT=ssh.service"
-  relabel_rules  = loki.relabel.ssh_journal_labels.rules
+  forward_to = [
+    loki.relabel.severity_normalizer.receiver,
+  ]
+
+  matches =
+    "_SYSTEMD_UNIT=ssh.service " +
+    "_SYSTEMD_UNIT=sshd.service"
+
+  relabel_rules = loki.relabel.ssh_journal_labels.rules
 }
+
 
 loki.relabel "ssh_journal_labels" {
   forward_to = []
 
+  // Extract priority for normalization
   rule {
     source_labels = ["__journal_priority"]
     target_label  = "priority"
   }
-}
 
-// Transformer (relabel)
-loki.relabel "ssh_transform" {
-  forward_to = [loki.process.ssh_normalize.receiver]
-
+  // Metadata
   rule {
-    source_labels = ["priority"]
-    regex         = "[012]"
-    target_label  = "level"
-    replacement   = "critical"
+    target_label = "category"
+    replacement  = "security"
   }
 
   rule {
-    source_labels = ["priority"]
-    regex         = "3"
-    target_label  = "level"
-    replacement   = "error"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "[45]"
-    target_label  = "level"
-    replacement   = "warn"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "6"
-    target_label  = "level"
-    replacement   = "info"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "7"
-    target_label  = "level"
-    replacement   = "debug"
-  }
-
-  rule {
-    source_labels = ["level"]
-    regex         = "^$"
-    target_label  = "level"
-    replacement   = "unknown"
+    target_label = "service_name"
+    replacement  = "ssh"
   }
 }
-
-// Transformer (process)
-loki.process "ssh_normalize" {
-  forward_to = [
-    // loki.echo.debug.receiver,
-    loki.relabel.global_identity.receiver,
-  ]
-
-  stage.label_drop {
-    values = ["priority"]
-  }
-
-  stage.static_labels {
-    values = {
-      category = "security",
-      service_name = "ssh",
-    }
-  }
-}
-

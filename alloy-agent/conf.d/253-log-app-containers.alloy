@@ -1,8 +1,13 @@
-// Logs
-// Collector (discovery + source)
+// =============================================================================
+// LOGS — Application / Containers
+// =============================================================================
+// Pipeline: discovery.docker -> loki.source.docker -> loki.process -> global_identity_container
+// =============================================================================
+
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
+
 
 loki.source.docker "containers" {
   host          = "unix:///var/run/docker.sock"
@@ -10,6 +15,7 @@ loki.source.docker "containers" {
   forward_to    = [loki.process.containers_normalize.receiver]
   relabel_rules = loki.relabel.containers_labels.rules
 }
+
 
 loki.relabel "containers_labels" {
   forward_to = []
@@ -21,7 +27,7 @@ loki.relabel "containers_labels" {
   }
 }
 
-// Transformer (process)
+
 loki.process "containers_normalize" {
   forward_to = [loki.relabel.global_identity_container.receiver]
 
@@ -38,6 +44,7 @@ loki.process "containers_normalize" {
     values = { "level" = "" }
   }
 
+  // Noise reduction: Drop low-value container logs
   stage.match {
     selector = `{level=~"info|debug"}`
     action   = "drop"
@@ -45,8 +52,8 @@ loki.process "containers_normalize" {
 
   stage.static_labels {
     values = {
-      category = "application",
+      category     = "application",
+      service_name = "containers",
     }
   }
 }
-

@@ -1,58 +1,74 @@
-// Metrics
-// Collector (exporter)
+// =============================================================================
+// METRICS — Containers Local (cAdvisor)
+// =============================================================================
+// Pipeline: cadvisor_exporter -> scrape -> container_filter -> global_identity_container
+// =============================================================================
+
 prometheus.exporter.cadvisor "container_local" {
   docker_host = "unix:///var/run/docker.sock"
 }
 
+
 prometheus.scrape "container_local_scrape" {
-  targets         = prometheus.exporter.cadvisor.container_local.targets
-  forward_to      = [prometheus.relabel.container_local_transformer.receiver]
+  targets    = prometheus.exporter.cadvisor.container_local.targets
+  forward_to = [prometheus.relabel.container_local_transformer.receiver]
+
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 }
 
-// Transformer (relabel)
-prometheus.relabel "container_local_transformer" {
-  forward_to = [prometheus.remote_write.gateway.receiver]
 
+prometheus.relabel "container_local_transformer" {
+  forward_to = [
+    prometheus.relabel.global_identity_container.receiver,
+  ]
+
+  // ---------------------------------------------------------------------------
+  // METRICS SELECTION (Keep list)
+  // ---------------------------------------------------------------------------
   rule {
     source_labels = ["__name__"]
-    // container_start_time_seconds removido: não possui painel no dashboard.
-    // Para restaurar, adicione |start_time_seconds antes do parêntese de fechamento.
-    regex         = "container_(cpu_usage_seconds_total|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|last_seen|oom_events_total)"
     action        = "keep"
+    regex =
+      "container_(" +
+        "cpu_usage_seconds_total|" +
+        "cpu_cfs_periods_total|" +
+        "cpu_cfs_throttled_periods_total|" +
+        "memory_usage_bytes|" +
+        "memory_working_set_bytes|" +
+        "network_receive_bytes_total|" +
+        "network_transmit_bytes_total|" +
+        "fs_usage_bytes|" +
+        "last_seen|" +
+        "oom_events_total" +
+      ")"
   }
 
-  // Remover todos os labels container_label_* (metadata OCI/Docker) e labels internos do cAdvisor
+
+  // ---------------------------------------------------------------------------
+  // LABEL CLEANUP
+  // ---------------------------------------------------------------------------
+
+  // Drop OCI / Docker / cAdvisor metadata
   rule {
-    regex  = "container_label_.+"
     action = "labeldrop"
+    regex  = "container_label_.+|id|image|cpu"
   }
 
-  rule {
-    regex  = "id|image|cpu"
-    action = "labeldrop"
-  }
-
-  // Renomear name → container para consistência com os labels de logs
+  // Normalize labels (name -> container)
   rule {
     source_labels = ["name"]
     target_label  = "container"
   }
 
   rule {
-    regex  = "name"
     action = "labeldrop"
+    regex  = "name"
   }
 
-  rule {
-    target_label = "instance"
-    replacement  = "lgtm-stack-container"
-  }
-
+  // Common Labels
   rule {
     target_label = "service_name"
     replacement  = "cadvisor-exporter"
   }
 }
-

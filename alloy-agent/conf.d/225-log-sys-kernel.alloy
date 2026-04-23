@@ -1,88 +1,49 @@
-// Logs
-// Collector (journal)
+// =============================================================================
+// LOGS — System / Kernel
+// =============================================================================
+// Pipeline: journal -> kernel_filters -> severity_normalizer -> log_standardizer -> global_identity
+// =============================================================================
+
 loki.source.journal "kernel" {
-  forward_to     = [loki.relabel.kernel_transform.receiver]
-  matches        = "_TRANSPORT=kernel"
-  relabel_rules  = loki.relabel.kernel_journal_labels.rules
+  forward_to = [
+    loki.process.kernel_filters.receiver,
+  ]
+
+  matches       = "_TRANSPORT=kernel"
+  relabel_rules = loki.relabel.kernel_journal_labels.rules
 }
+
 
 loki.relabel "kernel_journal_labels" {
   forward_to = []
 
+  // Extract priority for filtering and normalization
   rule {
     source_labels = ["__journal_priority"]
     target_label  = "priority"
   }
-}
 
-// Transformer (relabel)
-loki.relabel "kernel_transform" {
-  forward_to = [loki.process.kernel_normalize.receiver]
-
+  // Metadata
   rule {
-    source_labels = ["priority"]
-    regex         = "[012]"
-    target_label  = "level"
-    replacement   = "critical"
+    target_label = "category"
+    replacement  = "system"
   }
 
   rule {
-    source_labels = ["priority"]
-    regex         = "3"
-    target_label  = "level"
-    replacement   = "error"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "[45]"
-    target_label  = "level"
-    replacement   = "warn"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "6"
-    target_label  = "level"
-    replacement   = "info"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "7"
-    target_label  = "level"
-    replacement   = "debug"
-  }
-
-  rule {
-    source_labels = ["level"]
-    regex         = "^$"
-    target_label  = "level"
-    replacement   = "unknown"
+    target_label = "service_name"
+    replacement  = "kernel"
   }
 }
 
-// Transformer (process)
-loki.process "kernel_normalize" {
+
+loki.process "kernel_filters" {
   forward_to = [
-    // loki.echo.debug.receiver,
-    loki.relabel.global_identity.receiver,
+    loki.relabel.severity_normalizer.receiver,
   ]
 
+  // Noise reduction: Drop low-value kernel events (info/debug)
   stage.match {
-    selector = `{level=~"info|debug"}`
+    selector = `{priority=~"6|7"}`
     action   = "drop"
   }
-
-  stage.label_drop {
-    values = ["priority"]
-  }
-
-  stage.static_labels {
-    values = {
-      category = "system",
-      service_name = "kernel",
-    }
-  }
 }
-

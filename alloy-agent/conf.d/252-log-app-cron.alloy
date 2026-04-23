@@ -1,10 +1,21 @@
-// Logs
-// Collector (journal)
+// =============================================================================
+// LOGS — Application / Cron
+// =============================================================================
+// Pipeline: journal -> cron_filters -> severity_normalizer -> log_standardizer -> global_identity
+// =============================================================================
+
 loki.source.journal "cron" {
-  forward_to    = [loki.relabel.cron_transform.receiver]
-  matches       = "_SYSTEMD_UNIT=cron.service"
+  forward_to = [
+    loki.process.cron_filters.receiver,
+  ]
+
+  matches =
+    "_SYSTEMD_UNIT=cron.service " +
+    "_SYSTEMD_UNIT=crond.service"
+
   relabel_rules = loki.relabel.cron_journal_labels.rules
 }
+
 
 loki.relabel "cron_journal_labels" {
   forward_to = []
@@ -13,76 +24,27 @@ loki.relabel "cron_journal_labels" {
     source_labels = ["__journal_priority"]
     target_label  = "priority"
   }
-}
-
-// Transformer (relabel)
-loki.relabel "cron_transform" {
-  forward_to = [loki.process.cron_normalize.receiver]
 
   rule {
-    source_labels = ["priority"]
-    regex         = "[012]"
-    target_label  = "level"
-    replacement   = "critical"
+    target_label = "category"
+    replacement  = "application"
   }
 
   rule {
-    source_labels = ["priority"]
-    regex         = "3"
-    target_label  = "level"
-    replacement   = "error"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "[45]"
-    target_label  = "level"
-    replacement   = "warn"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "6"
-    target_label  = "level"
-    replacement   = "info"
-  }
-
-  rule {
-    source_labels = ["priority"]
-    regex         = "7"
-    target_label  = "level"
-    replacement   = "debug"
-  }
-
-  rule {
-    source_labels = ["level"]
-    regex         = "^$"
-    target_label  = "level"
-    replacement   = "unknown"
+    target_label = "service_name"
+    replacement  = "cron"
   }
 }
 
-// Transformer (process)
-loki.process "cron_normalize" {
+
+loki.process "cron_filters" {
   forward_to = [
-    // loki.echo.debug.receiver,
-    loki.relabel.global_identity.receiver,
+    loki.relabel.severity_normalizer.receiver,
   ]
 
+  // Noise reduction: Drop info/debug
   stage.match {
-    selector = `{level=~"info|debug"}`
+    selector = `{priority=~"6|7"}`
     action   = "drop"
   }
-
-  stage.label_drop {
-    values = ["priority"]
-  }
-
-  stage.static_labels {
-    values = {
-      category     = "application",
-      service_name = "cron",
-    }
-  }
 }
-
