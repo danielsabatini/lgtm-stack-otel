@@ -25,16 +25,16 @@ Decidimos separar os pilares do Grafana Alloy:
                                                 └───────o────────┘      │
                                                         ▽               │
                                                     [Grafana] ◀─────────┘
-                                                (Porta 3000 Exposta)
+                                                 (Porta 3000 - Grafana)
 ```
 
 ### 1. Alloy Gateway
 
 Roda sem privilégios elevados e é o único ponto de entrada de ingestão.
 
-- Recebe OTLP nas portas `4317` e `4318`.
-- Recebe métricas do agent em `9999`.
-- Recebe logs do agent em `9998`.
+- **4317 (gRPC) / 4318 (HTTP):** Recebe dados OTLP (Traces, Metrics, Logs).
+- **9999:** Recebe métricas via Prometheus `remote_write`.
+- **9998:** Recebe logs via Loki `push` API.
 - Encaminha métricas para Mimir, logs para Loki e traces para Tempo.
 
 > **Regra arquitetural:** todo `prometheus.remote_write` — seja do Alloy Agent local,

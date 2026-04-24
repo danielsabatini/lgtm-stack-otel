@@ -2,6 +2,16 @@
 
 Este documento cobre setup físico, disco, volumes e permissões.
 
+## Pré-requisitos de Software
+
+Para rodar esta stack, é necessário ter o Docker e o Docker Compose instalados no host:
+
+- **Docker Engine:** Versão 20.10.x ou superior.
+- **Docker Compose:** Versão V2 (comando `docker compose` nativo).
+- **Guia de Instalação Oficial:** [Docker Engine Installation Guide](https://docs.docker.com/engine/install/)
+
+---
+
 ## Limites Físicos Sugeridos (Hardware Limiters)
 
 - **Padrão Gold:** Em produção (alta carga de APM), exija um host/VM com `8 Cores` e `32 GB RAM`.
@@ -17,6 +27,9 @@ Este documento cobre setup físico, disco, volumes e permissões.
 ## Modelo de Disco
 
 Todos os dados da stack vivem em **volumes Docker nomeados**, gerenciados pelo daemon sob o `data-root` configurado no `daemon.json`.
+
+> [!IMPORTANT]
+> **Recomendação de Performance:** Para sustentar a carga de IOPS exigida pelo Mimir (TSDB) e Loki (Chunks/WAL), utilize preferencialmente discos do tipo **NVMe**. O uso de discos lentos pode impactar diretamente a latência de ingestão e a velocidade das queries.
 
 ```
 /docker/                        ← data-root do Docker
@@ -54,9 +67,27 @@ echo '/dev/mapper/vg_docker-lv_docker  /docker  ext4  defaults  0 2' | sudo tee 
 sudo mount -a
 ```
 
-### 2. Apontar o Docker Engine para `/docker`
+### 2. Prevenção de Auto-Start (Mask)
 
-Antes de iniciar o Docker, configure o `daemon.json`:
+Para evitar que o Docker crie diretórios em `/var/lib/docker` durante a instalação, bloqueie o serviço:
+
+```bash
+sudo systemctl mask docker.service docker.socket
+```
+
+### 3. Instalação do Docker Engine
+
+Instale os pacotes oficiais. O serviço tentará subir e falhará (devido ao mask), o que é o comportamento desejado neste momento:
+
+```bash
+# Exemplo para Debian/Ubuntu
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+### 4. Configuração do `data-root` e Ativação
+
+Aponte o daemon para o disco dedicado e libere os serviços:
 
 ```bash
 sudo mkdir -p /etc/docker
@@ -65,12 +96,15 @@ cat <<EOF | sudo tee /etc/docker/daemon.json
   "data-root": "/docker"
 }
 EOF
-sudo systemctl restart docker
+
+# Liberar e iniciar o serviço corretamente
+sudo systemctl unmask docker.service docker.socket
+sudo systemctl enable --now docker
 ```
 
 > Verifique com `docker info | grep "Docker Root Dir"` — deve retornar `/docker`.
 
-### 3. Subir a stack
+### 5. Subir a stack
 
 ```bash
 git clone <seu-repo> lgtm-stack

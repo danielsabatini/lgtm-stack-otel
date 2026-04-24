@@ -6,8 +6,8 @@ Este documento cobre somente a política de traces da stack.
 
 Você programará suas aplicações para enviar spans via OpenTelemetry apontando o exporter para o IP do seu servidor nas portas:
 
-*   **HTTP (Protobuf/JSON):** Porta `4318`
-*   **gRPC (Otimizado):** Porta `4317`
+*   **gRPC (Otimizado):** Porta `4317` (Exposta pelo Alloy Gateway)
+*   **HTTP (Protobuf/JSON):** Porta `4318` (Exposta pelo Alloy Gateway)
 
 ### Modelo de Código Recomendado:
 *(Exemplo genérico para linguagens com SDKs Oficiais do OTel)*

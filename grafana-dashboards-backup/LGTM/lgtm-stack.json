@@ -5769,7 +5769,7 @@
     "cadvisor",
     "container",
     "linux",
-    "node"
+    "host"
   ],
   "timeSettings": {
     "autoRefresh": "",

@@ -1,0 +1,16 @@
+{category="application"} |= ``
+{category="application", instance="$instance"} |= ``
+{category="platform"} |= ``
+{category="platform", instance="$instance"} |= ``
+{category="security"} |= ``
+{category="system"} |= ``
+{instance="$instance", category="application"} |= ``
+{instance="$instance", category="platform"} |= ``
+{instance="$instance", category="security"} |= ``
+{instance="$instance", category="system"} |= ``
+{instance="lgtm-stack-container", container=~"$container"}
+{instance="lgtm-stack-node", category="application"} |= ``
+{instance="lgtm-stack-node", category="platform"} |= ``
+{instance="lgtm-stack-node", category="security"} |= ``
+{instance="lgtm-stack-node", category="system"} |= ``
+{service_name="mssql", instance="$instance"}

@@ -1,0 +1,9 @@
+category
+cloud_availability_zone
+cloud_provider
+cloud_region
+container
+environment
+instance
+level
+service_name

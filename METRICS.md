@@ -2,6 +2,11 @@
 
 Este documento cobre somente a política de métricas da stack.
 
+## Endpoints de Ingestão
+
+- **Porta 9999:** Endpoint para recebimento de métricas via Prometheus `remote_write`.
+- **Portas 4317/4318:** Recebimento de métricas via OTLP.
+
 ## Política de Coleta (Lean Agent Metrics)
 
 O _Node Exporter_ original trazido pelo módulo `prometheus.exporter.unix` injeta mais de 30 módulos inúteis do Kernel. Uma máquina pequena pode gerar **800 a 1400 séries ativas**. Num cluster, isso multiplica velozmente, explodindo a RAM do TSDB.

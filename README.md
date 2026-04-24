@@ -24,6 +24,9 @@ Cada arquivo abaixo é a fonte da verdade do seu próprio tema:
 
 ## Início rápido
 
+> [!IMPORTANT]
+> Certifique-se de ter o **Docker** e o **Docker Compose (V2)** instalados antes de prosseguir. Para guias de instalação e requisitos, consulte [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+
 Para laboratório ou desenvolvimento local:
 
 ```bash
@@ -50,12 +53,17 @@ docker compose down -v
 
 ## Endpoints expostos
 
-- Grafana: `http://localhost:3000`
-- Alloy Gateway UI: `http://localhost:12345`
-- OTLP gRPC: `localhost:4317`
-- OTLP HTTP: `localhost:4318`
+| Porta | Serviço | Descrição |
+|---|---|---|
+| `3000` | **Grafana** | Visualização de dashboards e dados. |
+| `12345` | **Alloy Gateway UI** | Status do pipeline de ingestão. |
+| `9999` | **Métricas (Gateway)** | Ingestão via Prometheus `remote_write`. |
+| `9998` | **Logs (Gateway)** | Ingestão via Loki `push` API. |
+| `4317` | **OTLP gRPC** | Ingestão de traces, métricas e logs via gRPC. |
+| `4318` | **OTLP HTTP** | Ingestão de traces, métricas e logs via HTTP. |
 
-Loki, Mimir e Tempo não expõem portas no host. A justificativa está em [ARCHITECTURE.md](ARCHITECTURE.md).
+Loki, Mimir e Tempo não expõem portas no host por design. A justificativa detalhada está em [ARCHITECTURE.md](ARCHITECTURE.md).
+
 
 ## Instalação em servidores remotos
 
@@ -74,7 +82,7 @@ cd lgtm-stack/examples/<plataforma>
 | Windows | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
 | MySQL | em breve |
 | PostgreSQL | em breve |
-| SQL Server | em breve |
+| Windows + SQL Server | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
 
 > Para atualizar as configurações em servidores já instalados: `git pull` no
 > diretório clonado e reinicie o serviço Alloy.

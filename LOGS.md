@@ -2,6 +2,11 @@
 
 Este documento cobre somente a política de logs da stack.
 
+## Endpoints de Ingestão
+
+- **Porta 9998:** Endpoint para recebimento de logs via Loki `push` API.
+- **Portas 4317/4318:** Recebimento de logs via OTLP.
+
 As entradas de log são:
 
 1. Logs de aplicações via OTLP no Alloy Gateway.

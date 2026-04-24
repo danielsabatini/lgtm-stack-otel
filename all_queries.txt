@@ -1,0 +1,209 @@
+mimir ||| avg by(mode) (rate(windows_cpu_time_total{instance="$instance"}[$__rate_interval]))
+mimir ||| rate(windows_logical_disk_read_bytes_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_write_bytes_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_reads_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_writes_total{instance="$instance"}[$__rate_interval])
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"} - windows_logical_disk_free_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_logical_disk_free_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"}
+mimir ||| rate(windows_net_bytes_received_total{instance="$instance"}[$__rate_interval]) * 8
+mimir ||| rate(windows_net_bytes_sent_total{instance="$instance"}[$__rate_interval]) * 8
+mimir ||| rate(windows_net_packets_received_errors_total{instance="$instance", nic!="Loopback Pseudo-Interface 1"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_outbound_errors_total{instance="$instance", nic!="Loopback Pseudo-Interface 1"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_received_discarded_total{instance="$instance", nic!="Loopback Pseudo-Interface 1"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_outbound_discarded_total{instance="$instance", nic!="Loopback Pseudo-Interface 1"}[$__rate_interval])
+mimir ||| count(windows_cpu_time_total{instance="$instance", mode="idle"})
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| time() - windows_system_boot_time_timestamp{instance="$instance"}
+loki ||| {category="security"} |= ``
+loki ||| {category="system"} |= ``
+loki ||| {category="application", instance="$instance"} |= ``
+loki ||| {category="platform", instance="$instance"} |= ``
+mimir ||| avg(rate(windows_cpu_time_total{instance="$instance", mode="idle"}[$__rate_interval]))
+mimir ||| windows_mssql_bufman_page_life_expectancy_seconds{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_mssql_bufman_buffer_cache_hits{instance="$instance", mssql_instance=~"$mssql_instance"} / windows_mssql_bufman_buffer_cache_lookups{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| sum by(mssql_instance) (increase(windows_mssql_locks_deadlocks{instance="$instance", mssql_instance=~"$mssql_instance"}[5m]))
+mimir ||| (windows_logical_disk_size_bytes{volume="C:", instance="$instance"} - windows_logical_disk_free_bytes{volume="C:", instance="$instance"}) / windows_logical_disk_size_bytes{volume="C:", instance="$instance"}
+loki ||| {service_name="mssql", instance="$instance"}
+mimir ||| rate(windows_net_bytes_total{instance="$instance"}[$__rate_interval]) * 8
+mimir ||| windows_net_current_bandwidth_bytes{instance="$instance"} * 8
+mimir ||| count by(mssql_instance) (windows_mssql_instance_info{instance="$instance", mssql_instance=~"$mssql_instance"})
+mimir ||| windows_mssql_genstats_user_connections{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_mssql_instance_info{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_mssql_instance_info{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_mssql_instance_info{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_system_processor_queue_length{instance="$instance"}
+mimir ||| windows_mssql_memmgr_target_server_memory_bytes{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| windows_mssql_databases_log_used_percent{instance="$instance", mssql_instance=~"$mssql_instance", database=~"$database"}
+mimir ||| irate(windows_mssql_sqlstats_sql_compilations{instance="$instance", mssql_instance=~"$mssql_instance"}[5m])
+mimir ||| sum by (instance, mssql_instance) (
+  windows_mssql_memmgr_total_server_memory_bytes{instance="$instance", mssql_instance=~"$mssql_instance"}
+)
+/
+sum by (instance, mssql_instance) (
+  windows_mssql_memmgr_target_server_memory_bytes{instance="$instance", mssql_instance=~"$mssql_instance"}
+)
+mimir ||| windows_mssql_collector_success{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| increase(windows_mssql_databases_log_growths{instance="$instance", mssql_instance=~"$mssql_instance", database!~"master|msdb|tempdb|mssqlsystemresource|model_replicatedmaster|model.*"}[24h])
+mimir ||| windows_mssql_waitstats_wait_for_the_worker_waits{instance="$instance", mssql_instance=~"$mssql_instance", item="Average wait time (ms)"}
+mimir ||| windows_mssql_waitstats_wait_for_the_worker_waits{instance="$instance", mssql_instance=~"$mssql_instance", item="Cumulative wait time (ms) per second"}
+mimir ||| irate(windows_mssql_bufman_page_reads{instance="$instance", mssql_instance=~"$mssql_instance"}[5m])
+mimir ||| irate(windows_mssql_bufman_page_writes{instance="$instance", mssql_instance=~"$mssql_instance"}[5m])
+mimir ||| irate(windows_mssql_databases_log_used_percent{instance="$instance", mssql_instance=~"$mssql_instance"}[5m])
+mimir ||| irate(windows_mssql_sqlstats_sql_recompilations{instance="$instance", mssql_instance=~"$mssql_instance"}[5m])
+mimir ||| irate(windows_mssql_databases_transactions{instance="$instance", mssql_instance=~"$mssql_instance", database=~"$database"}[5m])
+mimir ||| windows_mssql_genstats_blocked_processes{instance="$instance", mssql_instance=~"$mssql_instance"}
+mimir ||| increase(windows_mssql_sql_errors_total{instance="$instance", mssql_instance=~"$mssql_instance", resource="User Errors"}[1m])
+mimir ||| windows_os_info{instance="$instance"}
+mimir ||| windows_os_info{instance="$instance"}
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| windows_pagefile_free_bytes{instance="$instance"}
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"} - windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| (windows_memory_physical_total_bytes{instance="$instance"} - windows_memory_available_bytes{instance="$instance"}) / windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"} - windows_memory_available_bytes{instance="$instance"}
+mimir ||| windows_memory_cache_bytes{instance="$instance"}
+mimir ||| windows_memory_available_bytes{instance="$instance"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| avg by(mode) (rate(windows_cpu_time_total{instance="$instance"}[$__rate_interval]))
+mimir ||| rate(windows_logical_disk_read_bytes_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_write_bytes_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_reads_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_logical_disk_writes_total{instance="$instance"}[$__rate_interval])
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"} - windows_logical_disk_free_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_logical_disk_free_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"}
+mimir ||| rate(windows_net_bytes_received_total{instance="$instance"}[$__rate_interval]) * 8
+mimir ||| rate(windows_net_bytes_sent_total{instance="$instance"}[$__rate_interval]) * 8
+mimir ||| rate(windows_net_packets_received_errors_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_outbound_errors_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_received_discarded_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(windows_net_packets_outbound_discarded_total{instance="$instance", nic!="Loopback Pseudo-Interface 1"}[$__rate_interval])
+mimir ||| count(windows_cpu_time_total{instance="$instance", mode="idle"})
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| windows_logical_disk_size_bytes{instance="$instance", volume="C:"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| time() - windows_system_boot_time_timestamp{instance="$instance"}
+loki ||| {category="security"} |= ``
+loki ||| {category="system"} |= ``
+loki ||| {category="application"} |= ``
+loki ||| {category="platform"} |= ``
+mimir ||| sum by(nic) (rate(windows_net_bytes_total{instance="$instance"}[$__rate_interval]))
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| windows_pagefile_limit_bytes{instance="$instance"} - windows_pagefile_limit_bytes{instance="$instance"}
+mimir ||| windows_pagefile_free_bytes{instance="$instance"}
+mimir ||| windows_net_current_bandwidth_bytes{instance="$instance"} * 8
+mimir ||| windows_os_info{instance="$instance"}
+mimir ||| windows_os_info{instance="$instance"}
+mimir ||| avg(rate(windows_cpu_time_total{instance="$instance", mode="idle"}[$__rate_interval]))
+mimir ||| (windows_logical_disk_size_bytes{volume="C:", instance="$instance"} - windows_logical_disk_free_bytes{volume="C:", instance="$instance"}) / windows_logical_disk_size_bytes{volume="C:", instance="$instance"}
+mimir ||| windows_system_processor_queue_length{instance="$instance"}
+mimir ||| (windows_memory_physical_total_bytes{instance="$instance"} - windows_memory_available_bytes{instance="$instance"}) / windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"} - windows_memory_available_bytes{instance="$instance"}
+mimir ||| windows_memory_cache_bytes{instance="$instance"}
+mimir ||| windows_memory_available_bytes{instance="$instance"}
+mimir ||| windows_memory_physical_total_bytes{instance="$instance"}
+mimir ||| avg by(mode) (rate(node_cpu_seconds_total{instance="$instance"}[$__rate_interval]))
+mimir ||| rate(node_disk_read_bytes_total{instance="$instance", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_written_bytes_total{instance="$instance", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_reads_completed_total{instance="$instance", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_writes_completed_total{instance="$instance", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| node_filesystem_size_bytes{instance="$instance", mountpoint="/"}
+mimir ||| node_filesystem_avail_bytes{instance="$instance", mountpoint="/"}
+mimir ||| node_filesystem_files{instance="$instance", mountpoint="/"}
+mimir ||| node_filesystem_files_free{instance="$instance", mountpoint="/"}
+mimir ||| rate(node_network_receive_bytes_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_bytes_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_receive_errs_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_errs_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_receive_drop_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_drop_total{instance="$instance", device!="lo"}[$__rate_interval])
+mimir ||| count(node_cpu_seconds_total{instance="$instance", mode="idle"})
+mimir ||| node_memory_SwapTotal_bytes{instance="$instance"}
+mimir ||| node_filesystem_size_bytes{instance="$instance", mountpoint="/"}
+mimir ||| node_memory_MemTotal_bytes{instance="$instance"}
+mimir ||| time() - node_boot_time_seconds{instance="$instance"}
+loki ||| {instance="$instance", category="security"} |= ``
+loki ||| {instance="$instance", category="system"} |= ``
+loki ||| {instance="$instance", category="application"} |= ``
+loki ||| {instance="$instance", category="platform"} |= ``
+mimir ||| sum(rate(node_network_receive_bytes_total{instance="$instance", device!~"lo.*"}[$__rate_interval]))
+mimir ||| sum(rate(node_network_transmit_bytes_total{instance="$instance", device!~"lo.*"}[$__rate_interval]))
+mimir ||| node_memory_SwapFree_bytes{instance="$instance"}
+mimir ||| node_memory_SwapTotal_bytes{instance="$instance"}
+mimir ||| rate(node_pressure_cpu_waiting_seconds_total{instance="$instance"}[$__rate_interval])
+mimir ||| sum by(device) (rate(node_disk_read_time_seconds_total{instance="$instance"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_write_time_seconds_total{instance="$instance"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_reads_completed_total{instance="$instance"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_writes_completed_total{instance="$instance"}[$__rate_interval]))
+mimir ||| avg(rate(node_cpu_seconds_total{instance="$instance", mode="idle"}[$__rate_interval]))
+mimir ||| rate(node_pressure_memory_waiting_seconds_total{instance="$instance"}[$__rate_interval])
+mimir ||| rate(node_pressure_io_waiting_seconds_total{instance="$instance"}[$__rate_interval])
+mimir ||| node_os_info{instance="$instance"}
+mimir ||| (node_filesystem_size_bytes{mountpoint="/", instance="$instance"} - node_filesystem_free_bytes{mountpoint="/", instance="$instance"}) / node_filesystem_size_bytes{mountpoint="/", instance="$instance"}
+mimir ||| node_load1{instance="$instance"}
+mimir ||| node_load5{instance="$instance"}
+mimir ||| node_load15{instance="$instance"}
+mimir ||| count(count by(cpu) (node_cpu_seconds_total{instance="$instance"}))
+mimir ||| (node_memory_MemTotal_bytes{instance="$instance"} - node_memory_MemAvailable_bytes{instance="$instance"}) / node_memory_MemTotal_bytes{instance="$instance"}
+mimir ||| node_memory_MemTotal_bytes{instance="$instance"} - node_memory_MemFree_bytes{instance="$instance"} - (node_memory_Cached_bytes{instance="$instance"} + node_memory_Buffers_bytes{instance="$instance"} + node_memory_SReclaimable_bytes{instance="$instance"})
+mimir ||| node_memory_Cached_bytes{instance="$instance"} + node_memory_Buffers_bytes{instance="$instance"} + node_memory_SReclaimable_bytes{instance="$instance"}
+mimir ||| node_memory_MemFree_bytes{instance="$instance"}
+mimir ||| node_memory_MemTotal_bytes{instance="$instance"}
+mimir ||| avg by(mode) (rate(node_cpu_seconds_total{instance="lgtm-stack-node"}[$__rate_interval]))
+mimir ||| sum(rate(container_cpu_usage_seconds_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__rate_interval])) by (container) / scalar(count(node_cpu_seconds_total{instance="lgtm-stack-node", mode="idle"}))
+mimir ||| container_memory_working_set_bytes{instance="lgtm-stack-container", container=~"$container", container!=""}
+mimir ||| increase(container_oom_events_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__range])
+mimir ||| rate(node_disk_read_bytes_total{instance="lgtm-stack-node", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_written_bytes_total{instance="lgtm-stack-node", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_reads_completed_total{instance="lgtm-stack-node", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| rate(node_disk_writes_completed_total{instance="lgtm-stack-node", device!~"loop.*|ram.*|fd.*|sr.*|dm-.*"}[$__rate_interval])
+mimir ||| node_filesystem_size_bytes{instance="lgtm-stack-node", mountpoint="/"}
+mimir ||| node_filesystem_avail_bytes{instance="lgtm-stack-node", mountpoint="/"}
+mimir ||| node_filesystem_files{instance="lgtm-stack-node", mountpoint="/"}
+mimir ||| node_filesystem_files_free{instance="lgtm-stack-node", mountpoint="/"}
+mimir ||| rate(node_network_receive_bytes_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_bytes_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_receive_errs_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_errs_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_receive_drop_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(node_network_transmit_drop_total{instance="lgtm-stack-node", device!="lo"}[$__rate_interval])
+mimir ||| rate(container_cpu_cfs_throttled_periods_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__rate_interval]) / rate(container_cpu_cfs_periods_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__rate_interval])
+mimir ||| count(node_cpu_seconds_total{instance="lgtm-stack-node", mode="idle"})
+mimir ||| node_memory_SwapTotal_bytes{instance="lgtm-stack-node"}
+mimir ||| node_filesystem_size_bytes{instance="lgtm-stack-node", mountpoint="/"}
+mimir ||| node_memory_MemTotal_bytes{instance="lgtm-stack-node"}
+mimir ||| time() - node_boot_time_seconds{instance="lgtm-stack-node"}
+loki ||| {instance="lgtm-stack-node", category="security"} |= ``
+mimir ||| container_memory_working_set_bytes{instance="lgtm-stack-container", container=~"$container", container!=""}
+mimir ||| container_memory_usage_bytes{instance="lgtm-stack-container", container=~"$container", container!=""}
+loki ||| {instance="lgtm-stack-node", category="system"} |= ``
+loki ||| {instance="lgtm-stack-node", category="application"} |= ``
+loki ||| {instance="lgtm-stack-node", category="platform"} |= ``
+mimir ||| sum(rate(node_network_receive_bytes_total{instance="lgtm-stack-node", device!~"lo.*"}[$__rate_interval]))
+mimir ||| sum(rate(node_network_transmit_bytes_total{instance="lgtm-stack-node", device!~"lo.*"}[$__rate_interval]))
+mimir ||| node_memory_SwapFree_bytes{instance="lgtm-stack-node"}
+mimir ||| node_memory_SwapTotal_bytes{instance="lgtm-stack-node"}
+mimir ||| rate(node_pressure_cpu_waiting_seconds_total{instance="lgtm-stack-node"}[$__rate_interval])
+mimir ||| sum by(device) (rate(node_disk_read_time_seconds_total{instance="lgtm-stack-node"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_write_time_seconds_total{instance="lgtm-stack-node"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_reads_completed_total{instance="lgtm-stack-node"}[$__rate_interval]))
+mimir ||| sum by(device) (rate(node_disk_writes_completed_total{instance="lgtm-stack-node"}[$__rate_interval]))
+mimir ||| avg(rate(node_cpu_seconds_total{instance="lgtm-stack-node", mode="idle"}[$__rate_interval]))
+mimir ||| rate(node_pressure_memory_waiting_seconds_total{instance="lgtm-stack-node"}[$__rate_interval])
+mimir ||| sum(rate(container_network_receive_bytes_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__rate_interval])) by (container)
+mimir ||| sum(rate(container_network_transmit_bytes_total{instance="lgtm-stack-container", container=~"$container", container!=""}[$__rate_interval])) by (container)
+loki ||| {instance="lgtm-stack-container", container=~"$container"}
+mimir ||| rate(node_pressure_io_waiting_seconds_total{instance="lgtm-stack-node"}[$__rate_interval])
+mimir ||| node_os_info{instance="lgtm-stack-node"}
+mimir ||| (node_filesystem_size_bytes{mountpoint="/", instance="lgtm-stack-node"} - node_filesystem_free_bytes{mountpoint="/", instance="lgtm-stack-node"}) / node_filesystem_size_bytes{mountpoint="/", instance="lgtm-stack-node"}
+mimir ||| node_load1{instance="lgtm-stack-node"}
+mimir ||| node_load5{instance="lgtm-stack-node"}
+mimir ||| node_load15{instance="lgtm-stack-node"}
+mimir ||| count(count by(cpu) (node_cpu_seconds_total{instance="lgtm-stack-node"}))
+mimir ||| (node_memory_MemTotal_bytes{instance="lgtm-stack-node"} - node_memory_MemAvailable_bytes{instance="lgtm-stack-node"}) / node_memory_MemTotal_bytes{instance="lgtm-stack-node"}
+mimir ||| node_memory_MemTotal_bytes{instance="lgtm-stack-node"} - node_memory_MemFree_bytes{instance="lgtm-stack-node"} - (node_memory_Cached_bytes{instance="lgtm-stack-node"} + node_memory_Buffers_bytes{instance="lgtm-stack-node"} + node_memory_SReclaimable_bytes{instance="lgtm-stack-node"})
+mimir ||| node_memory_Cached_bytes{instance="lgtm-stack-node"} + node_memory_Buffers_bytes{instance="lgtm-stack-node"} + node_memory_SReclaimable_bytes{instance="lgtm-stack-node"}
+mimir ||| node_memory_MemFree_bytes{instance="lgtm-stack-node"}
+mimir ||| node_memory_MemTotal_bytes{instance="lgtm-stack-node"}
