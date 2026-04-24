@@ -29,20 +29,20 @@ prometheus.relabel "container_local_transformer" {
   rule {
     source_labels = ["__name__"]
     action        = "keep"
-    regex =
-      "container_(" +
-        "cpu_usage_seconds_total|" +
-        "cpu_cfs_periods_total|" +
-        "cpu_cfs_throttled_periods_total|" +
-        "memory_usage_bytes|" +
-        "memory_working_set_bytes|" +
-        "network_receive_bytes_total|" +
-        "network_transmit_bytes_total|" +
-        "fs_usage_bytes|" +
-        "last_seen|" +
-        "oom_events_total" +
-      ")"
+    regex         = 
+      // CPU
+      "container_cpu_usage_seconds_total|" +
+      "container_cpu_cfs_throttled_periods_total|" +
+
+      // Memory
+      "container_memory_working_set_bytes|" +
+      "container_oom_events_total|" +
+
+      // Network
+      "container_network_receive_bytes_total|" +
+      "container_network_transmit_bytes_total"
   }
+
 
 
   // ---------------------------------------------------------------------------

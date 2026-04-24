@@ -75,6 +75,7 @@ prometheus.relabel "node_local_transformer" {
       // Disk & Filesystem
       "node_disk_read.*|" +
       "node_disk_write.*|" +
+      "node_disk_written.*|" +
       "node_disk_io_time.*|" +
       "node_filesystem_avail_bytes|" +
       "node_filesystem_files|" +
@@ -91,6 +92,7 @@ prometheus.relabel "node_local_transformer" {
       "node_network_transmit_drop_total|" +
       "node_network_transmit_errs_total"
   }
+
 
 
   // ---------------------------------------------------------------------------

@@ -10,12 +10,14 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - `grafana/provisioning/`: datasources e dashboards provisionados.
 - `examples/`: templates de agentes e cenários legados.
 
-## Documentação oficial do repositório
+## Documentação oficial do repositório (Governança)
 
-Cada arquivo abaixo é a fonte da verdade do seu próprio tema:
+> [!IMPORTANT]
+> **Regra de Governança (Single Source of Truth):** Cada arquivo `.md` neste repositório é a **única referência da verdade** sobre o seu respectivo tema. É terminantemente proibido duplicar informações técnicas (como sizing, comandos de backup ou configurações de rede) entre arquivos. Sempre referencie o documento original através de links.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): topologia, papéis de cada componente e fronteiras de rede.
 - [INFRASTRUCTURE.md](INFRASTRUCTURE.md): setup físico, disco e volumes.
+- [SIZING.md](SIZING.md): dimensionamento, projeção de custos e limites de hardware.
 - [BACKUP.md](BACKUP.md): backup, snapshot e disaster recovery.
 - [UPGRADE.md](UPGRADE.md): processo de upgrade e validações.
 - [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.

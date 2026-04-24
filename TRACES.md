@@ -30,10 +30,11 @@ Nós ativamos o padrão arquitetural Enterprise batizado de `Tail Sampling` dire
 
 Os thresholds ficam em `alloy-gateway/conf.d/00-core.alloy`.
 
-## Retenção
+## Retenção e Sizing
 
-O expurgo natural do Tempo é manipulado no banco central de retenções `.env` na chave associada `TEMPO_RETENTION` e declarada unicamente em horas (Ex: `336h`).
-Sempre consulte o painel para auditar o número de traces salvos, calculando um peso médio de ~`1,5 KB` de ocupação em disco virtual por span processado.
+A retenção é controlada pela variável `TEMPO_RETENTION` no `.env`. Para cálculos de impacto em disco e estratégia de economia via *Tail Sampling*, consulte o documento central:
+
+👉 **[SIZING.md](SIZING.md)**
 
 > **Requisito técnico:** no `tempo.yaml`, `block_retention` e `compaction_window` devem ficar dentro de `compactor.compaction`.
 > ```

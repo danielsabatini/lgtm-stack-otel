@@ -64,11 +64,11 @@ Todos os logs do host incluem os seguintes labels:
 | `cloud_region` | `CLOUD_REGION` env | `br-se1` |
 | `cloud_availability_zone` | `CLOUD_AVAILABILITY_ZONE` env | `a` |
 
-## Retenção
+## Retenção e Sizing
 
-Definido organicamente na chave `.env` global pela cláusula `LOKI_RETENTION`.
-*   Valor Padrão Original: **`30d`**
-*   Após a expiração, os _chunks_ são apagados assincronamente da pasta interna `/lgtm/loki`.
+A retenção é definida pela variável `LOKI_RETENTION` no arquivo `.env` (ex: `30d`). Para cálculos de impacto em disco e footprint por host, consulte o documento central:
+
+👉 **[SIZING.md](SIZING.md)**
 
 > **Requisito técnico:** quando `retention_enabled: true`, o Loki exige `delete_request_store: filesystem` no bloco `compactor` do `loki.yaml`.
 > ```
@@ -76,12 +76,11 @@ Definido organicamente na chave `.env` global pela cláusula `LOKI_RETENTION`.
 > ```
 > O `loki.yaml` desta stack já inclui essa configuração.
 
-## Estimativa de armazenamento
+## Estimativa de armazenamento (Sizing)
 
-A compressão típica que você experimentará será em torno de `10:1` (Sua aplicação gera 100GB de texto bruto HTTP 200/500, e o Loki formata isso comprimido usando apenas 10GB de seu HD). Isso sem contar o *Overhead* residual do Índice (WAL de 30% a 50%).
+Para cálculos detalhados de retenção e consumo de logs por host, consulte o documento central:
 
-Cálculo prático de longo prazo:
-`Disco Usado (GB) = [Sua App cospindo em GB/dia] × 0.1 × [Dias na var LOKI_RETENTION] × 1.5`
+👉 **[SIZING.md](SIZING.md)**
 
 Para topologia de ingestão e papel do Gateway, consulte [ARCHITECTURE.md](ARCHITECTURE.md).
 

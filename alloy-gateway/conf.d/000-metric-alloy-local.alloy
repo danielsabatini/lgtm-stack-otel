@@ -22,10 +22,12 @@ prometheus.relabel "alloy_gateway_transformer" {
     prometheus.remote_write.mimir.receiver,
   ]
 
-  // Keep only Alloy self metrics
+  // Keep only Alloy self metrics (Descomente apenas para Debug/Troubleshooting)
+  /*
   rule {
     source_labels = ["__name__"]
     regex         = "alloy_.+"
     action        = "keep"
   }
+  */
 }

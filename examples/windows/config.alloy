@@ -35,6 +35,15 @@ prometheus.relabel "alloy_labels" {
     target_label = "service_name"
     replacement  = "alloy"
   }
+
+  // Keep only Alloy self-metrics (Descomente apenas para Debug/Troubleshooting)
+  /*
+  rule {
+    source_labels = ["__name__"]
+    regex         = "alloy_.+"
+    action        = "keep"
+  }
+  */
 }
 
 
@@ -69,10 +78,43 @@ prometheus.relabel "windows_host_labels" {
   // -------------------------------------------------------------------------
   rule {
     source_labels = ["__name__"]
+    action        = "keep"
+    regex         = 
+      // Core & System
+      "windows_system_boot_time_timestamp|" +
+      "windows_os_info|" +
 
-    regex = "windows_(cpu_time_total|logical_disk_(free_bytes|read_bytes_total|reads_total|size_bytes|write_bytes_total|writes_total)|memory_(available_bytes|cache_bytes|physical_total_bytes)|net_(bytes_received_total|bytes_sent_total|packets_outbound_discarded_total|packets_outbound_errors_total|packets_received_discarded_total|packets_received_errors_total)|os_info|pagefile_limit_bytes|system_(boot_time_timestamp|processor_queue_length))"
+      // CPU & System
+      "windows_cpu_time_total|" +
+      "windows_system_boot_time_timestamp|" +
+      "windows_system_processor_queue_length|" +
 
-    action = "keep"
+      // Memory
+      "windows_memory_physical_total_bytes|" +
+      "windows_memory_available_bytes|" +
+      "windows_memory_cache_bytes|" +
+
+      // Pagefile
+      "windows_pagefile_limit_bytes|" +
+      "windows_pagefile_free_bytes|" +
+
+      // Disk & Filesystem
+      "windows_logical_disk_size_bytes|" +
+      "windows_logical_disk_free_bytes|" +
+      "windows_logical_disk_read_bytes_total|" +
+      "windows_logical_disk_reads_total|" +
+      "windows_logical_disk_write_bytes_total|" +
+      "windows_logical_disk_writes_total|" +
+
+      // Network
+      "windows_net_bytes_total|" +
+      "windows_net_bytes_received_total|" +
+      "windows_net_bytes_sent_total|" +
+      "windows_net_current_bandwidth_bytes|" +
+      "windows_net_packets_outbound_discarded_total|" +
+      "windows_net_packets_outbound_errors_total|" +
+      "windows_net_packets_received_discarded_total|" +
+      "windows_net_packets_received_errors_total"
   }
 
 

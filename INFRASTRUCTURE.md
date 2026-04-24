@@ -14,13 +14,9 @@ Para rodar esta stack, é necessário ter o Docker e o Docker Compose instalados
 
 ## Limites Físicos Sugeridos (Hardware Limiters)
 
-- **Padrão Gold:** Em produção (alta carga de APM), exija um host/VM com `8 Cores` e `32 GB RAM`.
-- A distribuição de uso de núcleo segue os limites definidos no `compose.yaml` e pode ser sobrescrita via `.env`:
-  - Loki e Mimir: ~2 vCPU / 6 GB a 8 GB RAM.
-  - Tempo: ~2 vCPU / 6 GB RAM.
-  - Alloy Gateway e Grafana: ~1 vCPU / 2 GB a 4 GB.
-  - Alloy Agent: ~0.5 vCPU / 1 GB.
-- A soma do worst-case retém até 4 GB livres para o OS (bash, sshd).
+Para os requisitos de CPU e RAM necessários para hospedar a Stack LGTM (Mimir, Loki, Tempo, Grafana, etc), consulte o documento central de capacidade:
+
+👉 **[SIZING.md](SIZING.md)**
 
 ---
 

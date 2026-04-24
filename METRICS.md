@@ -9,19 +9,15 @@ Este documento cobre somente a política de métricas da stack.
 
 ## Política de Coleta (Lean Agent Metrics)
 
-O _Node Exporter_ original trazido pelo módulo `prometheus.exporter.unix` injeta mais de 30 módulos inúteis do Kernel. Uma máquina pequena pode gerar **800 a 1400 séries ativas**. Num cluster, isso multiplica velozmente, explodindo a RAM do TSDB.
+Diferente do padrão de mercado que coleta centenas de métricas irrelevantes, nossa arquitetura utiliza uma política de **Explicit Whitelisting (Allowlist)** via `metric_relabel` com a ação `keep`.
 
-Por isso, na nossa arquitetura, utilizamos `set_collectors`. O agent entrega somente os sinais necessários:
-- `cpu` (Percentual de Uso / Saturation)
-- `meminfo` (Disponibilidade RAM)
-- `diskstats` (IOPS Rate e Saturation)
-- `filesystem` (Espaço em HD)
-- `netdev` (Banda in/out em eth0 e interfaces)
-- `loadavg` (Média de Carga)
-- `uname` (informações do kernel)
-- `os` (coletor habilitado no exporter; a seleção final de séries é definida no `prometheus.relabel`)
+O _Node Exporter_ original pode gerar até **1400 séries ativas**. Em nossa stack, filtramos agressivamente na origem para persistir apenas o que é visualizado nos Dashboards.
 
-A cardinalidade extra do Node Exporter nativo (Bateria, BTRFS, Wifi, Infiniband, Selinux state) é limada antes de bater na RAM. O resultado é a premissa de um Mimir _Lean_ operando com **30 a 50% de custo reduzido**.
+### Estratégia de Filtragem:
+- **Agente (Push):** O filtro ocorre no Alloy Agent antes de enviar o dado pela rede.
+- **Gateway (Pull Legado):** O filtro ocorre no Alloy Gateway assim que o dado é coletado do exporter remoto.
+
+O resultado é um Mimir _Lean_ operando com **80% a 90% de economia de disco** em comparação com coletas não filtradas.
 
 ## Labels
 
@@ -57,22 +53,11 @@ A retenção é definida dinamicamente. Os blocos persistidos obedecem à variá
 >   rule_path: /data/ruler-temp
 > ```
 
-## Dimensionamento
+## Dimensionamento (Sizing)
 
-Se precisar calcular o impacto futuro na instância lvm de `/lgtm/mimir`, a equação padrão de compressão é de `2 bytes/amostra`.
+Para cálculos de projeção de disco, cardinalidade real por host e cenários de exemplo, consulte o documento central de capacidade:
 
-*Tendo scrape interno em 60s:*
-`Custo (GB) = [séries ativas] × [dias de retenção] × 0.0000045 × 1.5`
-
-Para manter a saúde e não escalar o disco prematuramente, monitore a cardinalidade ativa via a API dedicada do Mimir. Como o Mimir não expõe porta no host, a consulta deve ser feita pela rede Docker `lgtm`:
-
-```bash
-docker run --rm --network lgtm curlimages/curl:latest -s \
-  "http://mimir:9009/api/v1/cardinality/active_series?selector={}" \
-  -H "X-Scope-OrgID: anonymous"
-```
-
-Para capacidade de disco e layout físico, consulte [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+👉 **[SIZING.md](SIZING.md)**
 
 ---
 🔙 Voltar: [README Principal](README.md)

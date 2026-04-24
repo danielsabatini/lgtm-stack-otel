@@ -592,6 +592,14 @@ New-NetFirewallRule -DisplayName "sql_exporter" -Direction Inbound `
 
 ---
 
+## Dimensionamento e Estudo de Capacidade (Sizing)
+
+Para cálculos de projeção de disco, cardinalidade real por host e cenários de exemplo, consulte o documento central de capacidade da stack:
+
+👉 **[SIZING.md](../../SIZING.md)**
+
+---
+
 ## Solução de problemas
 
 **Verificar conectividade antes de adicionar ao gateway**
