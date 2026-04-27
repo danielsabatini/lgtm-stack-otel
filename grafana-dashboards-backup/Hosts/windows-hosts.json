@@ -1786,6 +1786,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -1854,6 +1855,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",
@@ -1991,6 +1993,7 @@
             },
             "options": {
               "dedupStrategy": "none",
+              "detailsMode": "sidebar",
               "enableInfiniteScrolling": false,
               "enableLogDetails": true,
               "fontSize": "small",

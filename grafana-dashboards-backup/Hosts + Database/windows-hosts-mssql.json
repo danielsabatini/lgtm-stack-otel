@@ -2284,7 +2284,7 @@
               "textMode": "auto"
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -3728,7 +3728,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -3850,7 +3850,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4332,7 +4332,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4453,7 +4453,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4576,7 +4576,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4703,7 +4703,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4790,7 +4790,7 @@
               "wideLayout": true
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -4916,7 +4916,7 @@
               }
             }
           },
-          "version": "13.0.0"
+          "version": "13.0.1"
         }
       }
     },
@@ -5162,7 +5162,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "windows_pagefile_limit_bytes{instance=\"$instance\"} - windows_pagefile_limit_bytes{instance=\"$instance\"}",
+                      "expr": "windows_pagefile_limit_bytes{instance=\"$instance\"} - windows_pagefile_free_bytes{instance=\"$instance\"}",
                       "instant": false,
                       "legendFormat": "used",
                       "range": true
@@ -5300,30 +5300,6 @@
                       "value": {
                         "fixedColor": "green",
                         "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "__systemRef": "hideSeriesFrom",
-                  "matcher": {
-                    "id": "byNames",
-                    "options": {
-                      "mode": "exclude",
-                      "names": [
-                        "free"
-                      ],
-                      "prefix": "All except:",
-                      "readOnly": true
-                    }
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.hideFrom",
-                      "value": {
-                        "legend": false,
-                        "tooltip": true,
-                        "viz": true
                       }
                     }
                   ]
@@ -5742,22 +5718,6 @@
     "kind": "RowsLayout",
     "spec": {
       "rows": [
-        {
-          "kind": "RowsLayoutRow",
-          "spec": {
-            "collapse": false,
-            "layout": {
-              "kind": "AutoGridLayout",
-              "spec": {
-                "columnWidthMode": "standard",
-                "items": [],
-                "maxColumnCount": 3,
-                "rowHeightMode": "standard"
-              }
-            },
-            "title": "New row"
-          }
-        },
         {
           "kind": "RowsLayoutRow",
           "spec": {
@@ -6430,7 +6390,7 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-24h",
+    "from": "now-5m",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"

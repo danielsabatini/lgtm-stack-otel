@@ -2,13 +2,13 @@
 
 Nossa arquitetura prioriza resiliência física por meio da fragmentação de LVMs. Por se tratar de um ambiente que hospeda bases de dados de alta intensidade transacional em disco e retenções in-memory (RAM WAL), o backup comum baseado na "cópia de arquivos por script `.tar`" **é fortemente contraindicado**, gerando corrupção de TSDB quase imediata.
 
-Para infraestruturas alocadas em nuvem (AWS, GCP, Azure) ou virtualizadores on-premise (VMware, Proxmox), a nossa política Oficial de Restauração orbita sobre o **Snapshot Integral da Camada de Blocos**.
+Para infraestruturas alocadas no **Magalu Cloud (MGC)**, a nossa política Oficial de Restauração orbita sobre o **Snapshot Integral de Block Storage**.
 
 ---
 
-## 📸 Estratégia Principal: Cloud Block Snapshots (EBS/VMDK)
+## 📸 Estratégia Principal: Magalu Cloud Snapshots (Block Storage)
 
-Como todos os dados residem no disco `/docker` (data-root do Docker), você deve programar sua Cloud para tirar fotografias (*Snapshots*) desse único volume.
+Como todos os dados residem no disco `/docker` (Block Storage anexado), você deve programar o painel do **Magalu Cloud** para tirar fotografias (*Snapshots*) desse volume.
 
 ### 1. Parada Estrita (Quiescence) — *Recomendada para App-Consistent*
 
@@ -32,17 +32,14 @@ Pelo painel do seu provedor, solicite Snapshot do volume físico `/docker` atrel
 
 ### 3. Proteção do Arquivo de Configuração
 
-O arquivo `.env` contém credenciais de acesso ao Grafana e parâmetros críticos de retenção. **Nunca comite o `.env` em repositórios Git.** Armazene-o em um gerenciador de segredos:
+O arquivo `.env` contém credenciais de acesso ao Grafana e parâmetros críticos de retenção. **Nunca comite o `.env` em repositórios Git.** No **Magalu Cloud**, utilize ferramentas de gestão de segredos ou criptografia simétrica:
 
-- **AWS:** AWS Secrets Manager ou Systems Manager Parameter Store
-- **GCP:** Secret Manager
-- **Azure:** Key Vault
-- **On-premise:** HashiCorp Vault, Bitwarden Secrets, ou criptografia simétrica com `gpg`
+- **Recomendação:** Armazene em um cofre de senhas seguro ou utilize criptografia com `gpg` no próprio host.
 
 ```bash
 # Exemplo: backup criptografado do .env com GPG
 gpg --symmetric --cipher-algo AES256 .env
-# Armazene o .env.gpg no vault da equipe
+# Armazene o .env.gpg de forma segura
 ```
 
 ---
@@ -99,6 +96,50 @@ done
 docker compose up -d
 ```
 
+---
+
+## 🤖 Automação e Rotação (scripts/backup-rotation.sh)
+
+Para produção, não execute comandos manuais. Utilize o script de automação fornecido na pasta `scripts/`. Ele gerencia a parada, compressão e mantém apenas os últimos 7 dias de backup para evitar o esgotamento do disco.
+
+👉 **[Script de Automação](scripts/backup-rotation.sh)**
+
+```bash
+# Como agendar no Crontab (Todo dia às 03:00 AM)
+0 3 * * * /bin/bash /caminho/para/lgtm-stack/scripts/backup-rotation.sh >> /var/log/lgtm-backup.log 2>&1
+```
+
+---
+
+## ☁️ Backup Off-site (S3 / Rclone)
+
+Ter o backup no mesmo disco do servidor não protege contra falhas de hardware ou exclusão acidental da VM. Use o **Rclone** para enviar seus arquivos `.tar.gz` para um bucket S3, Google Drive ou Azure Blob.
+
+```bash
+# Exemplo de sincronização com S3 (após configurar o rclone)
+rclone sync /caminho/para/lgtm-stack/backup remote-s3:meu-bucket-backup/lgtm-stack --progress
+```
+
+---
+
+## 🔍 Verificação de Integridade (Sanity Check)
+
+Antes de confiar no seu backup, valide se os arquivos não estão corrompidos.
+
+### 1. Validar Banco do Grafana
+```bash
+sqlite3 backup/grafana-YYYYMMDD.db "PRAGMA integrity_check;"
+# Saída esperada: ok
+```
+
+### 2. Validar Estrutura de Chunks (Loki/Mimir)
+Tente listar o conteúdo de um dos arquivos comprimidos:
+```bash
+tar -tvf backup/lgtm-stack_loki-data-YYYYMMDD.tar.gz | head -n 10
+```
+
+---
+
 Restauração:
 ```bash
 docker compose down
@@ -128,8 +169,9 @@ Houve colapso do Servidor Primário ou você quer invocar um ambiente idêntico 
 
 ### Passo 1: Provisionamento
 
-1. Levante uma nova VM limpa no ambiente alvo (apenas o disco OS padrão).
-2. Restaure os 5 Snapshots criando Volumes Frescos e anexe os 5 discos à nova VM em ordem idêntica (`/dev/vdb` → `/dev/vdf`).
+1. Levante uma nova instância (VM) limpa no **Magalu Cloud** (apenas o disco de boot padrão).
+2. No painel MGC, crie um novo volume a partir do seu **Snapshot** mais recente.
+3. Anexe este volume à nova instância.
 
 ### Passo 2: Reconectar o disco restaurado
 

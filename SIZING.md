@@ -11,7 +11,7 @@ Após a implementação da política de **Explicit Whitelisting (keep)**, a card
 | **Linux Host** | ~40 a 60 | **77%** |
 | **Windows Host** | ~30 a 50 | **90%** |
 | **Windows + MSSQL** | ~45 a 65 | **92%** |
-| **Containers (cAdvisor)** | ~6 | **88%** |
+| **Containers (cAdvisor)** | ~8 | **84%** |
 
 ## 2. Consumo Estimado por Host
 
@@ -73,10 +73,13 @@ Foco em: Boot time, CPU Time, Physical Memory, Pagefile, Disk (Read/Write/Free) 
 ### MSSQL Server
 Foco em: Buffer Manager (Page Life Expectancy, Cache Hits), Database Stats (Log growths, Transactions), Locks (Deadlocks), Memory Manager e Wait Stats.
 
+### Containers (cAdvisor)
+Foco em: CPU usage, CPU periods/throttling, Memory working set, Memory usage (cache), OOM events e Network I/O.
+
 ## 3. Governança e Manutenção
 - **Novos Dashboards:** Devem ser acompanhados da atualização das listas de `keep` nos arquivos `.alloy`.
 - **Auto-Monitoramento:** Métricas `alloy_.*` disponíveis para debug, porém silenciadas por padrão para economia de disco.
 
 ---
 **Documento validado por:** Antigravity (Coding Assistant)  
-**Versão:** 1.1 (Lean Architecture)
+**Versão:** 1.2 (Lean Architecture - Updated Metrics)

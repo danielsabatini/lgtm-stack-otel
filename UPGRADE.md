@@ -159,4 +159,41 @@ Se você ainda opera Loki 2.x e planeja migrar:
 | `overrides.metrics_generator_processors` movido | Config inválida | Use `overrides.defaults.metrics_generator.processors` |
 
 ---
+
+## 🎖️ Matriz de Compatibilidade (Versões Gold)
+
+As versões abaixo foram testadas exaustivamente neste repositório e são consideradas o "Baseline Estável".
+
+| Componente | Versão (Stable) | Data do Teste | Nota |
+|---|---|---|---|
+| **Grafana** | `13.0.1` | 25/04/2026 | UI e Provisioning OK |
+| **Alloy** | `v1.16.0` | 25/04/2026 | Estabilidade de memory usage OK |
+| **Loki** | `3.7.1` | 25/04/2026 | Bloom filters habilitados OK |
+| **Mimir** | `3.0.6` | 25/04/2026 | Ingestão Lean OK |
+| **Tempo** | `2.10.5` | 25/04/2026 | Tail Sampling OK |
+
+---
+
+## 🆘 Procedimento de Emergência (Rollback)
+
+Se após o upgrade o serviço entrar em `CrashLoopBackOff` ou os logs indicarem corrupção de índice:
+
+1. **Pare tudo imediatamente:** `docker compose down`
+2. **Reverta a versão no `.env`:** Altere a variável para a versão estável anterior.
+3. **Limpe o cache local do Alloy (se necessário):** `docker volume rm lgtm-stack_alloy-agent-data` (isso força uma nova descoberta sem lixo antigo).
+4. **Suba novamente:** `docker compose up -d`
+5. **Restaure o Snapshot:** Se o rollback de imagem não resolver (devido a migração de schema agressiva), siga o [BACKUP.md](BACKUP.md) para restaurar o snapshot de disco feito antes do upgrade.
+
+---
+
+## ✅ Checklist de Validação (O Teste de 5 Minutos)
+
+Sempre realize estes testes após um upgrade:
+
+- [ ] **Ingestão de Métricas:** Explore → Mimir → Query: `up` (todos devem estar 1).
+- [ ] **Ingestão de Logs:** Explore → Loki → `{container="alloy-gateway"}` (veja se novos logs aparecem).
+- [ ] **Leitura de Histórico:** Busque uma métrica de 24h atrás. Se o índice quebrou, o histórico estará vazio ou dará erro de query.
+- [ ] **Healthcheck da UI:** Acesse `http://localhost:12345` e valide se todos os componentes do Alloy estão "Healthy".
+
+---
 🔙 Voltar: [README Principal](README.md)

@@ -5800,9 +5800,7 @@
         "allowCustomValue": true,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "definition": "label_values(container_last_seen{instance=\"lgtm-stack-container\"},container)",
         "hide": "dontHide",

@@ -32,10 +32,12 @@ prometheus.relabel "container_local_transformer" {
     regex         = 
       // CPU
       "container_cpu_usage_seconds_total|" +
+      "container_cpu_cfs_periods_total|" +
       "container_cpu_cfs_throttled_periods_total|" +
 
       // Memory
       "container_memory_working_set_bytes|" +
+      "container_memory_usage_bytes|" +
       "container_oom_events_total|" +
 
       // Network

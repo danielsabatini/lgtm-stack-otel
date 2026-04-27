@@ -23,6 +23,10 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.
 - [LOGS.md](LOGS.md): política de logs, labels e retenção no Loki.
 - [TRACES.md](TRACES.md): ingestão OTLP e política de traces no Tempo.
+- [ALERTS.md](ALERTS.md): guia de criação e baseline de alertas essenciais.
+- [CHANGELOG.md](CHANGELOG.md): histórico de versões e mudanças.
+- [CONTRIBUTING.md](CONTRIBUTING.md): guia de contribuição e governança técnica.
+- [ROADMAP.md](ROADMAP.md): visão de futuro e próximas funcionalidades.
 
 ## Início rápido
 
