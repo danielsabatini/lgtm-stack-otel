@@ -22,6 +22,7 @@
   ],
   "cursorSync": "Off",
   "editable": true,
+  "uid": "linux-hosts",
   "elements": {
     "panel-1": {
       "kind": "Panel",
@@ -4619,10 +4620,10 @@
       "spec": {
         "allowCustomValue": false,
         "current": {
-          "text": "lgtm-stack-node",
-          "value": "lgtm-stack-node"
+          "text": "",
+          "value": ""
         },
-        "definition": "label_values(node_uname_info,instance)",
+        "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
         "hide": "dontHide",
         "includeAll": false,
         "label": "Instance",
@@ -4637,7 +4638,7 @@
           "kind": "DataQuery",
           "spec": {
             "qryType": 1,
-            "query": "label_values(node_uname_info,instance)",
+            "query": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "version": "v0"

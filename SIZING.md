@@ -83,3 +83,6 @@ Foco em: CPU usage, CPU periods/throttling, Memory working set, Memory usage (ca
 ---
 **Documento validado por:** Antigravity (Coding Assistant)  
 **Versão:** 1.2 (Lean Architecture - Updated Metrics)
+
+---
+🔙 Voltar: [README Principal](README.md)

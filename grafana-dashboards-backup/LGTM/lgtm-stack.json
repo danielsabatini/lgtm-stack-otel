@@ -23,6 +23,7 @@
   "cursorSync": "Off",
   "description": "Node monitoring combined with container metrics from cAdvisor",
   "editable": true,
+  "uid": "lgtm-stack",
   "elements": {
     "panel-1": {
       "kind": "Panel",

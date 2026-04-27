@@ -111,7 +111,7 @@ docker compose logs -f loki mimir tempo grafana
 Healthchecks esperados:
 
 > **Verificação Avançada Distroless:**
-> Para validar os Healthchecks dos backends que não possuem shell interno exposto, siga rigidamente as orientações e instruções em rede interna documentadas na matriz funcional: **[ARCHITECTURE.md (Verificação de Saúde)](ARCHITECTURE.md#imagens-distroless-backends)**.
+> Para validar os Healthchecks dos backends que não possuem shell interno exposto, siga rigidamente as orientações e instruções em rede interna documentadas na matriz funcional: **[ARCHITECTURE.md (Verificação de Saúde)](ARCHITECTURE.md#backends-distroless)**.
 
 > **Frontend e Coletor (Grafana e Alloy Gateway):** Acessíveis diretamente pelo host:
 

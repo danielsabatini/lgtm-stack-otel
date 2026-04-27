@@ -22,6 +22,7 @@
   ],
   "cursorSync": "Off",
   "editable": true,
+  "uid": "windows-hosts",
   "elements": {
     "panel-1": {
       "kind": "Panel",

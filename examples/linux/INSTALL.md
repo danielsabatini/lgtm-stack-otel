@@ -78,7 +78,9 @@ echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stab
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y alloy=1.15.1-1
+
+# Consulte a versão homologada (variável GRAFANA_ALLOY_VERSION) no arquivo .env.example do repositório
+sudo apt-get install -y alloy=<VERSAO>-1
 ```
 
 > Para consultar as versões disponíveis: `apt-cache madison alloy`
@@ -109,14 +111,15 @@ EOF
 #### Instalar a versão compatível com a stack
 
 ```bash
-sudo dnf install -y alloy-1.15.1-1
+# Consulte a versão homologada (variável GRAFANA_ALLOY_VERSION) no arquivo .env.example do repositório
+sudo dnf install -y alloy-<VERSAO>-1
 ```
 
 > Para consultar as versões disponíveis: `dnf list --showduplicates alloy`
 
 ---
 
-> **Versão de referência:** `v1.15.1` — mesma utilizada pelo `alloy-agent` na stack.
+> **Versão de referência:** A versão exata instalada neste servidor será sempre sincronizada com a variável `GRAFANA_ALLOY_VERSION` do arquivo `.env.example` clonado na sua máquina.
 
 ---
 
@@ -150,35 +153,8 @@ Copie-o para o diretório do Alloy:
 sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
 ```
 
-### O que o `config.alloy` coleta
-
-| Seção | O que coleta |
-|-------|-------------|
-| Alloy | Métricas de saúde do próprio agente |
-| Linux host | Métricas do host (CPU, memória, disco, rede) |
-| Segurança | Logs do SSH (autenticações, sessões) |
-| Sistema | Logs do kernel (erros, warnings) |
-| Aplicação | Logs do cron (falhas de jobs) |
-| Plataforma | Logs do systemd (falhas de units) |
-
-### Labels disponíveis para filtragem no Grafana
-
-O `config.alloy` extrai automaticamente informações do sistema como labels, permitindo filtrar métricas no Grafana:
-
-| Label | Fonte | Valor de exemplo | Uso |
-|-------|-------|------------------|-----|
-| `os` | `node_uname_info` | `"Linux"` | Filtrar por sistema operacional |
-| `architecture` | `node_uname_info` | `"x86_64"`, `"aarch64"` | Filtrar por arquitetura (32-bit, 64-bit, ARM) |
-| `kernel_release` | `node_uname_info` | `"6.12.74+deb13+1-amd64"` | Filtrar por versão específica do kernel |
-| `instance` | config.alloy | `"srv-producao-01"` | Identificar o servidor (configurado no deploy) |
-| `environment` | config.alloy | `"prd"`, `"stg"`, `"dev"` | Filtrar por ambiente |
-| `cloud_provider` | config.alloy | `"aws"`, `"gcp"`, `"azure"`, `"mgc"` | Filtrar por provedor de nuvem |
-| `cloud_region` | config.alloy | `"br-se1"`, `"us-east-1"` | Filtrar por região |
-| `cloud_availability_zone` | config.alloy | `"a"`, `"b"`, `"c"` | Filtrar por zona de disponibilidade |
-
-Os labels `os`, `architecture` e `kernel_release` são extraídos automaticamente da métrica
-`node_uname_info` coletada pelo node_exporter. Os demais labels são configuráveis no
-`config.alloy` durante o deployment.
+> **O que é coletado e quais são os Labels?**
+> Para detalhes arquiteturais sobre quais métricas/logs são coletados pelo Alloy neste host e como configurá-los via labels (como `environment` ou `cloud_provider`), consulte a documentação oficial da stack em **[METRICS.md](../../METRICS.md)** e **[LOGS.md](../../LOGS.md)**.
 
 ---
 

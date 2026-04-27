@@ -8,7 +8,7 @@
 // 'mssql' habilitado (porta padrão 9182).
 //
 // Pré-requisito: habilitar o coletor mssql no windows_exporter:
-//   --collectors.enabled=cpu,logical_disk,memory,net,os,system,mssql
+//   --collectors.enabled=cpu,logical_disk,memory,net,os,system,mssql,pagefile
 //
 // Para coleta completa (Windows + MSSQL via Alloy agent), use examples/mssql/config.alloy.
 // =============================================================================

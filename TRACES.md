@@ -4,16 +4,13 @@ Este documento cobre somente a política de traces da stack.
 
 ## Endpoints
 
-Você programará suas aplicações para enviar spans via OpenTelemetry apontando o exporter para o IP do seu servidor nas portas:
-
-*   **gRPC (Otimizado):** Porta `4317` (Exposta pelo Alloy Gateway)
-*   **HTTP (Protobuf/JSON):** Porta `4318` (Exposta pelo Alloy Gateway)
+Você programará suas aplicações para enviar spans via OpenTelemetry apontando o exporter para as portas OTLP gRPC ou HTTP do Alloy Gateway do seu servidor (consulte as portas exatas na [Topologia de Rede em ARCHITECTURE.md](ARCHITECTURE.md)).
 
 ### Modelo de Código Recomendado:
 *(Exemplo genérico para linguagens com SDKs Oficiais do OTel)*
 ```go
 exporter, _ := otlptracegrpc.New(ctx,
-    otlptracegrpc.WithEndpoint("SEU_HOST:4317"),
+    otlptracegrpc.WithEndpoint("SEU_HOST:<PORTA_GRPC>"),
     otlptracegrpc.WithInsecure(), // Ou gere um certificado SSL via reverse proxy
 )
 ```

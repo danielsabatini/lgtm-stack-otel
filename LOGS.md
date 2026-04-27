@@ -4,8 +4,10 @@ Este documento cobre somente a política de logs da stack.
 
 ## Endpoints de Ingestão
 
-- **Porta 9998:** Endpoint para recebimento de logs via Loki `push` API.
-- **Portas 4317/4318:** Recebimento de logs via OTLP.
+A LGTM Stack possui endpoints específicos nativos (recebimento via Loki `push` API) e endpoints unificados (OTLP) expostos pelo Alloy Gateway. 
+
+Para consultar as portas exatas e o roteamento de rede, consulte a matriz oficial em:
+👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
 
 As entradas de log são:
 
@@ -48,6 +50,20 @@ Cada arquivo segue o padrão de 4 componentes encadeados via `forward_to`:
 | WRITE | `loki.write` | envia para o alloy-gateway |
 
 A convenção de nomes dos componentes é `<serviço>_<passo>`, ex: `ssh_transform`, `ssh_normalize`, `ssh_gateway`.
+
+## Coleta do Windows (Event Log)
+
+No Windows, a coleta não utiliza arquivos de texto e sim a API nativa do **Windows Event Log**. O Alloy Agent lê de múltiplos canais para garantir cobertura integral da saúde do host e dos serviços:
+
+| Categoria | Fonte (Event Log Channel) | O que coleta |
+|---|---|---|
+| `security` | `Security` | Eventos de logon (ex: 4624, 4625), privilégios e alterações de conta. Requer Audit Policy ativa no host. |
+| `system` | `System` | Eventos de hardware, drivers e erros do Sistema Operacional. |
+| `application` | `Microsoft-Windows-TaskScheduler/Operational` | Falhas do Agendador de Tarefas do Windows (Scheduled Tasks). |
+| `platform` | `System` (Provider: `Service Control Manager`) | Falhas na inicialização e quedas de serviços do Windows (SCM). |
+| `database` | `Application` (Provider: `MSSQLSERVER`) | Erros transacionais ou de engine emitidos pelo SQL Server (Severity ≥ 17). |
+
+A lógica de coleta no Windows também utiliza pipeline em etapas (SOURCE → TRANSFORM → NORMALIZE → WRITE), incluindo consultas `xpath_query` restritas aos níveis de Erro e Aviso para otimizar o envio de dados.
 
 ## Labels padrão
 

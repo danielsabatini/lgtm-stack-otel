@@ -43,8 +43,8 @@ Procedimento baseado na [documentação oficial](https://grafana.com/docs/alloy/
 ```powershell
 # PowerShell como Administrador
 
-# Baixar o instalador MSI (ajuste a versão se necessário)
-$version = "1.15.1"
+# Consulte a versão homologada (variável GRAFANA_ALLOY_VERSION) no arquivo .env.example do repositório
+$version = "<VERSAO>"
 $url = "https://github.com/grafana/alloy/releases/download/v$version/alloy-installer-windows-amd64.msi"
 Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\alloy-installer.msi"
 
@@ -57,7 +57,7 @@ O instalador:
 - Instala os binários em `C:\Program Files\GrafanaLabs\Alloy\`
 - Cria o diretório de dados em `C:\ProgramData\GrafanaLabs\Alloy\`
 
-> **Versão de referência:** `v1.15.1` — mesma utilizada pelo `alloy-agent` na stack.
+> **Versão de referência:** A versão exata instalada neste servidor será sempre sincronizada com a variável `GRAFANA_ALLOY_VERSION` do arquivo `.env.example` clonado na sua máquina.
 
 ---
 
@@ -95,47 +95,8 @@ Para usar um nome diferente, substitua `sys.env("COMPUTERNAME")` por uma string 
 $env:COMPUTERNAME
 ```
 
-### O que o `config.alloy` coleta
-
-| Seção | O que coleta |
-|-------|-------------|
-| Alloy | Métricas de saúde do próprio agente |
-| Windows host | Métricas do host (CPU, memória, disco, rede, arquivo de paginação) |
-| SQL Server — métricas | `windows_mssql_*` via coletor WMI (accessmethods, bufman, databases, genstats, locks, memmgr, sqlstats, transactions, waitstats) |
-| Segurança | Eventos de logon, autenticação e alterações de conta |
-| Sistema | Eventos de hardware, drivers e erros do SO |
-| Aplicação | Falhas do Agendador de Tarefas |
-| Plataforma | Falhas de serviços Windows (SCM) |
-| SQL Server — logs | Erros e alertas do engine MSSQL (Application Event Log, Provider `MSSQLSERVER`) |
-
-> **Coletor `mssql`:** as métricas do SQL Server são coletadas via WMI pelo
-> `windows_exporter` embutido no Alloy — não requer credenciais de banco de dados
-> nem conexão ODBC. O SQL Server precisa estar em execução localmente no mesmo servidor.
->
-> **Coletor `pagefile`:** expõe métricas de uso do arquivo de paginação
-> (`windows_pagefile_current_bytes`, `windows_pagefile_free_bytes`,
-> `windows_pagefile_limit_bytes`).
->
-> **Filtro de volumes:** o relabel mantém apenas volumes com letra de unidade
-> (`C:`, `D:`, etc.), descartando entradas do tipo `HarddiskVolume*` geradas
-> internamente pelo Windows.
-
-### Labels disponíveis para filtragem no Grafana
-
-| Label | Fonte | Valor de exemplo | Uso |
-|-------|-------|------------------|-----|
-| `os` | `windows_os_info` | `"windows"` | Filtrar por sistema operacional |
-| `os_product` | `windows_os_info` | `"Windows Server 2022 Datacenter"` | Filtrar por versão/edição do Windows |
-| `os_version` | `windows_os_info` | `"10.0.20348"` | Filtrar por versão do SO |
-| `mssql_instance` | `windows_mssql_*` | `"MSSQLSERVER"`, `"SQLEXPRESS"` | Filtrar por instância SQL Server |
-| `instance` | config.alloy | `"win-srv-01"` | Identificar o servidor |
-| `environment` | config.alloy | `"prd"`, `"stg"`, `"dev"` | Filtrar por ambiente |
-| `cloud_provider` | config.alloy | `"aws"`, `"gcp"`, `"azure"`, `"mgc"` | Filtrar por provedor de nuvem |
-| `cloud_region` | config.alloy | `"br-se1"`, `"us-east-1"` | Filtrar por região |
-| `cloud_availability_zone` | config.alloy | `"a"`, `"b"`, `"c"` | Filtrar por zona de disponibilidade |
-
-Os labels `os`, `os_product`, `os_version` e `mssql_instance` são extraídos
-automaticamente das métricas do windows_exporter e não requerem configuração adicional.
+> **O que é coletado e quais são os Labels?**
+> Para detalhes arquiteturais sobre quais métricas/logs são coletados pelo Alloy neste host e como configurá-los via labels (como `environment` ou `cloud_provider`), consulte a documentação oficial da stack em **[METRICS.md](../../METRICS.md)** e **[LOGS.md](../../LOGS.md)**.
 
 ---
 

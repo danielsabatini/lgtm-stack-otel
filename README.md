@@ -23,7 +23,6 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.
 - [LOGS.md](LOGS.md): política de logs, labels e retenção no Loki.
 - [TRACES.md](TRACES.md): ingestão OTLP e política de traces no Tempo.
-- [ALERTS.md](ALERTS.md): guia de criação e baseline de alertas essenciais.
 - [CHANGELOG.md](CHANGELOG.md): histórico de versões e mudanças.
 - [CONTRIBUTING.md](CONTRIBUTING.md): guia de contribuição e governança técnica.
 - [ROADMAP.md](ROADMAP.md): visão de futuro e próximas funcionalidades.
@@ -44,31 +43,11 @@ docker compose up -d
 
 Para ambiente produtivo com disco dedicado, siga [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
-## Lifecycle
+## Endpoints e Topologia de Rede
 
-```bash
-# Subir
-docker compose up -d
+Para verificar quais portas a stack expõe nativamente, a responsabilidade de cada componente e como o isolamento de rede foi desenhado (ex: o motivo do Loki, Mimir e Tempo não exporem portas no host), consulte o documento oficial de topologia:
 
-# Parar (mantém dados)
-docker compose down
-
-# Reset completo (apaga todos os dados)
-docker compose down -v
-```
-
-## Endpoints expostos
-
-| Porta | Serviço | Descrição |
-|---|---|---|
-| `3000` | **Grafana** | Visualização de dashboards e dados. |
-| `12345` | **Alloy Gateway UI** | Status do pipeline de ingestão. |
-| `9999` | **Métricas (Gateway)** | Ingestão via Prometheus `remote_write`. |
-| `9998` | **Logs (Gateway)** | Ingestão via Loki `push` API. |
-| `4317` | **OTLP gRPC** | Ingestão de traces, métricas e logs via gRPC. |
-| `4318` | **OTLP HTTP** | Ingestão de traces, métricas e logs via HTTP. |
-
-Loki, Mimir e Tempo não expõem portas no host por design. A justificativa detalhada está em [ARCHITECTURE.md](ARCHITECTURE.md).
+👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
 
 
 ## Instalação em servidores remotos
@@ -86,9 +65,20 @@ cd lgtm-stack/examples/<plataforma>
 |------------|------|
 | Linux (Debian/Ubuntu) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
 | Windows | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
-| MySQL | em breve |
-| PostgreSQL | em breve |
+| MySQL | em breve (Roadmap) |
+| PostgreSQL | em breve (Roadmap) |
 | Windows + SQL Server | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
+| Coleta via Pull (Exporters Legados) | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
 
 > Para atualizar as configurações em servidores já instalados: `git pull` no
 > diretório clonado e reinicie o serviço Alloy.
+
+---
+
+## Termo de Responsabilidade e Suporte MGC
+
+**Não Homologação:** Esta solução (*LGTM Stack*) é uma arquitetura de referência baseada em projetos *Open Source* de terceiros (Grafana, Alloy, Loki, Mimir, Tempo) rodando no espaço do usuário (via Docker). Ela **não é** um produto gerenciado (PaaS) ou homologado nativamente pela Magalu Cloud para ambientes de produção de alta criticidade.
+
+**Limites do Suporte MGC:** O suporte oficial da Magalu Cloud se limita exclusivamente à infraestrutura subjacente: disponibilidade das instâncias (MGC Compute), conectividade de rede (VPC/Internet) e o funcionamento das APIs de infraestrutura (como Block Storage ou Object Storage). O suporte da MGC **não cobre** a depuração de problemas relacionados ao processo dos containers da stack (ex: travamentos por OOM Kill, lentidão em queries, alto consumo de CPU pelo Grafana Alloy, ou erros de permissão interna). Esses são considerados problemas de nível de aplicação, de responsabilidade do cliente.
+
+**Responsabilidade do Cliente:** Ao optar por esta arquitetura, o cliente assume o papel de administrador e mantenedor da solução. O cliente tem total responsabilidade pelo monitoramento da saúde dos containers, pelo dimensionamento correto da infraestrutura (sizing), pelas rotinas de backup, gerenciamento de credenciais (arquivo `.env`) e pelos impactos de performance e estabilidade gerados pelo volume de telemetria ingerido.

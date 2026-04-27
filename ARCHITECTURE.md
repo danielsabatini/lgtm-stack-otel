@@ -78,4 +78,21 @@ Validação operacional e checks de upgrade ficam em [UPGRADE.md](UPGRADE.md).
 - Alloy Agent só fala com o Gateway pela rede interna.
 
 ---
+
+## Requisitos de Firewall (Security Group)
+
+Para que a stack receba dados de agentes remotos e permita o acesso aos painéis, é fundamental liberar as portas corretas no firewall do host (ex: `ufw`, `iptables`) e no provedor de nuvem (AWS SG, MGC SG, Azure NSG, etc):
+
+| Porta | Protocolo | Origem Recomendada | Descrição |
+|---|---|---|---|
+| `3000` | TCP | Pública (Internet / VPN) | Acesso à interface web do **Grafana**. |
+| `12345` | TCP | VPN / Admin | Acesso à interface de debug do **Alloy Gateway**. |
+| `4317` | TCP | Interna (VPC / VPN) | Ingestão OTLP (gRPC) - **Alloy Gateway**. |
+| `4318` | TCP | Interna (VPC / VPN) | Ingestão OTLP (HTTP) - **Alloy Gateway**. |
+| `9998` | TCP | Interna (VPC / VPN) | Ingestão Logs (Loki Push API) - **Alloy Gateway**. |
+| `9999` | TCP | Interna (VPC / VPN) | Ingestão Métricas (Prometheus) - **Alloy Gateway**. |
+
+> ⚠️ **Aviso de Segurança:** Nunca exponha as portas de ingestão (`4317`, `4318`, `9998`, `9999`) publicamente para a internet sem proteção. O envio de dados por servidores remotos para a sua stack deve trafegar preferencialmente através de redes seguras (VPC Peering, Wireguard, OpenVPN, Tailscale, etc).
+
+---
 🔙 Voltar: [README Principal](README.md)

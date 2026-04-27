@@ -4,8 +4,10 @@ Este documento cobre somente a política de métricas da stack.
 
 ## Endpoints de Ingestão
 
-- **Porta 9999:** Endpoint para recebimento de métricas via Prometheus `remote_write`.
-- **Portas 4317/4318:** Recebimento de métricas via OTLP.
+A LGTM Stack possui endpoints específicos nativos (recebimento via Prometheus `remote_write`) e endpoints unificados (OTLP) expostos pelo Alloy Gateway. 
+
+Para consultar as portas exatas e o roteamento de rede, consulte a matriz oficial em:
+👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
 
 ## Política de Coleta (Lean Agent Metrics)
 
