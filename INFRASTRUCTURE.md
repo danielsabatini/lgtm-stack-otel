@@ -8,6 +8,7 @@ Para rodar esta stack, é necessário ter o Docker e o Docker Compose instalados
 
 - **Docker Engine:** Versão 20.10.x ou superior.
 - **Docker Compose:** Versão V2 (comando `docker compose` nativo).
+- **LVM2:** Necessário para o gerenciamento de volumes (especialmente em setups com disco dedicado).
 - **Guia de Instalação Oficial:** [Docker Engine Installation Guide](https://docs.docker.com/engine/install/)
 
 ---
@@ -49,18 +50,35 @@ Todos os dados da stack vivem em **volumes Docker nomeados**, gerenciados pelo d
 
 ### 1. Montar o disco dedicado em `/docker`
 
+#### 1.1 Instalar o LVM
+
 ```bash
-# Exemplo com LVM (disco vdb)
+# Debian / Ubuntu
+sudo apt update && sudo apt install lvm2 -y
+
+# RedHat / CentOS / Rocky / Fedora
+sudo dnf install lvm2 -y
+```
+
+#### 1.2 Configurar o Volume
+
+```bash
+# Identificar o nome do disco (ex: vdb, sdb, nvme1n1)
+lsblk
+
+# Exemplo com LVM (usando o disco vdb identificado no passo anterior)
 sudo pvcreate /dev/vdb
-sudo vgcreate vg_docker /dev/vdb
-sudo lvcreate -l 100%FREE -n lv_docker vg_docker
-sudo mkfs.ext4 /dev/vg_docker/lv_docker
+sudo vgcreate vgdocker /dev/vdb
+sudo lvcreate -l 100%FREE -n lvdocker vgdocker
+sudo mkfs.ext4 /dev/vgdocker/lvdocker
 
 sudo mkdir -p /docker
 
 # Adicionar ao fstab para montagem automática
-echo '/dev/mapper/vg_docker-lv_docker  /docker  ext4  defaults  0 2' | sudo tee -a /etc/fstab
+echo '/dev/mapper/vgdocker-lvdocker  /docker  ext4  defaults  0 2' | sudo tee -a /etc/fstab
 sudo mount -a
+sudo systemctl daemon-reload
+sudo mount
 ```
 
 ### 2. Prevenção de Auto-Start (Mask)
@@ -73,13 +91,10 @@ sudo systemctl mask docker.service docker.socket
 
 ### 3. Instalação do Docker Engine
 
-Instale os pacotes oficiais. O serviço tentará subir e falhará (devido ao mask), o que é o comportamento desejado neste momento:
+Consulte o [Guia de Instalação Oficial](https://docs.docker.com/engine/install/) para as instruções detalhadas de cada distribuição.
 
-```bash
-# Exemplo para Debian/Ubuntu
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-```
+Após a instalação, é altamente recomendável seguir os [Passos de Pós-Instalação no Linux](https://docs.docker.com/engine/install/linux-postinstall/) (como a configuração de permissões para rodar o Docker sem `sudo`).
+
 
 ### 4. Configuração do `data-root` e Ativação
 
@@ -98,13 +113,32 @@ sudo systemctl unmask docker.service docker.socket
 sudo systemctl enable --now docker
 ```
 
-> Verifique com `docker info | grep "Docker Root Dir"` — deve retornar `/docker`.
+> Verifique com `sudo docker info | grep "Docker Root Dir"` — deve retornar `/docker`.
 
 ### 5. Subir a stack
 
+#### 5.1 Obter os arquivos
+
+**Opção A: Via Git Clone**
 ```bash
 git clone <seu-repo> lgtm-stack
 cd lgtm-stack
+```
+
+**Opção B: Via SCP (Upload de ZIP)**
+Utilize esta opção se o host não tiver acesso ao Git:
+```bash
+# 1. Na sua máquina local (faça o upload):
+scp lgtm-stack-main.zip usuario@ip-do-host:/home/usuario/
+
+# 2. No host remoto (descompacte):
+unzip lgtm-stack-main.zip
+cd lgtm-stack-main
+```
+
+#### 5.2 Inicialização
+
+```bash
 cp .env.example .env
 # Edite o .env conforme o ambiente
 docker compose up -d

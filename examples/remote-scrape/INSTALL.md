@@ -27,11 +27,12 @@ O Gateway faz o scrape, filtra o "lixo" via relabeling e encaminha os dados higi
    * `pull-legacy-linux.alloy`
    * `pull-legacy-windows.alloy`
    * `pull-legacy-windows-mssql.alloy`
+   * `pull-linux-pgsql-hosts.alloy`
 
 
 2. Copie para o diretório de configuração do Gateway:
    ```bash
-   cp examples/remote-scrape/pull-legacy-<tipo>.alloy alloy-gateway/conf.d/
+   cp examples/remote-scrape/<nome-do-template>.alloy alloy-gateway/conf.d/
    ```
 
 3. Edite o arquivo em `alloy-gateway/conf.d/` para incluir o IP e nome do seu servidor na lista `targets`.
@@ -73,6 +74,13 @@ collectors:
 ```bash
 ./node_exporter
 ```
+
+### Linux + DBaaS PostgreSQL (node_exporter + postgres_exporter)
+Para ambientes rodando bancos de dados PostgreSQL junto com o sistema operacional Linux, utilizando o template `pull-linux-dbaas-pgsql-hosts.alloy`, garanta que os seguintes endereços de acesso às métricas estejam expostos e corretamente mapeados (tipicamente via um proxy/ingress na porta `8080`):
+- **Node Exporter (SO):** `http://<IP-REMOTO>:8080/node/metrics`
+- **Postgres Exporter:** `http://<IP-REMOTO>:8080/postgres/metrics`
+
+*Nota: Se as portas ou paths originais forem utilizados nativamente (como 9100 e 9187 com o path `/metrics`), lembre-se de ajustar as configurações de `__address__` e `__metrics_path__` no próprio arquivo `.alloy` de acordo.*
 
 ---
 

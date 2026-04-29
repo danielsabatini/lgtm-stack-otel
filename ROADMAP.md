@@ -5,7 +5,8 @@ Este documento esboça a visão de futuro para a LGTM Stack e as funcionalidades
 ## Curto Prazo (Q2 2026)
 - [ ] **Implantação de Tracing Distribuído:** Guia e exemplos para instrumentação de microsserviços (OTel) conectados ao Tempo.
 - [ ] **Continuous Profiling (Pyroscope):** Integração do Grafana Pyroscope na stack para análise de performance de CPU/Memória a nível de linha de código.
-- [ ] **Integração MySQL/PostgreSQL:** Criação de templates Alloy e dashboards provisionados para bancos de dados Open Source.
+- [x] **Integração PostgreSQL:** Criação de template Alloy (`pull-linux-dbaas-pgsql-hosts.alloy`) para configuração de scrape remoto DBaaS e filtros granulares de métricas.
+- [ ] **Integração MySQL:** Criação de templates Alloy e dashboards provisionados para banco de dados Open Source.
 - [ ] **Monitoramento Avançado de SQL Server:** Expansão das métricas de Wait Stats e Deadlocks no Windows Exporter.
 - [ ] **Relatórios de Saúde:** Dashboard de auto-monitoramento da stack (saúde do Mimir/Loki/Tempo).
 
