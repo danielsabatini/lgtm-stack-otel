@@ -3549,7 +3549,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -3654,7 +3656,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -3692,7 +3696,7 @@
                   "mode": "percentage",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "red",
                       "value": 0
                     }
                   ]
@@ -3773,7 +3777,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -3839,21 +3845,6 @@
               "overrides": [
                 {
                   "matcher": {
-                    "id": "byName",
-                    "options": "available (/mnt/database-data)"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "green",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
                     "id": "byFrameRefID",
                     "options": "B"
                   },
@@ -3878,15 +3869,7 @@
                     {
                       "id": "custom.fillOpacity",
                       "value": 0
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "total (/mnt/database-data)"
-                  },
-                  "properties": [
+                    },
                     {
                       "id": "color",
                       "value": {
@@ -3898,44 +3881,14 @@
                 },
                 {
                   "matcher": {
-                    "id": "byName",
-                    "options": "WAL"
+                    "id": "byFrameRefID",
+                    "options": "A"
                   },
                   "properties": [
                     {
                       "id": "color",
                       "value": {
                         "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "used"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "limit (/mnt/database-data)"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "orange",
                         "mode": "fixed"
                       }
                     }
@@ -4029,7 +3982,7 @@
                     "group": "__expr__",
                     "kind": "DataQuery",
                     "spec": {
-                      "expression": "$B / $A",
+                      "expression": "( $A - $B ) / $A",
                       "type": "math"
                     },
                     "version": "v0"
@@ -4038,14 +3991,16 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
         "description": "Percentual do espaço utilizado no filesystem dos bancos de dados.",
         "id": 46,
         "links": [],
-        "title": "FS Data Utilization (%)",
+        "title": "FS DB Utilization (%)",
         "vizConfig": {
           "group": "gauge",
           "kind": "VizConfig",
@@ -4056,6 +4011,8 @@
                   "mode": "thresholds"
                 },
                 "decimals": 2,
+                "max": 1,
+                "min": 0,
                 "thresholds": {
                   "mode": "percentage",
                   "steps": [
@@ -4077,7 +4034,7 @@
                     }
                   ]
                 },
-                "unit": "percent"
+                "unit": "percentunit"
               },
               "overrides": []
             },
@@ -4164,9 +4121,33 @@
                   },
                   "refId": "B"
                 }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "mimir"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "builder",
+                      "expr": "sum(pg_stat_activity_count{instance=\"$instance\", datname=~\"$datname\"})",
+                      "instant": false,
+                      "legendFormat": "total",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "C"
+                }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -4230,21 +4211,6 @@
                 }
               },
               "overrides": [
-                {
-                  "matcher": {
-                    "id": "byFrameRefID",
-                    "options": "A"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
                 {
                   "matcher": {
                     "id": "byFrameRefID",
@@ -4328,13 +4294,34 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_database_size_bytes{instance=\"$instance\", datname!~\"postgres|template0|template1\"}",
+                      "expr": "pg_database_size_bytes{instance=\"$instance\", datname!~\"template0|template1|postgres\"}",
                       "legendFormat": "used ({{datname}})",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "mimir"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "builder",
+                      "expr": "sum(pg_database_size_bytes{instance=\"$instance\", datname=~\"$datname\"})",
+                      "legendFormat": "total",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "B"
                 }
               },
               {
@@ -4356,18 +4343,20 @@
                     },
                     "version": "v0"
                   },
-                  "refId": "B"
+                  "refId": "C"
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
         "description": "",
         "id": 48,
         "links": [],
-        "title": "Database Usage (bytes)",
+        "title": "Database Size (bytes)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -4426,23 +4415,8 @@
               "overrides": [
                 {
                   "matcher": {
-                    "id": "byName",
-                    "options": "available (/mnt/database-data)"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "green",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
                     "id": "byFrameRefID",
-                    "options": "B"
+                    "options": "C"
                   },
                   "properties": [
                     {
@@ -4451,6 +4425,10 @@
                         "group": "A",
                         "mode": "none"
                       }
+                    },
+                    {
+                      "id": "custom.fillOpacity",
+                      "value": 0
                     },
                     {
                       "id": "custom.lineStyle",
@@ -4462,48 +4440,6 @@
                         "fill": "dash"
                       }
                     },
-                    {
-                      "id": "custom.fillOpacity",
-                      "value": 0
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "total (/mnt/database-data)"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "orange",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "WAL"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "limit (/mnt/database-data)"
-                  },
-                  "properties": [
                     {
                       "id": "color",
                       "value": {
@@ -4559,7 +4495,7 @@
                     "spec": {
                       "editorMode": "builder",
                       "expr": "sum(rate(pg_stat_database_xact_commit{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "commit",
+                      "legendFormat": "commit (total)",
                       "range": true
                     },
                     "version": "v0"
@@ -4580,7 +4516,7 @@
                     "spec": {
                       "editorMode": "builder",
                       "expr": "sum(rate(pg_stat_database_xact_rollback{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "rollback",
+                      "legendFormat": "rollback (total)",
                       "range": true
                     },
                     "version": "v0"
@@ -4589,14 +4525,16 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
         "description": "",
         "id": 49,
         "links": [],
-        "title": "Databases Transactions (ops/sec)",
+        "title": "Transactions Total (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -4655,7 +4593,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rollback"
+                    "options": "rollback (total)",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -4670,7 +4609,8 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "commit"
+                    "options": "commit (total)",
+                    "scope": "series"
                   },
                   "properties": [
                     {
@@ -4840,7 +4780,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (pg_stat_database_numbackends{instance=\"$instance\", datname!~\"template1|template0\"})",
+                      "expr": "sum by(datname) (pg_stat_database_numbackends{instance=\"$instance\", datname!~\"template1|template0|postgres\"})",
                       "legendFormat": "{{datname}}",
                       "range": true
                     },
@@ -4850,7 +4790,9 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
@@ -4958,7 +4900,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_returned{instance=\"$instance\", datname!~\"template1|template0\"}[$__rate_interval])",
+                      "expr": "rate(pg_stat_database_tup_returned{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "read ({{datname}})",
                       "range": true
@@ -4976,7 +4918,7 @@
         "description": "",
         "id": 51,
         "links": [],
-        "title": "Read (ops/sec)",
+        "title": "Read by Database (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5078,9 +5020,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_stat_database_temp_bytes{instance=\"$instance\", datname!~\"postgres|template0|template1\"}",
+                      "expr": "rate(pg_stat_database_temp_bytes{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "temp ({{datname}})",
+                      "legendFormat": "{{datname}}",
                       "range": true
                     },
                     "version": "v0"
@@ -5100,9 +5042,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "node_filesystem_size_bytes{instance=\"$instance\", mountpoint=\"/mnt/database-data\"}",
+                      "expr": "sum(rate(pg_stat_database_temp_bytes{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "instant": false,
-                      "legendFormat": "limit ({{mountpoint}})",
+                      "legendFormat": "total",
                       "range": true
                     },
                     "version": "v0"
@@ -5111,14 +5053,16 @@
                 }
               }
             ],
-            "queryOptions": {},
+            "queryOptions": {
+              "interval": "30s"
+            },
             "transformations": []
           }
         },
         "description": "",
         "id": 52,
         "links": [],
-        "title": "Temp Usage (bytes)",
+        "title": "Temp Creation by Bytes (bytes/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5172,61 +5116,9 @@
                     }
                   ]
                 },
-                "unit": "bytes"
+                "unit": "binBps"
               },
-              "overrides": [
-                {
-                  "matcher": {
-                    "id": "byFrameRefID",
-                    "options": "A"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "blue",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byFrameRefID",
-                    "options": "B"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "orange",
-                        "mode": "fixed"
-                      }
-                    },
-                    {
-                      "id": "custom.lineStyle",
-                      "value": {
-                        "dash": [
-                          10,
-                          10
-                        ],
-                        "fill": "dash"
-                      }
-                    },
-                    {
-                      "id": "custom.stacking",
-                      "value": {
-                        "group": "A",
-                        "mode": "none"
-                      }
-                    },
-                    {
-                      "id": "custom.fillOpacity",
-                      "value": 0
-                    }
-                  ]
-                }
-              ]
+              "overrides": []
             },
             "options": {
               "annotations": {
@@ -5313,7 +5205,7 @@
         "description": "Taxa de leitura e escrita em bytes/s por dispositivo de bloco físico. Valores próximos ao limite de throughput do disco (ex: 200 MB/s em HDD) indicam saturação de I/O.",
         "id": 53,
         "links": [],
-        "title": "DB Disk - Throughput (bytes/s)",
+        "title": "DB Disk - Throughput (bytes/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5398,10 +5290,7 @@
               },
               "legend": {
                 "calcs": [
-                  "lastNotNull",
-                  "max",
-                  "min",
-                  "mean"
+                  "lastNotNull"
                 ],
                 "displayMode": "table",
                 "placement": "bottom",
@@ -5619,7 +5508,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_fetched{instance=\"$instance\", datname!~\"template1|template0\"}[$__rate_interval])",
+                      "expr": "rate(pg_stat_database_tup_fetched{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "fetch ({{datname}})",
                       "range": true
@@ -5637,7 +5526,7 @@
         "description": "",
         "id": 55,
         "links": [],
-        "title": "Fetch (ops/sec)",
+        "title": "Fetch by Database (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5739,7 +5628,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_inserted{instance=\"$instance\", datname!~\"template1|template0\"}[$__rate_interval])",
+                      "expr": "rate(pg_stat_database_tup_inserted{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "inserted ({{datname}})",
                       "range": true
@@ -5761,7 +5650,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_updated{instance=\"$instance\", datname!~\"template1|template0\"}[$__rate_interval])",
+                      "expr": "rate(pg_stat_database_tup_updated{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "updated ({{datname}})",
                       "range": true
@@ -5783,7 +5672,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_deleted{instance=\"$instance\", datname!~\"template1|template0\"}[$__rate_interval])",
+                      "expr": "rate(pg_stat_database_tup_deleted{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "deleted ({{datname}})",
                       "range": true
@@ -5801,7 +5690,7 @@
         "description": "",
         "id": 56,
         "links": [],
-        "title": "Write (ops/sec)",
+        "title": "Write by Database (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5878,6 +5767,296 @@
                 "mode": "multi",
                 "sort": "desc"
               }
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-57": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "mimir"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "builder",
+                      "expr": "sum by(datname) (rate(pg_stat_database_deadlocks{instance=\"$instance\", datname!~\"template0|template1\"}[$__rate_interval]))",
+                      "legendFormat": "__auto",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "30s"
+            },
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 57,
+        "links": [],
+        "title": "Database Deadlocks (ops/sec)",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "showValues": false,
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "decimals": 0,
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "ops"
+              },
+              "overrides": []
+            },
+            "options": {
+              "annotations": {
+                "clustering": -1,
+                "multiLane": false
+              },
+              "legend": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-58": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "mimir"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "builder",
+                      "expr": "pg_static{instance=\"$instance\"}",
+                      "legendFormat": "__auto",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "labelsToFields",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              }
+            ]
+          }
+        },
+        "description": "",
+        "id": 58,
+        "links": [],
+        "title": "PostgreSQL Version",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "percentChangeColorMode": "standard",
+              "reduceOptions": {
+                "calcs": [],
+                "fields": "/^version$/",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-59": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "mimir"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "",
+                      "instant": false,
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 59,
+        "links": [],
+        "title": "Query Latency",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "percentChangeColorMode": "standard",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
             }
           },
           "version": "13.0.1"
@@ -6919,6 +7098,15 @@
                                   "name": "panel-46"
                                 }
                               }
+                            },
+                            {
+                              "kind": "AutoGridLayoutItem",
+                              "spec": {
+                                "element": {
+                                  "kind": "ElementReference",
+                                  "name": "panel-59"
+                                }
+                              }
                             }
                           ],
                           "maxColumnCount": 3,
@@ -6959,15 +7147,6 @@
                               "spec": {
                                 "element": {
                                   "kind": "ElementReference",
-                                  "name": "panel-52"
-                                }
-                              }
-                            },
-                            {
-                              "kind": "AutoGridLayoutItem",
-                              "spec": {
-                                "element": {
-                                  "kind": "ElementReference",
                                   "name": "panel-47"
                                 }
                               }
@@ -6994,6 +7173,15 @@
                                 "element": {
                                   "kind": "ElementReference",
                                   "name": "panel-49"
+                                }
+                              }
+                            },
+                            {
+                              "kind": "AutoGridLayoutItem",
+                              "spec": {
+                                "element": {
+                                  "kind": "ElementReference",
+                                  "name": "panel-52"
                                 }
                               }
                             },
@@ -7066,7 +7254,17 @@
                         "kind": "AutoGridLayout",
                         "spec": {
                           "columnWidthMode": "standard",
-                          "items": [],
+                          "items": [
+                            {
+                              "kind": "AutoGridLayoutItem",
+                              "spec": {
+                                "element": {
+                                  "kind": "ElementReference",
+                                  "name": "panel-57"
+                                }
+                              }
+                            }
+                          ],
                           "maxColumnCount": 3,
                           "rowHeightMode": "standard"
                         }
@@ -7081,7 +7279,17 @@
                         "kind": "AutoGridLayout",
                         "spec": {
                           "columnWidthMode": "standard",
-                          "items": [],
+                          "items": [
+                            {
+                              "kind": "AutoGridLayoutItem",
+                              "spec": {
+                                "element": {
+                                  "kind": "ElementReference",
+                                  "name": "panel-58"
+                                }
+                              }
+                            }
+                          ],
                           "maxColumnCount": 3,
                           "rowHeightMode": "standard"
                         }
@@ -7136,7 +7344,7 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-5m",
+    "from": "now-24h",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"
@@ -7183,9 +7391,7 @@
       "spec": {
         "allowCustomValue": false,
         "current": {
-          "text": [
-            "All"
-          ],
+          "text": "All",
           "value": [
             "$__all"
           ]
