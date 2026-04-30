@@ -22,7 +22,6 @@
   ],
   "cursorSync": "Off",
   "editable": true,
-  "uid": "linux-hosts",
   "elements": {
     "panel-1": {
       "kind": "Panel",
@@ -3519,7 +3518,7 @@
         "description": "Percentual do espaço utilizado no filesystem raiz (/). Thresholds indicam proximidade com esgotamento; ao atingir 100 % o sistema pode travar processos de escrita.",
         "id": 5,
         "links": [],
-        "title": "FS Root Utilization (%)",
+        "title": "Root FS Utilization (%)",
         "vizConfig": {
           "group": "gauge",
           "kind": "VizConfig",
@@ -4608,7 +4607,7 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-12h",
+    "from": "now-5m",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"
@@ -4620,8 +4619,8 @@
       "spec": {
         "allowCustomValue": false,
         "current": {
-          "text": "",
-          "value": ""
+          "text": "srv-mysql-01",
+          "value": "srv-mysql-01"
         },
         "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
         "hide": "dontHide",

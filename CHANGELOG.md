@@ -5,6 +5,22 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2026-04-30
+### Corrigido
+- Dashboard `linux-mysql-hosts.json`: removido label `datname` inexistente nas métricas do `mysqld_exporter`, corrigindo painéis sem dados em Activity, Capacity e Diagnostics.
+- Dashboard `linux-mysql-hosts.json`: removidos painéis `Connections by Database` (id=50) e `Query Latency` (id=59) com expressões semanticamente incorretas.
+- Dashboard `linux-mysql-hosts.json` e `linux-pgsql-hosts.json`: removido `panel-59` (Query Latency) sem implementação válida.
+- Dashboards MySQL e PostgreSQL: variável `$instance` corrigida para usar `mysql_up` e `pg_up` respectivamente (em vez de `node_uname_info`).
+
+### Adicionado
+- Provisioning automático dos dashboards `linux-mysql-hosts.json` e `linux-pgsql-hosts.json` via `grafana/provisioning/dashboards/`.
+- `DASHBOARDS.md` reescrito documentando o processo de conversão do formato de export do Grafana 13 para provisioning (envelope `apiVersion/kind/metadata/spec`).
+- `SIZING.md` v1.3: auditoria real de cardinalidade via Mimir — MySQL (302 séries), PostgreSQL (186 séries), com tabela comparativa e fórmulas de projeção.
+
+### Alterado
+- `ARCHITECTURE.md`: portas do Alloy Gateway detalhadas (4317 gRPC, 4318 HTTP, 9998 Loki, 9999 Prometheus remote_write).
+- `SIZING.md`: números baseados em dados reais do Mimir, substituindo estimativas anteriores. Alerta sobre `mysql_global_status_commands_total` (168 séries = 82% do total MySQL).
+
 ## [0.0.5] - 2026-04-30
 ### Adicionado
 - Nova configuração de coleta remota (Pull) para monitoramento de **DBaaS MySQL** (`pull-linux-dbaas-mysql-hosts.alloy`).

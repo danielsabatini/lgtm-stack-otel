@@ -22,7 +22,6 @@
   ],
   "cursorSync": "Off",
   "editable": true,
-  "uid": "windows-hosts",
   "elements": {
     "panel-1": {
       "kind": "Panel",
@@ -2788,7 +2787,7 @@
         "description": "Percentual de ocupação do volume principal (C: ou /).",
         "id": 5,
         "links": [],
-        "title": "FS Root Utilization (%)",
+        "title": "Root FS Utilization (%)",
         "vizConfig": {
           "group": "gauge",
           "kind": "VizConfig",
@@ -3736,8 +3735,8 @@
       "spec": {
         "allowCustomValue": true,
         "current": {
-          "text": "WIN-TKO550EQ0OP",
-          "value": "WIN-TKO550EQ0OP"
+          "text": "",
+          "value": ""
         },
         "definition": "label_values(windows_os_info,instance)",
         "hide": "dontHide",

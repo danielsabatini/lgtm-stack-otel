@@ -14,7 +14,7 @@ Decidimos separar os pilares do Grafana Alloy:
 
   [Alloy Agent] ──────(Push HTTP Interno)────────▶  [Alloy Gateway] ◀──(OTLP Logs/Metrics/Traces)
   - Modo Root                                       - Modo Unprivileged
-  - Lê CPU/Memória                                  - Escuta Portas 4317 / 4318
+  - Lê CPU/Memória                                  - Escuta Portas 4317 (OTLP gRPC) / 4318 (OTLP HTTP) / 9998 (Loki Push API) / 9999 (Prometheus remote_write)
   - Lê Journald                                     - Repassa para Backends
         │                                                   │
         ▽ (Isolado da Rede Web)                             ▽

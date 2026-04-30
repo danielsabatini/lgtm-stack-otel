@@ -3568,6 +3568,9 @@
                 "color": {
                   "mode": "thresholds"
                 },
+                "decimals": 2,
+                "max": 1,
+                "min": 0,
                 "thresholds": {
                   "mode": "percentage",
                   "steps": [
@@ -4000,7 +4003,7 @@
         "description": "Percentual do espaço utilizado no filesystem dos bancos de dados.",
         "id": 46,
         "links": [],
-        "title": "FS DB Utilization (%)",
+        "title": "DB FS Utilization (%)",
         "vizConfig": {
           "group": "gauge",
           "kind": "VizConfig",
@@ -4090,9 +4093,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (mysql_global_status_threads_connected{instance=\"$instance\", datname!~\"mysql|template0|template1\"})",
+                      "expr": "mysql_global_status_threads_connected{instance=\"$instance\"}",
                       "instant": false,
-                      "legendFormat": "{{datname}}",
+                      "legendFormat": "used",
                       "range": true
                     },
                     "version": "v0"
@@ -4120,28 +4123,6 @@
                     "version": "v0"
                   },
                   "refId": "B"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(mysql_global_status_threads_connected{instance=\"$instance\", datname=~\"$datname\"})",
-                      "instant": false,
-                      "legendFormat": "total",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "C"
                 }
               }
             ],
@@ -4214,15 +4195,34 @@
                 {
                   "matcher": {
                     "id": "byFrameRefID",
-                    "options": "B"
+                    "options": "A"
                   },
                   "properties": [
                     {
                       "id": "color",
                       "value": {
-                        "fixedColor": "orange",
+                        "fixedColor": "blue",
                         "mode": "fixed"
                       }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byFrameRefID",
+                    "options": "B"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.stacking",
+                      "value": {
+                        "group": "A",
+                        "mode": "none"
+                      }
+                    },
+                    {
+                      "id": "custom.fillOpacity",
+                      "value": 0
                     },
                     {
                       "id": "custom.lineStyle",
@@ -4235,14 +4235,10 @@
                       }
                     },
                     {
-                      "id": "custom.fillOpacity",
-                      "value": 0
-                    },
-                    {
-                      "id": "custom.stacking",
+                      "id": "color",
                       "value": {
-                        "group": "A",
-                        "mode": "none"
+                        "fixedColor": "orange",
+                        "mode": "fixed"
                       }
                     }
                   ]
@@ -4294,34 +4290,13 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "mysql_global_status_innodb_buffer_pool_bytes_data{instance=\"$instance\", datname!~\"template0|template1|mysql\"}",
-                      "legendFormat": "used ({{datname}})",
+                      "expr": "mysql_global_status_innodb_buffer_pool_bytes_data{instance=\"$instance\"}",
+                      "legendFormat": "used",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(mysql_global_status_innodb_buffer_pool_bytes_data{instance=\"$instance\", datname=~\"$datname\"})",
-                      "legendFormat": "total",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "B"
                 }
               },
               {
@@ -4343,7 +4318,7 @@
                     },
                     "version": "v0"
                   },
-                  "refId": "C"
+                  "refId": "B"
                 }
               }
             ],
@@ -4416,7 +4391,22 @@
                 {
                   "matcher": {
                     "id": "byFrameRefID",
-                    "options": "C"
+                    "options": "A"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byFrameRefID",
+                    "options": "B"
                   },
                   "properties": [
                     {
@@ -4494,34 +4484,13 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "commit (total)",
+                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\"}[$__rate_interval]))",
+                      "legendFormat": "transactions",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "rollback (total)",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "B"
                 }
               }
             ],
@@ -4593,30 +4562,14 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rollback (total)",
+                    "options": "transactions",
                     "scope": "series"
                   },
                   "properties": [
                     {
                       "id": "color",
                       "value": {
-                        "fixedColor": "red",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "commit (total)",
-                    "scope": "series"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "green",
+                        "fixedColor": "blue",
                         "mode": "fixed"
                       }
                     }
@@ -4761,126 +4714,6 @@
         }
       }
     },
-    "panel-50": {
-      "kind": "Panel",
-      "spec": {
-        "data": {
-          "kind": "QueryGroup",
-          "spec": {
-            "queries": [
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum by(datname) (mysql_global_status_threads_connected{instance=\"$instance\", datname!~\"template1|template0|mysql\"})",
-                      "legendFormat": "{{datname}}",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "A"
-                }
-              }
-            ],
-            "queryOptions": {
-              "interval": "30s"
-            },
-            "transformations": []
-          }
-        },
-        "description": "",
-        "id": 50,
-        "links": [],
-        "title": "Connections by Database",
-        "vizConfig": {
-          "group": "timeseries",
-          "kind": "VizConfig",
-          "spec": {
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "palette-classic"
-                },
-                "custom": {
-                  "axisBorderShow": false,
-                  "axisCenteredZero": false,
-                  "axisColorMode": "text",
-                  "axisLabel": "",
-                  "axisPlacement": "auto",
-                  "barAlignment": 0,
-                  "barWidthFactor": 0.6,
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "gradientMode": "none",
-                  "hideFrom": {
-                    "legend": false,
-                    "tooltip": false,
-                    "viz": false
-                  },
-                  "insertNulls": false,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "pointSize": 5,
-                  "scaleDistribution": {
-                    "type": "linear"
-                  },
-                  "showPoints": "never",
-                  "showValues": false,
-                  "spanNulls": true,
-                  "stacking": {
-                    "group": "A",
-                    "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                    "mode": "off"
-                  }
-                },
-                "decimals": 0,
-                "min": 0,
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": 0
-                    }
-                  ]
-                }
-              },
-              "overrides": []
-            },
-            "options": {
-              "annotations": {
-                "clustering": -1,
-                "multiLane": false
-              },
-              "legend": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "displayMode": "table",
-                "placement": "bottom",
-                "showLegend": true
-              },
-              "tooltip": {
-                "hideZeros": false,
-                "mode": "multi",
-                "sort": "desc"
-              }
-            }
-          },
-          "version": "13.0.1"
-        }
-      }
-    },
     "panel-51": {
       "kind": "Panel",
       "spec": {
@@ -4900,9 +4733,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "read ({{datname}})",
+                      "legendFormat": "read",
                       "range": true
                     },
                     "version": "v0"
@@ -4920,7 +4753,7 @@
         "description": "",
         "id": 51,
         "links": [],
-        "title": "Read by Database (ops/sec)",
+        "title": "Read (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -4977,7 +4810,23 @@
                 },
                 "unit": "ops"
               },
-              "overrides": []
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byFrameRefID",
+                    "options": "A"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
             },
             "options": {
               "annotations": {
@@ -5022,36 +4871,14 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_created_tmp_disk_tables{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_created_tmp_disk_tables{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "{{datname}}",
+                      "legendFormat": "created",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_created_tmp_disk_tables{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "instant": false,
-                      "legendFormat": "total",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "B"
                 }
               }
             ],
@@ -5102,12 +4929,13 @@
                   "spanNulls": true,
                   "stacking": {
                     "group": "A",
-                    "mode": "normal"
+                    "mode": "none"
                   },
                   "thresholdsStyle": {
                     "mode": "off"
                   }
                 },
+                "decimals": 2,
                 "min": 0,
                 "thresholds": {
                   "mode": "absolute",
@@ -5120,7 +4948,23 @@
                 },
                 "unit": "binBps"
               },
-              "overrides": []
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byFrameRefID",
+                    "options": "A"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
             },
             "options": {
               "annotations": {
@@ -5510,9 +5354,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "fetch ({{datname}})",
+                      "legendFormat": "fetch",
                       "range": true
                     },
                     "version": "v0"
@@ -5530,7 +5374,7 @@
         "description": "",
         "id": 55,
         "links": [],
-        "title": "Fetch by Database (ops/sec)",
+        "title": "Fetch (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5587,7 +5431,23 @@
                 },
                 "unit": "ops"
               },
-              "overrides": []
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byFrameRefID",
+                    "options": "A"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
             },
             "options": {
               "annotations": {
@@ -5632,9 +5492,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_innodb_system_rows_inserted{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_inserted{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "inserted ({{datname}})",
+                      "legendFormat": "inserted",
                       "range": true
                     },
                     "version": "v0"
@@ -5654,9 +5514,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_innodb_system_rows_updated{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_updated{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "updated ({{datname}})",
+                      "legendFormat": "updated",
                       "range": true
                     },
                     "version": "v0"
@@ -5676,9 +5536,9 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(mysql_global_status_innodb_system_rows_deleted{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_deleted{instance=\"$instance\"}[$__rate_interval])",
                       "instant": false,
-                      "legendFormat": "deleted ({{datname}})",
+                      "legendFormat": "deleted",
                       "range": true
                     },
                     "version": "v0"
@@ -5696,7 +5556,7 @@
         "description": "",
         "id": 56,
         "links": [],
-        "title": "Write by Database (ops/sec)",
+        "title": "Write (ops/sec)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -5798,8 +5658,8 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (rate(mysql_global_status_innodb_row_lock_waits{instance=\"$instance\", datname!~\"template0|template1\"}[$__rate_interval]))",
-                      "legendFormat": "__auto",
+                      "expr": "sum(rate(mysql_global_status_innodb_row_lock_waits{instance=\"$instance\"}[$__rate_interval]))",
+                      "legendFormat": "locks",
                       "range": true
                     },
                     "version": "v0"
@@ -5874,7 +5734,23 @@
                 },
                 "unit": "ops"
               },
-              "overrides": []
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "locks"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "red",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
             },
             "options": {
               "annotations": {
@@ -5919,162 +5795,13 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "mysql_up{instance=\"$instance\"}",
+                      "expr": "mysql_global_status_uptime{instance=\"$instance\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
-                }
-              }
-            ],
-            "queryOptions": {
-              "interval": "30s"
-            },
-            "transformations": [
-              {
-                "group": "labelsToFields",
-                "kind": "Transformation",
-                "spec": {
-                  "options": {}
-                }
-              }
-            ]
-          }
-        },
-        "description": "",
-        "id": 58,
-        "links": [],
-        "title": "MySQL Version",
-        "vizConfig": {
-          "group": "stat",
-          "kind": "VizConfig",
-          "spec": {
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "text",
-                      "value": 0
-                    }
-                  ]
-                }
-              },
-              "overrides": []
-            },
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "auto",
-              "orientation": "auto",
-              "percentChangeColorMode": "standard",
-              "reduceOptions": {
-                "calcs": [],
-                "fields": "/^version$/",
-                "values": false
-              },
-              "showPercentChange": false,
-              "textMode": "auto",
-              "wideLayout": true
-            }
-          },
-          "version": "13.0.1"
-        }
-      }
-    },
-    "panel-59": {
-      "kind": "Panel",
-      "spec": {
-        "data": {
-          "kind": "QueryGroup",
-          "spec": {
-            "queries": [
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": true,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_uptime{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "__auto",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "A"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": true,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "__auto",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "B"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": true,
-                  "query": {
-                    "datasource": {
-                      "name": "mimir"
-                    },
-                    "group": "prometheus",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "editorMode": "builder",
-                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
-                      "legendFormat": "__auto",
-                      "range": true
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "C"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "datasource": {
-                      "name": "__expr__"
-                    },
-                    "group": "__expr__",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "expression": "$A / ($B + $C)",
-                      "type": "math"
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "D"
                 }
               }
             ],
@@ -6085,9 +5812,9 @@
           }
         },
         "description": "",
-        "id": 59,
+        "id": 58,
         "links": [],
-        "title": "Query Latency (sec)",
+        "title": "MySQL Uptime",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -6097,20 +5824,13 @@
                 "color": {
                   "mode": "thresholds"
                 },
+                "min": 0,
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "text",
                       "value": 0
-                    },
-                    {
-                      "color": "orange",
-                      "value": 0.01
-                    },
-                    {
-                      "color": "red",
-                      "value": 0.05
                     }
                   ]
                 },
@@ -6125,9 +5845,7 @@
               "orientation": "auto",
               "percentChangeColorMode": "standard",
               "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
+                "calcs": [],
                 "fields": "",
                 "values": false
               },
@@ -7175,15 +6893,6 @@
                                   "name": "panel-46"
                                 }
                               }
-                            },
-                            {
-                              "kind": "AutoGridLayoutItem",
-                              "spec": {
-                                "element": {
-                                  "kind": "ElementReference",
-                                  "name": "panel-59"
-                                }
-                              }
                             }
                           ],
                           "maxColumnCount": 3,
@@ -7259,15 +6968,6 @@
                                 "element": {
                                   "kind": "ElementReference",
                                   "name": "panel-52"
-                                }
-                              }
-                            },
-                            {
-                              "kind": "AutoGridLayoutItem",
-                              "spec": {
-                                "element": {
-                                  "kind": "ElementReference",
-                                  "name": "panel-50"
                                 }
                               }
                             },
@@ -7436,7 +7136,7 @@
           "text": "srv-mysql-01",
           "value": "srv-mysql-01"
         },
-        "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
+        "definition": "label_values(mysql_up{instance!=\"lgtm-stack-node\"},instance)",
         "hide": "dontHide",
         "includeAll": false,
         "label": "Instance",
@@ -7451,44 +7151,7 @@
           "kind": "DataQuery",
           "spec": {
             "qryType": 1,
-            "query": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "version": "v0"
-        },
-        "refresh": "onDashboardLoad",
-        "regex": "",
-        "regexApplyTo": "value",
-        "skipUrlSync": false,
-        "sort": "disabled"
-      }
-    },
-    {
-      "kind": "QueryVariable",
-      "spec": {
-        "allowCustomValue": false,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "definition": "label_values(datname)",
-        "hide": "dontHide",
-        "includeAll": true,
-        "label": "Database",
-        "multi": true,
-        "name": "datname",
-        "options": [],
-        "query": {
-          "datasource": {
-            "name": "mimir"
-          },
-          "group": "prometheus",
-          "kind": "DataQuery",
-          "spec": {
-            "qryType": 1,
-            "query": "label_values(datname)",
+            "query": "label_values(mysql_up{instance!=\"lgtm-stack-node\"},instance)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "version": "v0"

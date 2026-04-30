@@ -22,7 +22,6 @@
   ],
   "cursorSync": "Off",
   "editable": true,
-  "uid": "windows-hosts-mssql",
   "elements": {
     "panel-1": {
       "kind": "Panel",
@@ -2414,7 +2413,7 @@
         "description": "Percentual do espaço utilizado no filesystem raiz (/). Thresholds indicam proximidade com esgotamento; ao atingir 100 % o sistema pode travar processos de escrita.",
         "id": 5,
         "links": [],
-        "title": "FS Root Utilization (%)",
+        "title": "Root FS Utilization (%)",
         "vizConfig": {
           "group": "gauge",
           "kind": "VizConfig",
@@ -6403,8 +6402,8 @@
       "spec": {
         "allowCustomValue": false,
         "current": {
-          "text": "WIN-TKO550EQ0OP",
-          "value": "WIN-TKO550EQ0OP"
+          "text": "",
+          "value": ""
         },
         "definition": "label_values(windows_os_info{os=\"windows\"},instance)",
         "hide": "dontHide",
@@ -6439,9 +6438,7 @@
         "allowCustomValue": false,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "definition": "label_values(windows_mssql_instance_info,mssql_instance)",
         "hide": "dontHide",
@@ -6476,9 +6473,7 @@
         "allowCustomValue": false,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "definition": "label_values(windows_mssql_databases_transactions{database!~\"master|model|model_msdb|model_replicatedmaster|msdb|mssqlsystemresource|tempdb\"},database)",
         "hide": "dontHide",
