@@ -6,26 +6,37 @@ Guia para gerar carga realista em PostgreSQL ou MySQL e visualizar as métricas 
 
 ## 📋 Visão Geral
 
-Ambos os scripts executam **1 Bilhão de operações** distribuídas em:
-- **100 ciclos** (lotes)
-- **10 milhões** de inserts por ciclo
-- **Updates** em massa em todos os registros
-- **Deletes** seletivos (1/3 dos registros)
-- **Truncate** para limpeza de disco
+**Versão 2 - Otimizada para 20GB de disco**
+
+Ambos os scripts executam **~30 milhões de operações** em 3 fases:
+
+### Fases do Teste
+
+| Fase | Descrição | Objetivo |
+|------|-----------|----------|
+| **0: INSERT INICIAL** | 20M registros (uma única vez) | Ativar índices, buffer pool, dados persistentes |
+| **1: CARGA ACUMULATIVA** | 5 ciclos × 2M inserts + updates/deletes | Operações I/O reais, row operations, cache activity |
+| **2: STRESS EM LEITURA** | 1000s SELECTs por 15 segundos | Cache hit rate, índice usage, query latency |
 
 ### Tempo Estimado
-- **PostgreSQL (UNLOGGED):** 10-15 minutos
-- **MySQL (InnoDB com tuning):** 15-25 minutos
+- **PostgreSQL:** 8-12 minutos
+- **MySQL:** 8-12 minutos
+
+### Disco Utilizado
+- **Antes:** 0 GB
+- **Durante Teste:** ~5-7 GB (pico, seguro nos 20GB)
+- **Após Teste:** ~6-8 GB (dados persistem)
 
 ### Métricas Observáveis
 
-| Pilar | PostgreSQL | MySQL | Descrição |
-|-------|-----------|-------|-----------|
-| **HEALTH** | `pg_up`, `pg_stat_activity_count` | `mysql_up`, `mysql_global_status_threads_connected` | Status e conexões ativas |
-| **CAPACITY** | `pg_database_size_bytes`, `pg_wal_size_bytes` | `mysql_global_status_innodb_buffer_pool_*` | Crescimento de espaço |
-| **ACTIVITY** | `pg_stat_database_xact_commit` | `mysql_global_status_questions` | Throughput de queries |
-| **DIAGNOSTICS** | `pg_stat_database_deadlocks` | `mysql_global_status_innodb_row_lock_waits` | Contentions e locks |
-| **I/O** | WAL bytes written | `mysql_global_status_innodb_data_reads/writes` | Operações de disco |
+| Pilar | PostgreSQL | MySQL | Status |
+|-------|-----------|-------|--------|
+| **HEALTH** | `pg_up`, `pg_stat_activity_count` | `mysql_up`, `threads_connected` | ✅ Visível |
+| **CAPACITY** | `pg_database_size_bytes`, `pg_wal_size_bytes` | `innodb_buffer_pool_bytes_data` | ✅ Persistente |
+| **ACTIVITY** | `pg_stat_database_xact_commit` | `mysql_global_status_questions` | ✅ Pico claro |
+| **DIAGNOSTICS** | `pg_stat_database_deadlocks` | `innodb_row_lock_waits` | ✅ Observável |
+| **I/O** | WAL write rate | `innodb_data_reads/writes` | ✅ Ativo |
+| **Cache Hit Rate** | `blks_hit / (blks_hit + blks_read) * 100` | Similar | ✅ 95%+ |
 
 ---
 
