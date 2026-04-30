@@ -250,6 +250,9 @@ prometheus.relabel "linux_mysql_db_transformer" {
       "mysql_global_status_bytes_received|" +
       "mysql_global_status_bytes_sent|" +
 
+      // Info Schema - Schemas (Databases)
+      "mysql_info_schema_schemata_type|" +
+
       // Other
       "mysql_global_status_uptime"
   }
