@@ -109,7 +109,28 @@ Após configurar o exporter e o gateway, valide a coleta:
 
 ---
 
-## 4. Dimensionamento (Sizing)
+## 4. Teste de Carga (Validação de Métricas)
+
+Após a configuração estar estável, você pode executar testes de carga para validar a coleta de métricas em cenários realistas:
+
+### PostgreSQL
+
+```bash
+psql -h 172.18.1.157 -U postgres -f postgres-load-test.sql
+```
+
+### MySQL
+
+```bash
+mysql -h 192.168.1.13 -u root -p < mysql-load-test.sql
+```
+
+Para instruções detalhadas, guia de troubleshooting e como interpretar métricas:
+👉 **[LOAD-TEST.md](./LOAD-TEST.md)**
+
+---
+
+## 5. Dimensionamento (Sizing)
 
 Para cálculos de projeção de disco e cardinalidade, consulte:
 👉 **[SIZING.md](../../SIZING.md)**

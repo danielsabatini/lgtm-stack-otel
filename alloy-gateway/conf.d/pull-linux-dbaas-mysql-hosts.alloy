@@ -15,7 +15,7 @@
 prometheus.scrape "linux_mysql_node" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8180",
+      "__address__"             = "192.168.1.13:8081",
       "__metrics_path__"        = "/node/metrics",
       "instance"                = "srv-mysql-01",
       "environment"             = "prd",
@@ -163,7 +163,7 @@ prometheus.relabel "linux_mysql_node_host_info" {
 prometheus.scrape "linux_mysql_db" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8180",
+      "__address__"             = "192.168.1.13:8081",
       "__metrics_path__"        = "/mysql/metrics",
       "instance"                = "srv-mysql-01",
       "environment"             = "prd",
