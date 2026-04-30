@@ -41,8 +41,7 @@ Ambos os dashboards cobrem os 6+2 Pilares do framework:
 
 ### Mapeamento de Métricas
 
-Para entender a equivalência entre PostgreSQL e MySQL:
-👉 **[examples/remote-scrape/MYSQL_POSTGRES_METRICS_MAPPING.md](examples/remote-scrape/MYSQL_POSTGRES_METRICS_MAPPING.md)**
+Ambos os dashboards utilizam métricas equivalentes entre PostgreSQL e MySQL conforme documentado nos respectivos templates (`pull-linux-dbaas-pgsql-hosts.alloy` e `pull-linux-dbaas-mysql-hosts.alloy`).
 
 ---
 

@@ -9,7 +9,7 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ### Adicionado
 - Nova configuração de coleta remota (Pull) para monitoramento de **DBaaS MySQL** (`pull-linux-dbaas-mysql-hosts.alloy`).
 - Dashboard Grafana pré-configurado para MySQL (`linux-mysql-hosts.json`) com suporte a todos os 6+2 Pilares.
-- Documentação de mapeamento de métricas entre PostgreSQL e MySQL (`MYSQL_POSTGRES_METRICS_MAPPING.md`) com tabelas comparativas e fórmulas PromQL.
+- Suporte a métricas equivalentes entre PostgreSQL e MySQL com filtros granulares nos templates Alloy.
 - Guia de referência de dashboards (`DASHBOARDS.md`) centralizando templates disponíveis.
 - Filtros granulares (whitelisting) para 43 métricas MySQL InnoDB, otimizando disco e cardinalidade.
 

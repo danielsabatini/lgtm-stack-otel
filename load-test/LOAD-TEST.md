@@ -323,8 +323,8 @@ EXIT;
 
 - [PostgreSQL: System Views](https://www.postgresql.org/docs/current/monitoring-stats.html)
 - [MySQL: Performance Schema](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html)
-- [MYSQL_POSTGRES_METRICS_MAPPING.md](../examples/remote-scrape/MYSQL_POSTGRES_METRICS_MAPPING.md)
 - [DASHBOARDS.md](../DASHBOARDS.md)
+- [INSTALL.md](../examples/remote-scrape/INSTALL.md)
 
 ---
 

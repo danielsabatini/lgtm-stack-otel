@@ -88,7 +88,7 @@ Para ambientes rodando bancos de dados MySQL junto com o sistema operacional Lin
 - **Node Exporter (SO):** `http://<IP-REMOTO>:8080/node/metrics`
 - **MySQL Exporter:** `http://<IP-REMOTO>:8080/mysql/metrics`
 
-*Nota: O template coleta métricas de InnoDB (motor padrão do MySQL 8.0+). Para referência sobre o mapeamento de métricas entre PostgreSQL e MySQL, consulte [MYSQL_POSTGRES_METRICS_MAPPING.md](./MYSQL_POSTGRES_METRICS_MAPPING.md).*
+*Nota: O template coleta métricas de InnoDB (motor padrão do MySQL 8.0+). As métricas são equivalentes às do PostgreSQL, conforme filtros granulares nos respectivos templates Alloy (`pull-linux-dbaas-pgsql-hosts.alloy` e `pull-linux-dbaas-mysql-hosts.alloy`).*
 
 ---
 
