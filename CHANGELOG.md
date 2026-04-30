@@ -5,6 +5,18 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2026-04-30
+### Adicionado
+- Nova configuração de coleta remota (Pull) para monitoramento de **DBaaS MySQL** (`pull-linux-dbaas-mysql-hosts.alloy`).
+- Dashboard Grafana pré-configurado para MySQL (`linux-mysql-hosts.json`) com suporte a todos os 6+2 Pilares.
+- Documentação de mapeamento de métricas entre PostgreSQL e MySQL (`MYSQL_POSTGRES_METRICS_MAPPING.md`) com tabelas comparativas e fórmulas PromQL.
+- Guia de referência de dashboards (`DASHBOARDS.md`) centralizando templates disponíveis.
+- Filtros granulares (whitelisting) para 43 métricas MySQL InnoDB, otimizando disco e cardinalidade.
+
+### Alterado
+- README.md atualizado para indicar MySQL disponível via coleta pull no Q2 2026.
+- INSTALL.md expandido com seção "Linux + DBaaS MySQL" com instruções de configuração e paths dos exporters.
+
 ## [0.0.4] - 2026-04-28
 ### Adicionado
 - Nova configuração de coleta remota (Pull) para monitoramento de **DBaaS PostgreSQL** (`pull-linux-dbaas-pgsql-hosts.alloy`).
