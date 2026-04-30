@@ -1,7 +1,7 @@
 // =============================================================================
-// PULL LEGADO — node_exporter + postgres_exporter remoto
+// PULL LEGADO — node_exporter + mysqld_exporter remoto
 //
-// Coleta métricas de SO (node) e banco de dados (postgres) via scrape HTTP direto.
+// Coleta métricas de SO (node) e banco de dados (mysql) via scrape HTTP direto.
 // Indicado para servidores legados onde não é possível instalar o Alloy agent.
 //
 // Como usar:
@@ -12,21 +12,21 @@
 // -----------------------------------------------------------------------------
 // NODE METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_pgsql_node" {
+prometheus.scrape "linux_mysql_node" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
+      "__address__"             = "192.168.1.13:8180",
       "__metrics_path__"        = "/node/metrics",
-      "instance"                = "srv-pgsql-01",
+      "instance"                = "srv-mysql-01",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
+    //   "__address__"             = "192.168.10.57:8080",
     //   "__metrics_path__"        = "/node/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "instance"                = "srv-mysql-02",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -38,16 +38,16 @@ prometheus.scrape "linux_pgsql_node" {
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_pgsql_node_transformer.receiver]
+  forward_to = [prometheus.relabel.linux_mysql_node_transformer.receiver]
 }
 
-prometheus.relabel "linux_pgsql_node_transformer" {
-  forward_to = [prometheus.relabel.linux_pgsql_node_host_info.receiver]
+prometheus.relabel "linux_mysql_node_transformer" {
+  forward_to = [prometheus.relabel.linux_mysql_node_host_info.receiver]
 
   rule {
     source_labels = ["__name__"]
     action        = "keep"
-    regex         = 
+    regex         =
       // Core & Metadata
       "node_boot_time_seconds|" +
       "node_uname_info|" +
@@ -107,8 +107,8 @@ prometheus.relabel "linux_pgsql_node_transformer" {
   }
 }
 
-prometheus.relabel "linux_pgsql_node_host_info" {
-  forward_to = [prometheus.remote_write.linux_pgsql_gateway.receiver]
+prometheus.relabel "linux_mysql_node_host_info" {
+  forward_to = [prometheus.remote_write.linux_mysql_gateway.receiver]
 
   // Para node_uname_info: sysname → os (lowercase)
   rule {
@@ -158,23 +158,23 @@ prometheus.relabel "linux_pgsql_node_host_info" {
 }
 
 // -----------------------------------------------------------------------------
-// POSTGRESQL METRICS
+// MYSQL METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_pgsql_db" {
+prometheus.scrape "linux_mysql_db" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
-      "__metrics_path__"        = "/postgres/metrics",
-      "instance"                = "srv-pgsql-01",
+      "__address__"             = "192.168.1.13:8180",
+      "__metrics_path__"        = "/mysql/metrics",
+      "instance"                = "srv-mysql-01",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
-    //   "__metrics_path__"        = "/postgres/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "__address__"             = "192.168.10.57:8080",
+    //   "__metrics_path__"        = "/mysql/metrics",
+    //   "instance"                = "srv-mysql-02",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -182,59 +182,87 @@ prometheus.scrape "linux_pgsql_db" {
     // },
   ]
 
-  job_name        = "linux-postgres"
+  job_name        = "linux-mysql"
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_pgsql_db_transformer.receiver]
+  forward_to = [prometheus.relabel.linux_mysql_db_transformer.receiver]
 }
 
-prometheus.relabel "linux_pgsql_db_transformer" {
-  forward_to = [prometheus.remote_write.linux_pgsql_gateway.receiver]
+prometheus.relabel "linux_mysql_db_transformer" {
+  forward_to = [prometheus.remote_write.linux_mysql_gateway.receiver]
 
   rule {
     source_labels = ["__name__"]
     action        = "keep"
-    regex         = 
-      "pg_up|" +
-      "pg_settings_max_connections|" +
-      "pg_stat_activity_count|" +
-      "pg_database_size_bytes|" +
-      "pg_wal_size_bytes|" +
-      "pg_stat_database_temp_bytes|" +
-      "pg_stat_database_xact_commit|" +
-      "pg_stat_database_xact_rollback|" +
-      "pg_stat_database_numbackends|" +
-      "pg_stat_database_tup_returned|" +
-      "pg_stat_database_tup_fetched|" +
-      "pg_stat_database_tup_inserted|" +
-      "pg_stat_database_tup_updated|" +
-      "pg_stat_database_tup_deleted|" +
-      "pg_stat_database_deadlocks|" +
-      "pg_stat_database_blk_read_time|" +
-      "pg_stat_database_blk_write_time|" +
-      "pg_stat_database_blks_read|" +
-      "pg_stat_database_active_time_seconds_total|" +
-      "pg_static"
+    regex         =
+      // Status & Connection
+      "mysql_up|" +
+      "mysql_global_variables_max_connections|" +
+      "mysql_global_status_threads_connected|" +
+      "mysql_global_status_threads_running|" +
+      "mysql_global_status_connections|" +
+      "mysql_global_status_threads_created|" +
+
+      // Storage & Replication
+      "mysql_binlog_size_bytes|" +
+      "mysql_global_status_innodb_redo_log_physical_size|" +
+      "mysql_global_status_innodb_redo_log_logical_size|" +
+
+      // Temp Storage
+      "mysql_global_status_created_tmp_disk_tables|" +
+      "mysql_global_status_created_tmp_files|" +
+      "mysql_global_status_created_tmp_tables|" +
+
+      // Transaction Activity
+      "mysql_global_status_questions|" +
+      "mysql_global_status_queries|" +
+      "mysql_global_status_commands_total|" +
+
+      // Row Operations (InnoDB)
+      "mysql_global_status_innodb_system_rows_read|" +
+      "mysql_global_status_innodb_system_rows_inserted|" +
+      "mysql_global_status_innodb_system_rows_updated|" +
+      "mysql_global_status_innodb_system_rows_deleted|" +
+
+      // InnoDB Buffer Pool & Data
+      "mysql_global_status_innodb_buffer_pool_bytes_data|" +
+      "mysql_global_status_innodb_buffer_pool_bytes_dirty|" +
+      "mysql_global_status_innodb_buffer_pool_read_requests|" +
+      "mysql_global_status_innodb_buffer_pool_reads|" +
+      "mysql_global_status_innodb_buffer_pool_write_requests|" +
+      "mysql_global_status_innodb_pages_read|" +
+      "mysql_global_status_innodb_pages_written|" +
+
+      // I/O Operations
+      "mysql_global_status_innodb_data_reads|" +
+      "mysql_global_status_innodb_data_writes|" +
+      "mysql_global_status_innodb_data_read|" +
+      "mysql_global_status_innodb_data_written|" +
+
+      // Locking & Conflicts
+      "mysql_global_status_innodb_row_lock_waits|" +
+      "mysql_global_status_innodb_row_lock_time|" +
+      "mysql_global_status_table_locks_waited|" +
+      "mysql_global_status_table_locks_immediate|" +
+
+      // Network
+      "mysql_global_status_bytes_received|" +
+      "mysql_global_status_bytes_sent|" +
+
+      // Other
+      "mysql_global_status_uptime"
   }
 
   rule {
     target_label = "service_name"
-    replacement  = "postgres-exporter"
-  }
-
-  // O postgres_exporter nativamente exporta um label chamado "server" (ex: server="127.0.0.1:5432").
-  // Como utilizamos apenas a label "instance" para os painéis, vamos descartar a label "server" 
-  // para evitar duplicação ou poluição de labels, mantendo apenas "instance" = "srv-pgsql-01".
-  rule {
-    regex  = "server"
-    action = "labeldrop"
+    replacement  = "mysqld-exporter"
   }
 }
 
 // -----------------------------------------------------------------------------
 // REMOTE WRITE
 // -----------------------------------------------------------------------------
-prometheus.remote_write "linux_pgsql_gateway" {
+prometheus.remote_write "linux_mysql_gateway" {
   endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
 }

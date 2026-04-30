@@ -211,6 +211,10 @@ prometheus.relabel "linux_pgsql_db_transformer" {
       "pg_stat_database_tup_updated|" +
       "pg_stat_database_tup_deleted|" +
       "pg_stat_database_deadlocks|" +
+      "pg_stat_database_blk_read_time|" +
+      "pg_stat_database_blk_write_time|" +
+      "pg_stat_database_blks_read|" +
+      "pg_stat_database_active_time_seconds_total|" +
       "pg_static"
   }
 

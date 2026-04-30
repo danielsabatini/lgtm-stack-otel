@@ -23,6 +23,7 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.
 - [LOGS.md](LOGS.md): política de logs, labels e retenção no Loki.
 - [TRACES.md](TRACES.md): ingestão OTLP e política de traces no Tempo.
+- [DASHBOARDS.md](DASHBOARDS.md): templates de dashboard para diferentes tipos de host.
 - [CHANGELOG.md](CHANGELOG.md): histórico de versões e mudanças.
 - [CONTRIBUTING.md](CONTRIBUTING.md): guia de contribuição e governança técnica.
 - [ROADMAP.md](ROADMAP.md): visão de futuro e próximas funcionalidades.
@@ -65,10 +66,10 @@ cd lgtm-stack/examples/<plataforma>
 |------------|------|
 | Linux (Debian/Ubuntu) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
 | Windows | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
-| MySQL | em breve (Roadmap) |
-| PostgreSQL | em breve (Roadmap) |
 | Windows + SQL Server | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
-| Coleta via Pull (Exporters Legados) | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
+| Coleta via Pull: Linux + MySQL | [examples/remote-scrape/INSTALL.md#linux--dbaas-mysql) |
+| Coleta via Pull: Linux + PostgreSQL | [examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql) |
+| Coleta via Pull: Outras plataformas | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
 
 > Para atualizar as configurações em servidores já instalados: `git pull` no
 > diretório clonado e reinicie o serviço Alloy.

@@ -24,10 +24,11 @@ O Gateway faz o scrape, filtra o "lixo" via relabeling e encaminha os dados higi
 ## 1. Preparação no Gateway (Servidor LGTM)
 
 1. Escolha o template adequado nesta pasta:
-   * `pull-legacy-linux.alloy`
-   * `pull-legacy-windows.alloy`
-   * `pull-legacy-windows-mssql.alloy`
-   * `pull-linux-pgsql-hosts.alloy`
+   * `pull-linux-hosts.alloy` — Linux (apenas SO)
+   * `pull-windows-hosts.alloy` — Windows (apenas SO)
+   * `pull-windows-mssql-hosts.alloy` — Windows + SQL Server
+   * `pull-linux-dbaas-pgsql-hosts.alloy` — Linux + PostgreSQL
+   * `pull-linux-dbaas-mysql-hosts.alloy` — Linux + MySQL
 
 
 2. Copie para o diretório de configuração do Gateway:
@@ -81,6 +82,13 @@ Para ambientes rodando bancos de dados PostgreSQL junto com o sistema operaciona
 - **Postgres Exporter:** `http://<IP-REMOTO>:8080/postgres/metrics`
 
 *Nota: Se as portas ou paths originais forem utilizados nativamente (como 9100 e 9187 com o path `/metrics`), lembre-se de ajustar as configurações de `__address__` e `__metrics_path__` no próprio arquivo `.alloy` de acordo.*
+
+### Linux + DBaaS MySQL (node_exporter + mysqld_exporter)
+Para ambientes rodando bancos de dados MySQL junto com o sistema operacional Linux, utilizando o template `pull-linux-dbaas-mysql-hosts.alloy`, garanta que os seguintes endereços de acesso às métricas estejam expostos e corretamente mapeados (tipicamente via um proxy/ingress na porta `8080`):
+- **Node Exporter (SO):** `http://<IP-REMOTO>:8080/node/metrics`
+- **MySQL Exporter:** `http://<IP-REMOTO>:8080/mysql/metrics`
+
+*Nota: O template coleta métricas de InnoDB (motor padrão do MySQL 8.0+). Para referência sobre o mapeamento de métricas entre PostgreSQL e MySQL, consulte [MYSQL_POSTGRES_METRICS_MAPPING.md](./MYSQL_POSTGRES_METRICS_MAPPING.md).*
 
 ---
 

@@ -3498,7 +3498,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "max(pg_settings_max_connections{instance=\"$instance\"})",
+                      "expr": "max(mysql_global_variables_max_connections{instance=\"$instance\"})",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -3519,7 +3519,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(pg_stat_activity_count{instance=\"$instance\"})",
+                      "expr": "sum(mysql_global_status_threads_connected{instance=\"$instance\"})",
                       "instant": false,
                       "legendFormat": "__auto",
                       "range": true
@@ -3645,7 +3645,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_up{instance=\"$instance\"}",
+                      "expr": "mysql_up{instance=\"$instance\"}",
                       "instant": false,
                       "legendFormat": "__auto",
                       "range": true
@@ -3665,7 +3665,7 @@
         "description": "Status do serviço do banco de dados.",
         "id": 44,
         "links": [],
-        "title": "PostgreSQL Status",
+        "title": "MySQL Status",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -3745,7 +3745,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_wal_size_bytes{instance=\"$instance\"}",
+                      "expr": "mysql_global_status_innodb_redo_log_physical_size{instance=\"$instance\"}",
                       "legendFormat": "used",
                       "range": true
                     },
@@ -3786,7 +3786,7 @@
         "description": "",
         "id": 45,
         "links": [],
-        "title": "WAL Usage (bytes)",
+        "title": "Redo Log Usage (bytes)",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -4090,7 +4090,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (pg_stat_activity_count{instance=\"$instance\", datname!~\"postgres|template0|template1\"})",
+                      "expr": "sum by(datname) (mysql_global_status_threads_connected{instance=\"$instance\", datname!~\"mysql|template0|template1\"})",
                       "instant": false,
                       "legendFormat": "{{datname}}",
                       "range": true
@@ -4112,7 +4112,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_settings_max_connections{instance=\"$instance\"}",
+                      "expr": "mysql_global_variables_max_connections{instance=\"$instance\"}",
                       "instant": false,
                       "legendFormat": "limit",
                       "range": true
@@ -4134,7 +4134,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(pg_stat_activity_count{instance=\"$instance\", datname=~\"$datname\"})",
+                      "expr": "sum(mysql_global_status_threads_connected{instance=\"$instance\", datname=~\"$datname\"})",
                       "instant": false,
                       "legendFormat": "total",
                       "range": true
@@ -4294,7 +4294,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_database_size_bytes{instance=\"$instance\", datname!~\"template0|template1|postgres\"}",
+                      "expr": "mysql_global_status_innodb_buffer_pool_bytes_data{instance=\"$instance\", datname!~\"template0|template1|mysql\"}",
                       "legendFormat": "used ({{datname}})",
                       "range": true
                     },
@@ -4315,7 +4315,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(pg_database_size_bytes{instance=\"$instance\", datname=~\"$datname\"})",
+                      "expr": "sum(mysql_global_status_innodb_buffer_pool_bytes_data{instance=\"$instance\", datname=~\"$datname\"})",
                       "legendFormat": "total",
                       "range": true
                     },
@@ -4494,7 +4494,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_xact_commit{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "legendFormat": "commit (total)",
                       "range": true
                     },
@@ -4515,7 +4515,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_xact_rollback{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "legendFormat": "rollback (total)",
                       "range": true
                     },
@@ -4780,7 +4780,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (pg_stat_database_numbackends{instance=\"$instance\", datname!~\"template1|template0|postgres\"})",
+                      "expr": "sum by(datname) (mysql_global_status_threads_connected{instance=\"$instance\", datname!~\"template1|template0|mysql\"})",
                       "legendFormat": "{{datname}}",
                       "range": true
                     },
@@ -4900,7 +4900,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_returned{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "read ({{datname}})",
                       "range": true
@@ -5022,7 +5022,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_temp_bytes{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_created_tmp_disk_tables{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "{{datname}}",
                       "range": true
@@ -5044,7 +5044,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_temp_bytes{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_created_tmp_disk_tables{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "instant": false,
                       "legendFormat": "total",
                       "range": true
@@ -5510,7 +5510,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_fetched{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_read{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "fetch ({{datname}})",
                       "range": true
@@ -5632,7 +5632,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_inserted{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_inserted{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "inserted ({{datname}})",
                       "range": true
@@ -5654,7 +5654,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_updated{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_updated{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "updated ({{datname}})",
                       "range": true
@@ -5676,7 +5676,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "rate(pg_stat_database_tup_deleted{instance=\"$instance\", datname!~\"template1|template0|postgres\"}[$__rate_interval])",
+                      "expr": "rate(mysql_global_status_innodb_system_rows_deleted{instance=\"$instance\", datname!~\"template1|template0|mysql\"}[$__rate_interval])",
                       "instant": false,
                       "legendFormat": "deleted ({{datname}})",
                       "range": true
@@ -5798,7 +5798,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum by(datname) (rate(pg_stat_database_deadlocks{instance=\"$instance\", datname!~\"template0|template1\"}[$__rate_interval]))",
+                      "expr": "sum by(datname) (rate(mysql_global_status_innodb_row_lock_waits{instance=\"$instance\", datname!~\"template0|template1\"}[$__rate_interval]))",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -5919,7 +5919,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "pg_static{instance=\"$instance\"}",
+                      "expr": "mysql_up{instance=\"$instance\"}",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -5946,7 +5946,7 @@
         "description": "",
         "id": 58,
         "links": [],
-        "title": "PostgreSQL Version",
+        "title": "MySQL Version",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -6007,7 +6007,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_active_time_seconds_total{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_uptime{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -6028,7 +6028,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_xact_commit{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -6049,7 +6049,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(rate(pg_stat_database_xact_rollback{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
+                      "expr": "sum(rate(mysql_global_status_questions{instance=\"$instance\", datname=~\"$datname\"}[$__rate_interval]))",
                       "legendFormat": "__auto",
                       "range": true
                     },
@@ -7392,7 +7392,7 @@
                 ]
               }
             },
-            "title": "PostgreSQL"
+            "title": "MySQL"
           }
         }
       ]
@@ -7404,7 +7404,7 @@
   "tags": [
     "linux",
     "host",
-    "pgsql"
+    "mysql"
   ],
   "timeSettings": {
     "autoRefresh": "",
@@ -7426,15 +7426,15 @@
     "timezone": "browser",
     "to": "now"
   },
-  "title": "Linux + PostgreSQL Hosts",
+  "title": "Linux + MySQL Hosts",
   "variables": [
     {
       "kind": "QueryVariable",
       "spec": {
         "allowCustomValue": false,
         "current": {
-          "text": "srv-pgsql-01",
-          "value": "srv-pgsql-01"
+          "text": "srv-mysql-01",
+          "value": "srv-mysql-01"
         },
         "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
         "hide": "dontHide",
