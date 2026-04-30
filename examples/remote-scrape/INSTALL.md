@@ -109,6 +109,29 @@ Após configurar o exporter e o gateway, valide a coleta:
 
 ---
 
+## 3.1 Dashboard MySQL - Filtros de Database
+
+O dashboard **Linux + MySQL Hosts** oferece dois filtros principais:
+
+- **Instance:** Lista dinâmica de instâncias MySQL coletadas (via `label_values(mysql_up, instance)`)
+- **Database:** Lista customizada de databases disponíveis no servidor
+
+### Sobre o filtro Database
+
+O mysqld_exporter do Prometheus não exponibiliza o nome dos databases como labels nas métricas (limitação técnica do exporter). Por isso, a variável `database` do dashboard é configurada como **lista customizada** (hardcoded) contendo os databases conhecidos:
+
+```
+information_schema, mysql, performance_schema, lgtm
+```
+
+Para **adicionar ou remover databases**, edite a variável no Grafana:
+1. Dashboard **Linux + MySQL Hosts** → ⚙️ **Settings** → **Variables**
+2. Clique em `database`
+3. Modifique o campo **Options** com os databases desejados
+4. **Save dashboard**
+
+---
+
 ## 4. Teste de Carga (Validação de Métricas)
 
 Após a configuração estar estável, você pode executar testes de carga para validar a coleta de métricas em cenários realistas:
