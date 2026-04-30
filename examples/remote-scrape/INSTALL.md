@@ -126,7 +126,7 @@ mysql -h 192.168.1.13 -u root -p < mysql-load-test.sql
 ```
 
 Para instruções detalhadas, guia de troubleshooting e como interpretar métricas:
-👉 **[LOAD-TEST.md](./LOAD-TEST.md)**
+👉 **[LOAD-TEST.md](../../load-test/LOAD-TEST.md)**
 
 ---
 

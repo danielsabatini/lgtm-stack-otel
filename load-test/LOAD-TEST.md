@@ -54,10 +54,10 @@ psql -h 172.18.1.157 -U postgres -d postgres
 ```bash
 # Opção A: Copiar do repositório
 curl -o postgres-load-test.sql \
-  https://raw.githubusercontent.com/seu-repo/lgtm-stack/main/examples/remote-scrape/postgres-load-test.sql
+  https://raw.githubusercontent.com/seu-repo/lgtm-stack/main/load-test/postgres-load-test.sql
 
 # Opção B: Local (se já clonado)
-cat /path/to/lgtm-stack/examples/remote-scrape/postgres-load-test.sql
+cat /path/to/lgtm-stack/load-test/postgres-load-test.sql
 ```
 
 #### Passo 3: Executar o teste
@@ -103,10 +103,10 @@ mysql -h 192.168.1.13 -u root -p
 ```bash
 # Opção A: Via curl
 curl -o mysql-load-test.sql \
-  https://raw.githubusercontent.com/seu-repo/lgtm-stack/main/examples/remote-scrape/mysql-load-test.sql
+  https://raw.githubusercontent.com/seu-repo/lgtm-stack/main/load-test/mysql-load-test.sql
 
 # Opção B: Local
-cat /path/to/lgtm-stack/examples/remote-scrape/mysql-load-test.sql
+cat /path/to/lgtm-stack/load-test/mysql-load-test.sql
 ```
 
 #### Passo 3: Executar o teste
@@ -323,9 +323,9 @@ EXIT;
 
 - [PostgreSQL: System Views](https://www.postgresql.org/docs/current/monitoring-stats.html)
 - [MySQL: Performance Schema](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html)
-- [MYSQL_POSTGRES_METRICS_MAPPING.md](./MYSQL_POSTGRES_METRICS_MAPPING.md)
-- [DASHBOARDS.md](../../DASHBOARDS.md)
+- [MYSQL_POSTGRES_METRICS_MAPPING.md](../examples/remote-scrape/MYSQL_POSTGRES_METRICS_MAPPING.md)
+- [DASHBOARDS.md](../DASHBOARDS.md)
 
 ---
 
-🔙 Voltar: [INSTALL.md](./INSTALL.md)
+🔙 Voltar: [INSTALL.md](../examples/remote-scrape/INSTALL.md)

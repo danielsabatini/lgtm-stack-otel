@@ -9,6 +9,7 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - `alloy-gateway/`: entrada OTLP e fanout para Loki, Mimir e Tempo.
 - `grafana/provisioning/`: datasources e dashboards provisionados.
 - `examples/`: templates de agentes e cenários legados.
+- `load-test/`: scripts SQL para teste de carga e validação de métricas.
 
 ## Documentação oficial do repositório (Governança)
 
