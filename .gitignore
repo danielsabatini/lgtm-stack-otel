@@ -37,3 +37,6 @@ build/
 *.egg-info/
 # Temporary workspace files
 workspace/
+
+# Ignore instance-specific remote scrape configurations in gateway
+alloy-gateway/conf.d/pull*
