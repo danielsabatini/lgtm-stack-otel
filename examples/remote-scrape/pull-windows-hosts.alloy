@@ -5,22 +5,25 @@
 // Copie este arquivo para 'lgtm-stack/alloy-gateway/conf.d/' e reinicie o Gateway.
 // Esta configuração faz o scraping de servidores Windows com o agent clássico 
 // rodando na porta 9182.
+//
+// IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
+// Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
 prometheus.scrape "pull_windows_legado" {
   // Lista EXPLÍCITA de servidores legados na porta padrão do windows_exporter
   targets = [
     {
-      "__address__"             = "10.0.0.99:9182",
-      "instance"                = "win-ad-server",
+      "__address__"             = "[IP_ADDRESS]:9182",
+      "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "10.0.0.100:9182",
-    //   "instance"                = "win-srv-02",
+    //   "__address__"             = "[IP_ADDRESS]:9182",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",

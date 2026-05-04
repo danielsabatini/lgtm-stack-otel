@@ -13,6 +13,9 @@
 //   O node_exporter padrão não expõe logs. Para coletar SSH, kernel, cron e
 //   systemd (equivalente a examples/linux/200-*.alloy … 275-*.alloy), instale
 //   o Alloy agent no servidor remoto seguindo examples/linux/INSTALL.md.
+//
+//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
+//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
 // Collector (scrape): varre o node_exporter de cada servidor legado.
@@ -21,16 +24,16 @@
 prometheus.scrape "linux_legacy" {
   targets = [
     {
-      "__address__"             = "192.168.1.29:9100",
-      "instance"                = "srv-legado-01",
+      "__address__"             = "[IP_ADDRESS]:9100",
+      "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:9100",
-    //   "instance"                = "servidor-erp-legado",
+    //   "__address__"             = "[IP_ADDRESS]:9100",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",

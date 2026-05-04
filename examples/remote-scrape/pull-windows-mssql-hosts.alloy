@@ -11,22 +11,25 @@
 //   --collectors.enabled=cpu,logical_disk,memory,net,os,system,mssql,pagefile
 //
 // Para coleta completa (Windows + MSSQL via Alloy agent), use examples/mssql/config.alloy.
+//
+// IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
+// Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
 prometheus.scrape "pull_windows_mssql_legado" {
   // Lista EXPLÍCITA de servidores Windows legados com windows_exporter na porta 9182
   targets = [
     {
-      "__address__"             = "10.0.0.99:9182",
-      "instance"                = "win-sql-server",
+      "__address__"             = "[IP_ADDRESS]:9182",
+      "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "10.0.0.100:9182",
-    //   "instance"                = "win-sql-server-02",
+    //   "__address__"             = "[IP_ADDRESS]:9182",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",

@@ -5,6 +5,17 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-05-04
+### Adicionado
+- Seção "Passo Zero: Teste de Conectividade" no guia de instalação de coleta remota, priorizando a validação de rede via `curl`/`wget`.
+- Nota operacional no `INSTALL.md` para transferência de templates via `scp` em ambientes com restrição ao Git.
+- Instruções detalhadas nos cabeçalhos de todos os templates de coleta remota sobre a substituição de placeholders.
+
+### Alterado
+- Generalização de todos os templates em `examples/remote-scrape/`, substituindo IPs e nomes de instância fixos por marcadores genéricos `[IP_ADDRESS]` e `[INSTANCE_NAME]`.
+- Reescrita do guia `INSTALL.md` para uma linguagem técnica mais profissional e acessível.
+- Padronização das labels de infraestrutura (`environment`, `cloud_provider`, `cloud_region`, `cloud_availability_zone`) com avisos sobre valores padrão do Magalu Cloud (MGC).
+
 ## [0.0.7] - 2026-05-04
 ### Alterado
 - Otimização rigorosa do *explicit whitelisting* (keep) nos arquivos `pull-linux-dbaas-mysql-hosts.alloy` e `pull-linux-dbaas-pgsql-hosts.alloy`, restringindo as métricas apenas àquelas efetivamente utilizadas nos dashboards do Grafana.

@@ -7,6 +7,8 @@
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
 //   Adicione um bloco por servidor nas listas targets abaixo.
+//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
+//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -15,18 +17,18 @@
 prometheus.scrape "linux_pgsql_node" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
+      "__address__"             = "[IP_ADDRESS]:8080",
       "__metrics_path__"        = "/node/metrics",
-      "instance"                = "srv-pgsql-01",
+      "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
+    //   "__address__"             = "[IP_ADDRESS]:8080",
     //   "__metrics_path__"        = "/node/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -160,18 +162,18 @@ prometheus.relabel "linux_pgsql_node_host_info" {
 prometheus.scrape "linux_pgsql_db" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
+      "__address__"             = "[IP_ADDRESS]:8080",
       "__metrics_path__"        = "/postgres/metrics",
-      "instance"                = "srv-pgsql-01",
+      "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
+    //   "__address__"             = "[IP_ADDRESS]:8080",
     //   "__metrics_path__"        = "/postgres/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -218,7 +220,7 @@ prometheus.relabel "linux_pgsql_db_transformer" {
 
   // O postgres_exporter nativamente exporta um label chamado "server" (ex: server="127.0.0.1:5432").
   // Como utilizamos apenas a label "instance" para os painéis, vamos descartar a label "server" 
-  // para evitar duplicação ou poluição de labels, mantendo apenas "instance" = "srv-pgsql-01".
+  // para evitar duplicação ou poluição de labels, mantendo apenas "instance" = "[INSTANCE_NAME]".
   rule {
     regex  = "server"
     action = "labeldrop"
