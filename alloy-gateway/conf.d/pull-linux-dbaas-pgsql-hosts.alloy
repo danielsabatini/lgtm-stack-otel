@@ -15,7 +15,7 @@
 prometheus.scrape "linux_pgsql_node" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8080",
+      "__address__"             = "172.18.1.157:8080",
       "__metrics_path__"        = "/node/metrics",
       "instance"                = "srv-pgsql-01",
       "environment"             = "prd",
@@ -60,36 +60,33 @@ prometheus.relabel "linux_pgsql_node_transformer" {
       "node_load15|" +
 
       // Memory
-      "node_memory_Buffers_bytes|" +
       "node_memory_Cached_bytes|" +
-      "node_memory_MemAvailable_bytes|" +
       "node_memory_MemFree_bytes|" +
       "node_memory_MemTotal_bytes|" +
-      "node_memory_SReclaimable_bytes|" +
       "node_memory_SwapFree_bytes|" +
       "node_memory_SwapTotal_bytes|" +
 
       // System Pressure
-      "node_pressure_cpu.*|" +
-      "node_pressure_io.*|" +
-      "node_pressure_memory.*|" +
+      "node_pressure_cpu_waiting_seconds_total|" +
+      "node_pressure_io_waiting_seconds_total|" +
+      "node_pressure_memory_waiting_seconds_total|" +
 
       // Disk & Filesystem
-      "node_disk_read.*|" +
-      "node_disk_write.*|" +
-      "node_disk_written.*|" +
-      "node_disk_io_time.*|" +
+      "node_disk_read_bytes_total|" +
+      "node_disk_read_time_seconds_total|" +
+      "node_disk_reads_completed_total|" +
+      "node_disk_write_time_seconds_total|" +
+      "node_disk_writes_completed_total|" +
+      "node_disk_written_bytes_total|" +
       "node_filesystem_avail_bytes|" +
       "node_filesystem_files|" +
       "node_filesystem_files_free|" +
-      "node_filesystem_free_bytes|" +
       "node_filesystem_size_bytes|" +
 
       // Network
       "node_network_receive_bytes_total|" +
       "node_network_receive_drop_total|" +
       "node_network_receive_errs_total|" +
-      "node_network_speed_bytes|" +
       "node_network_transmit_bytes_total|" +
       "node_network_transmit_drop_total|" +
       "node_network_transmit_errs_total"
@@ -163,7 +160,7 @@ prometheus.relabel "linux_pgsql_node_host_info" {
 prometheus.scrape "linux_pgsql_db" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8080",
+      "__address__"             = "172.18.1.157:8080",
       "__metrics_path__"        = "/postgres/metrics",
       "instance"                = "srv-pgsql-01",
       "environment"             = "prd",
@@ -211,10 +208,6 @@ prometheus.relabel "linux_pgsql_db_transformer" {
       "pg_stat_database_tup_updated|" +
       "pg_stat_database_tup_deleted|" +
       "pg_stat_database_deadlocks|" +
-      "pg_stat_database_blk_read_time|" +
-      "pg_stat_database_blk_write_time|" +
-      "pg_stat_database_blks_read|" +
-      "pg_stat_database_active_time_seconds_total|" +
       "pg_static"
   }
 

@@ -15,7 +15,7 @@
 prometheus.scrape "linux_mysql_node" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8081",
+      "__address__"             = "192.168.1.13:8180",
       "__metrics_path__"        = "/node/metrics",
       "instance"                = "srv-mysql-01",
       "environment"             = "prd",
@@ -60,36 +60,33 @@ prometheus.relabel "linux_mysql_node_transformer" {
       "node_load15|" +
 
       // Memory
-      "node_memory_Buffers_bytes|" +
       "node_memory_Cached_bytes|" +
-      "node_memory_MemAvailable_bytes|" +
       "node_memory_MemFree_bytes|" +
       "node_memory_MemTotal_bytes|" +
-      "node_memory_SReclaimable_bytes|" +
       "node_memory_SwapFree_bytes|" +
       "node_memory_SwapTotal_bytes|" +
 
       // System Pressure
-      "node_pressure_cpu.*|" +
-      "node_pressure_io.*|" +
-      "node_pressure_memory.*|" +
+      "node_pressure_cpu_waiting_seconds_total|" +
+      "node_pressure_io_waiting_seconds_total|" +
+      "node_pressure_memory_waiting_seconds_total|" +
 
       // Disk & Filesystem
-      "node_disk_read.*|" +
-      "node_disk_write.*|" +
-      "node_disk_written.*|" +
-      "node_disk_io_time.*|" +
+      "node_disk_read_bytes_total|" +
+      "node_disk_read_time_seconds_total|" +
+      "node_disk_reads_completed_total|" +
+      "node_disk_write_time_seconds_total|" +
+      "node_disk_writes_completed_total|" +
+      "node_disk_written_bytes_total|" +
       "node_filesystem_avail_bytes|" +
       "node_filesystem_files|" +
       "node_filesystem_files_free|" +
-      "node_filesystem_free_bytes|" +
       "node_filesystem_size_bytes|" +
 
       // Network
       "node_network_receive_bytes_total|" +
       "node_network_receive_drop_total|" +
       "node_network_receive_errs_total|" +
-      "node_network_speed_bytes|" +
       "node_network_transmit_bytes_total|" +
       "node_network_transmit_drop_total|" +
       "node_network_transmit_errs_total"
@@ -163,7 +160,7 @@ prometheus.relabel "linux_mysql_node_host_info" {
 prometheus.scrape "linux_mysql_db" {
   targets = [
     {
-      "__address__"             = "192.168.1.13:8081",
+      "__address__"             = "192.168.1.13:8180",
       "__metrics_path__"        = "/mysql/metrics",
       "instance"                = "srv-mysql-01",
       "environment"             = "prd",
@@ -200,24 +197,15 @@ prometheus.relabel "linux_mysql_db_transformer" {
       "mysql_up|" +
       "mysql_global_variables_max_connections|" +
       "mysql_global_status_threads_connected|" +
-      "mysql_global_status_threads_running|" +
-      "mysql_global_status_connections|" +
-      "mysql_global_status_threads_created|" +
 
       // Storage & Replication
-      "mysql_binlog_size_bytes|" +
       "mysql_global_status_innodb_redo_log_physical_size|" +
-      "mysql_global_status_innodb_redo_log_logical_size|" +
 
       // Temp Storage
       "mysql_global_status_created_tmp_disk_tables|" +
-      "mysql_global_status_created_tmp_files|" +
-      "mysql_global_status_created_tmp_tables|" +
 
       // Transaction Activity
       "mysql_global_status_questions|" +
-      "mysql_global_status_queries|" +
-      "mysql_global_status_commands_total|" +
 
       // Row Operations (InnoDB)
       "mysql_global_status_innodb_system_rows_read|" +
@@ -227,31 +215,9 @@ prometheus.relabel "linux_mysql_db_transformer" {
 
       // InnoDB Buffer Pool & Data
       "mysql_global_status_innodb_buffer_pool_bytes_data|" +
-      "mysql_global_status_innodb_buffer_pool_bytes_dirty|" +
-      "mysql_global_status_innodb_buffer_pool_read_requests|" +
-      "mysql_global_status_innodb_buffer_pool_reads|" +
-      "mysql_global_status_innodb_buffer_pool_write_requests|" +
-      "mysql_global_status_innodb_pages_read|" +
-      "mysql_global_status_innodb_pages_written|" +
-
-      // I/O Operations
-      "mysql_global_status_innodb_data_reads|" +
-      "mysql_global_status_innodb_data_writes|" +
-      "mysql_global_status_innodb_data_read|" +
-      "mysql_global_status_innodb_data_written|" +
 
       // Locking & Conflicts
       "mysql_global_status_innodb_row_lock_waits|" +
-      "mysql_global_status_innodb_row_lock_time|" +
-      "mysql_global_status_table_locks_waited|" +
-      "mysql_global_status_table_locks_immediate|" +
-
-      // Network
-      "mysql_global_status_bytes_received|" +
-      "mysql_global_status_bytes_sent|" +
-
-      // Info Schema - Schemas (Databases)
-      "mysql_info_schema_schemata_type|" +
 
       // Other
       "mysql_global_status_uptime"

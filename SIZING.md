@@ -12,8 +12,8 @@ Após a implementação da política de **Explicit Whitelisting (keep)**, a card
 | **Windows Host** | ~30 a 50 | **90%** |
 | **Windows + MSSQL** | ~45 a 65 | **92%** |
 | **Containers (cAdvisor)** | ~8 | **84%** |
-| **Linux + DBaaS PostgreSQL** | ~186 (98 node + 88 pg) | **85%** |
-| **Linux + DBaaS MySQL** | ~302 (98 node + 204 mysql) | **78%** |
+| **Linux + DBaaS PostgreSQL** | ~128 (60 node + 68 pg) | **90%** |
+| **Linux + DBaaS MySQL** | ~73 (60 node + 13 mysql) | **95%** |
 
 ## 2. Consumo Estimado por Host
 
@@ -22,13 +22,10 @@ Valores baseados em auditoria real do **Mimir** (retenção de **30 dias**, scra
 | Tipo de Host | Séries Ativas | Mimir (Métricas) | Loki (Logs) | Total/mês |
 |---|---|---|---|---|
 | **Linux Host** (node-exporter) | ~98 | ~26 MB | ~50-250 MB | ~100-300 MB |
-| **Linux + DBaaS PostgreSQL** | ~186 | ~50 MB | ~50-250 MB | ~130-330 MB |
-| **Linux + DBaaS MySQL (lean)** | ~134 | ~36 MB | ~50-250 MB | ~110-310 MB |
-| **Linux + DBaaS MySQL (com commands_total)** | ~302 | ~81 MB | ~50-250 MB | ~160-360 MB |
+| **Linux + DBaaS PostgreSQL** | ~128 | ~35 MB | ~50-250 MB | ~85-285 MB |
+| **Linux + DBaaS MySQL** | ~73 | ~20 MB | ~50-250 MB | ~70-270 MB |
 | **Windows Host** | ~40-50 | ~11-14 MB | ~50-150 MB | ~80-200 MB |
 | **Windows + MSSQL** | ~55-65 | ~15-18 MB | ~50-150 MB | ~90-200 MB |
-
-> **Nota:** A métrica `mysql_global_status_commands_total` gera **168 séries sozinha** (uma por tipo de comando SQL), representando 82% do total de séries MySQL. Ela é útil para auditoria de workload, mas pode ser removida do whitelist para reduzir o footprint para ~134 séries.
 
 ## 3. Cenário Prático de Exemplo
 
@@ -38,11 +35,11 @@ Projeção para um ambiente com **15 hosts** + **Stack LGTM** (Retenção 30d):
 |---|---|---|---|---|
 | **Stack LGTM** (Self-monitor) | 1 | 0.5 GB | 0.2 GB | 0.7 GB |
 | **Hosts Linux** | 3 | 0.08 GB | 0.45 GB | 0.5 GB |
-| **Hosts Linux + MySQL** | 2 | 0.16 GB | 0.30 GB | 0.5 GB |
-| **Hosts Linux + PostgreSQL** | 2 | 0.10 GB | 0.30 GB | 0.4 GB |
-| **Hosts Windows** | 4 | 0.06 GB | 0.40 GB | 0.5 GB |
-| **Hosts Windows + SQL** | 3 | 0.05 GB | 0.30 GB | 0.4 GB |
-| **TOTAL CONSOLIDADO** | **15 Hosts** | **~0.95 GB** | **~1.95 GB** | **~3.5 GB / mês** |
+| **Hosts Linux + MySQL** | 2 | 0.04 GB | 0.30 GB | 0.34 GB |
+| **Hosts Linux + PostgreSQL** | 2 | 0.07 GB | 0.30 GB | 0.37 GB |
+| **Hosts Windows** | 4 | 0.06 GB | 0.40 GB | 0.46 GB |
+| **Hosts Windows + SQL** | 3 | 0.05 GB | 0.30 GB | 0.35 GB |
+| **TOTAL CONSOLIDADO** | **15 Hosts** | **~0.80 GB** | **~1.95 GB** | **~2.8 GB / mês** |
 
 ## 4. Fórmulas de Projeção
 
@@ -60,9 +57,8 @@ Logs (GB) ≈ [Volume Bruto GB/dia] × 0.1 × [Dias de Retenção] × 1.5
 | Tipo | Séries | GB/mês |
 |---|---|---|
 | Linux Host | ~98 | ~0.026 |
-| Linux + PostgreSQL | ~186 | ~0.050 |
-| Linux + MySQL (lean) | ~134 | ~0.036 |
-| Linux + MySQL (completo) | ~302 | ~0.081 |
+| Linux + PostgreSQL | ~128 | ~0.035 |
+| Linux + MySQL | ~73 | ~0.020 |
 | Windows | ~45 | ~0.012 |
 | Windows + MSSQL | ~60 | ~0.016 |
 
@@ -103,15 +99,14 @@ Foco em: Buffer Manager (Page Life Expectancy, Cache Hits), Database Stats (Log 
 
 ### PostgreSQL (postgres_exporter)
 Foco em: Database size, Connections, Transactions (commit/rollback), Tuple ops (read/insert/update/delete), Temp files, Deadlocks, WAL size e Active time.
-- **Séries auditadas:** ~88 métricas, total ~186 com node (validado via Mimir, `job=linux-postgres`)
+- **Séries auditadas:** ~68 métricas, total ~128 com node (validado via painéis)
 - **Arquivo:** `alloy-gateway/conf.d/pull-linux-dbaas-pgsql-hosts.alloy`
 - **Cardinalidade variável:** `pg_stat_activity_count` gera 24 séries (por estado de conexão), `pg_stat_database_*` gera 4 séries (por banco de dados)
 
 ### MySQL (mysqld_exporter)
-Foco em: Status UP, Conexões, Threads, InnoDB Buffer Pool (data, dirty, reads/writes), InnoDB Row Operations (read/insert/update/delete), InnoDB I/O (data reads/writes), Locks (row lock waits/time), Tabelas temporárias, Binlog size, Redo Log size e Queries/Questions.
-- **Séries auditadas:** ~204 total, distribuídas em 37 métricas distintas (validado via Mimir, `job=linux-mysql`)
+Foco em: Status UP, Conexões, Threads, InnoDB Buffer Pool (data), InnoDB Row Operations (read/insert/update/delete), Locks (row lock waits), Tabelas temporárias, Redo Log size e Questions.
+- **Séries auditadas:** ~13 métricas, total ~73 com node (validado via painéis)
 - **Arquivo:** `alloy-gateway/conf.d/pull-linux-dbaas-mysql-hosts.alloy`
-- **⚠️ Atenção — Alta cardinalidade:** `mysql_global_status_commands_total` gera **168 séries** (uma por tipo de comando SQL: `select`, `insert`, `update`, `alter_table`, etc). Representa **82% do total de séries MySQL**. Útil para auditoria de workload, mas aumenta o footprint de ~36 MB para ~81 MB/mês por host.
 
 ### Containers (cAdvisor)
 Foco em: CPU usage, CPU periods/throttling, Memory working set, Memory usage (cache), OOM events e Network I/O.
