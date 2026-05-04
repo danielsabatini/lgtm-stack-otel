@@ -7,15 +7,17 @@
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
 //   Adicione um bloco por servidor nas listas targets abaixo.
+//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
+//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
 // NODE METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_pgsql_node" {
+prometheus.scrape "pull_linux_pgsql_node" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
+      "__address__"             = "192.168.1.13:8080",
       "__metrics_path__"        = "/node/metrics",
       "instance"                = "srv-pgsql-01",
       "environment"             = "prd",
@@ -24,9 +26,9 @@ prometheus.scrape "linux_pgsql_node" {
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
+    //   "__address__"             = "[IP_ADDRESS]:8080",
     //   "__metrics_path__"        = "/node/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -38,11 +40,11 @@ prometheus.scrape "linux_pgsql_node" {
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_pgsql_node_transformer.receiver]
+  forward_to = [prometheus.relabel.pull_linux_pgsql_node_transformer.receiver]
 }
 
-prometheus.relabel "linux_pgsql_node_transformer" {
-  forward_to = [prometheus.relabel.linux_pgsql_node_host_info.receiver]
+prometheus.relabel "pull_linux_pgsql_node_transformer" {
+  forward_to = [prometheus.relabel.pull_linux_pgsql_node_host_info.receiver]
 
   rule {
     source_labels = ["__name__"]
@@ -50,7 +52,6 @@ prometheus.relabel "linux_pgsql_node_transformer" {
     regex         = 
       // Core & Metadata
       "node_boot_time_seconds|" +
-      "node_uname_info|" +
       "node_os_info|" +
 
       // CPU & Load
@@ -60,11 +61,14 @@ prometheus.relabel "linux_pgsql_node_transformer" {
       "node_load15|" +
 
       // Memory
-      "node_memory_Cached_bytes|" +
-      "node_memory_MemFree_bytes|" +
       "node_memory_MemTotal_bytes|" +
-      "node_memory_SwapFree_bytes|" +
+      "node_memory_MemFree_bytes|" +
+      "node_memory_MemAvailable_bytes|" +
+      "node_memory_Cached_bytes|" +
+      "node_memory_Buffers_bytes|" +
+      "node_memory_SReclaimable_bytes|" +
       "node_memory_SwapTotal_bytes|" +
+      "node_memory_SwapFree_bytes|" +
 
       // System Pressure
       "node_pressure_cpu_waiting_seconds_total|" +
@@ -73,22 +77,23 @@ prometheus.relabel "linux_pgsql_node_transformer" {
 
       // Disk & Filesystem
       "node_disk_read_bytes_total|" +
-      "node_disk_read_time_seconds_total|" +
-      "node_disk_reads_completed_total|" +
-      "node_disk_write_time_seconds_total|" +
-      "node_disk_writes_completed_total|" +
       "node_disk_written_bytes_total|" +
+      "node_disk_reads_completed_total|" +
+      "node_disk_writes_completed_total|" +
+      "node_disk_read_time_seconds_total|" +
+      "node_disk_write_time_seconds_total|" +
+      "node_filesystem_size_bytes|" +
       "node_filesystem_avail_bytes|" +
+      "node_filesystem_free_bytes|" +
       "node_filesystem_files|" +
       "node_filesystem_files_free|" +
-      "node_filesystem_size_bytes|" +
 
       // Network
       "node_network_receive_bytes_total|" +
-      "node_network_receive_drop_total|" +
-      "node_network_receive_errs_total|" +
       "node_network_transmit_bytes_total|" +
+      "node_network_receive_drop_total|" +
       "node_network_transmit_drop_total|" +
+      "node_network_receive_errs_total|" +
       "node_network_transmit_errs_total"
   }
 
@@ -104,8 +109,8 @@ prometheus.relabel "linux_pgsql_node_transformer" {
   }
 }
 
-prometheus.relabel "linux_pgsql_node_host_info" {
-  forward_to = [prometheus.remote_write.linux_pgsql_gateway.receiver]
+prometheus.relabel "pull_linux_pgsql_node_host_info" {
+  forward_to = [prometheus.remote_write.pull_linux_pgsql_gateway.receiver]
 
   // Para node_uname_info: sysname → os (lowercase)
   rule {
@@ -157,10 +162,10 @@ prometheus.relabel "linux_pgsql_node_host_info" {
 // -----------------------------------------------------------------------------
 // POSTGRESQL METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_pgsql_db" {
+prometheus.scrape "pull_linux_pgsql_db" {
   targets = [
     {
-      "__address__"             = "172.18.1.157:8080",
+      "__address__"             = "192.168.1.13:8080",
       "__metrics_path__"        = "/postgres/metrics",
       "instance"                = "srv-pgsql-01",
       "environment"             = "prd",
@@ -169,9 +174,9 @@ prometheus.scrape "linux_pgsql_db" {
       "cloud_availability_zone" = "a",
     },
     // {
-    //   "__address__"             = "192.168.10.56:8080",
+    //   "__address__"             = "[IP_ADDRESS]:8080",
     //   "__metrics_path__"        = "/postgres/metrics",
-    //   "instance"                = "srv-pgsql-02",
+    //   "instance"                = "[INSTANCE_NAME]",
     //   "environment"             = "prd",
     //   "cloud_provider"          = "mgc",
     //   "cloud_region"            = "br-se1",
@@ -183,11 +188,11 @@ prometheus.scrape "linux_pgsql_db" {
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_pgsql_db_transformer.receiver]
+  forward_to = [prometheus.relabel.pull_linux_pgsql_db_transformer.receiver]
 }
 
-prometheus.relabel "linux_pgsql_db_transformer" {
-  forward_to = [prometheus.remote_write.linux_pgsql_gateway.receiver]
+prometheus.relabel "pull_linux_pgsql_db_transformer" {
+  forward_to = [prometheus.remote_write.pull_linux_pgsql_gateway.receiver]
 
   rule {
     source_labels = ["__name__"]
@@ -218,7 +223,7 @@ prometheus.relabel "linux_pgsql_db_transformer" {
 
   // O postgres_exporter nativamente exporta um label chamado "server" (ex: server="127.0.0.1:5432").
   // Como utilizamos apenas a label "instance" para os painéis, vamos descartar a label "server" 
-  // para evitar duplicação ou poluição de labels, mantendo apenas "instance" = "srv-pgsql-01".
+  // para evitar duplicação ou poluição de labels, mantendo apenas "instance" = "[INSTANCE_NAME]".
   rule {
     regex  = "server"
     action = "labeldrop"
@@ -228,6 +233,6 @@ prometheus.relabel "linux_pgsql_db_transformer" {
 // -----------------------------------------------------------------------------
 // REMOTE WRITE
 // -----------------------------------------------------------------------------
-prometheus.remote_write "linux_pgsql_gateway" {
+prometheus.remote_write "pull_linux_pgsql_gateway" {
   endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
 }

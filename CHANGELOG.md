@@ -5,6 +5,12 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.9] - 2026-05-04
+### Alterado
+- Auditoria 1:1 e implementação de *Strict Whitelisting* nos templates Alloy (`pull-linux-dbaas-mysql-hosts.alloy`, `pull-linux-dbaas-pgsql-hosts.alloy` e `001-metric-node-local.alloy`), restringindo o envio ao Mimir de forma exata às métricas consumidas nos dashboards.
+- Padronização de nomenclatura de componentes em todos os templates Alloy (prefixo `pull_` implementado para blocos `scrape`, `relabel` e `remote_write`).
+- Revisão completa e precisão aumentada no dimensionamento de armazenamento de métricas documentado no `SIZING.md` (v1.5).
+
 ## [0.0.8] - 2026-05-04
 ### Adicionado
 - Seção "Passo Zero: Teste de Conectividade" no guia de instalação de coleta remota, priorizando a validação de rede via `curl`/`wget`.

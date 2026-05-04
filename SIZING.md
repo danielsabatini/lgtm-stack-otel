@@ -12,8 +12,8 @@ Após a implementação da política de **Explicit Whitelisting (keep)**, a card
 | **Windows Host** | ~30 a 50 | **90%** |
 | **Windows + MSSQL** | ~45 a 65 | **92%** |
 | **Containers (cAdvisor)** | ~8 | **84%** |
-| **Linux + DBaaS PostgreSQL** | ~128 (60 node + 68 pg) | **90%** |
-| **Linux + DBaaS MySQL** | ~73 (60 node + 13 mysql) | **95%** |
+| **Linux + DBaaS PostgreSQL** | ~158 (86 node + 72 pg) | **88%** |
+| **Linux + DBaaS MySQL** | ~99 (86 node + 13 mysql) | **93%** |
 
 ## 2. Consumo Estimado por Host
 
@@ -22,8 +22,8 @@ Valores baseados em auditoria real do **Mimir** (retenção de **30 dias**, scra
 | Tipo de Host | Séries Ativas | Mimir (Métricas) | Loki (Logs) | Total/mês |
 |---|---|---|---|---|
 | **Linux Host** (node-exporter) | ~98 | ~26 MB | ~50-250 MB | ~100-300 MB |
-| **Linux + DBaaS PostgreSQL** | ~128 | ~35 MB | ~50-250 MB | ~85-285 MB |
-| **Linux + DBaaS MySQL** | ~73 | ~20 MB | ~50-250 MB | ~70-270 MB |
+| **Linux + DBaaS PostgreSQL** | ~158 | ~43 MB | ~50-250 MB | ~93-293 MB |
+| **Linux + DBaaS MySQL** | ~99 | ~27 MB | ~50-250 MB | ~77-277 MB |
 | **Windows Host** | ~40-50 | ~11-14 MB | ~50-150 MB | ~80-200 MB |
 | **Windows + MSSQL** | ~55-65 | ~15-18 MB | ~50-150 MB | ~90-200 MB |
 
@@ -57,8 +57,8 @@ Logs (GB) ≈ [Volume Bruto GB/dia] × 0.1 × [Dias de Retenção] × 1.5
 | Tipo | Séries | GB/mês |
 |---|---|---|
 | Linux Host | ~98 | ~0.026 |
-| Linux + PostgreSQL | ~128 | ~0.035 |
-| Linux + MySQL | ~73 | ~0.020 |
+| Linux + PostgreSQL | ~158 | ~0.043 |
+| Linux + MySQL | ~99 | ~0.027 |
 | Windows | ~45 | ~0.012 |
 | Windows + MSSQL | ~60 | ~0.016 |
 
@@ -99,13 +99,13 @@ Foco em: Buffer Manager (Page Life Expectancy, Cache Hits), Database Stats (Log 
 
 ### PostgreSQL (postgres_exporter)
 Foco em: Database size, Connections, Transactions (commit/rollback), Tuple ops (read/insert/update/delete), Temp files, Deadlocks, WAL size e Active time.
-- **Séries auditadas:** ~68 métricas, total ~128 com node (validado via painéis)
+- **Séries auditadas:** ~72 métricas de banco, total ~158 com node (validado via painéis)
 - **Arquivo:** `alloy-gateway/conf.d/pull-linux-dbaas-pgsql-hosts.alloy`
-- **Cardinalidade variável:** `pg_stat_activity_count` gera 24 séries (por estado de conexão), `pg_stat_database_*` gera 4 séries (por banco de dados)
+- **Cardinalidade variável:** `pg_stat_activity_count` gera múltiplas séries por estado, `pg_stat_database_*` gera séries por banco de dados.
 
 ### MySQL (mysqld_exporter)
 Foco em: Status UP, Conexões, Threads, InnoDB Buffer Pool (data), InnoDB Row Operations (read/insert/update/delete), Locks (row lock waits), Tabelas temporárias, Redo Log size e Questions.
-- **Séries auditadas:** ~13 métricas, total ~73 com node (validado via painéis)
+- **Séries auditadas:** ~13 métricas de banco, total ~99 com node (validado via painéis)
 - **Arquivo:** `alloy-gateway/conf.d/pull-linux-dbaas-mysql-hosts.alloy`
 
 ### Containers (cAdvisor)
@@ -117,8 +117,8 @@ Foco em: CPU usage, CPU periods/throttling, Memory working set, Memory usage (ca
 
 ---
 **Documento validado por:** Antigravity (Coding Assistant)  
-**Versão:** 1.3 (Lean Architecture — MySQL + PostgreSQL DBaaS)  
-**Auditado em:** Abril/2026 — dados reais coletados do Mimir via API
+**Versão:** 1.5 (Post-Reset Audit — Precise Series Counts)  
+**Auditado em:** Maio/2026 — dados reais coletados do Mimir pós-reset de volumes
 
 ---
 🔙 Voltar: [README Principal](README.md)
