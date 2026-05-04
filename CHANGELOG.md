@@ -5,6 +5,12 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-05-04
+### Alterado
+- Otimização rigorosa do *explicit whitelisting* (keep) nos arquivos `pull-linux-dbaas-mysql-hosts.alloy` e `pull-linux-dbaas-pgsql-hosts.alloy`, restringindo as métricas apenas àquelas efetivamente utilizadas nos dashboards do Grafana.
+- Redução massiva do footprint ativo: MySQL caiu para ~73 séries (redução de 95%) e PostgreSQL caiu para ~128 séries (redução de 90%).
+- `SIZING.md` atualizado com as novas volumetrias, reduzindo a projeção de custo de armazenamento de métricas.
+
 ## [0.0.6] - 2026-04-30
 ### Corrigido
 - Dashboard `linux-mysql-hosts.json`: removido label `datname` inexistente nas métricas do `mysqld_exporter`, corrigindo painéis sem dados em Activity, Capacity e Diagnostics.
