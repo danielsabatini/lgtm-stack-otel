@@ -80,6 +80,13 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   nomes e valores já usados nos pipelines de métricas e logs, garantindo
   correlação por label entre os 3 sinais no Grafana Explore.
 
+### Corrigido (pós-merge com a série 0.0.9)
+- `examples/remote-scrape/pull-linux-hosts.alloy`: referência
+  `pull_linux_host_host_info` (nome duplicado, bug já presente desde a
+  renomeação de componentes da versão 0.0.9) apontava para um componente
+  inexistente (`pull_linux_host_info`) — pego pelo
+  `scripts/check-examples-consistency.py` ao revalidar após o merge.
+
 ## [0.0.9] - 2026-05-04
 ### Alterado
 - Auditoria 1:1 e implementação de *Strict Whitelisting* nos templates Alloy (`pull-linux-dbaas-mysql-hosts.alloy`, `pull-linux-dbaas-pgsql-hosts.alloy` e `001-metric-node-local.alloy`), restringindo o envio ao Mimir de forma exata às métricas consumidas nos dashboards.
