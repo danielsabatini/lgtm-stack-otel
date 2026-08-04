@@ -37,6 +37,12 @@ docker compose stop
 sync  # Força o flush dos WALs para disco antes do snapshot pré-upgrade
 ```
 
+> **Upgrade apenas do Grafana:** o frontend não compartilha WAL/storage com os
+> TSDBs (usa SQLite local, volume próprio) — não é necessário parar a stack
+> inteira. Pare só o serviço afetado: `docker compose stop grafana`. O
+> downtime completo (`docker compose stop` sem argumento) só é obrigatório
+> para upgrades de Loki, Mimir ou Tempo.
+
 ### 2. Mudança Paramétrica no `.env`
 
 ```bash
@@ -64,6 +70,9 @@ Baixe as dependências declaradas antes de forçar a subida. Se faltar disco no 
 docker compose pull
 ```
 
+> Se estiver atualizando um único serviço, restrinja o pull para evitar
+> baixar imagens que não mudaram: `docker compose pull grafana`.
+
 ### 5. Validação a Seco (Verify-Config + Dry-Run)
 
 **5a. Valide a configuração de cada TSDB com a nova imagem:**
@@ -90,6 +99,13 @@ docker run --rm \
   -config.file=/etc/tempo.yaml -version \
   && echo "✓ tempo.yaml válido"
 ```
+
+> **Grafana não tem verify-config.** Diferente dos TSDBs, a imagem
+> `grafana/grafana` sempre inicia o servidor completo — não existe um modo
+> dry-run acessível via `docker run` (qualquer argumento extra é ignorado
+> pelo entrypoint). A validação real do Grafana acontece no passo 6
+> (subir de fato) — o risco é baixo porque o SQLite local tem migração
+> automática progressiva (ver Rule #1).
 
 **5b. Simule a subida do compose sem aplicar mudanças:**
 
@@ -166,7 +182,7 @@ As versões abaixo foram testadas exaustivamente neste repositório e são consi
 
 | Componente | Versão (Stable) | Data do Teste | Nota |
 |---|---|---|---|
-| **Grafana** | `13.0.1` | 25/04/2026 | UI e Provisioning OK |
+| **Grafana** | `13.1.2` | 04/08/2026 | UI, Provisioning e migração SQLite OK; corrige CVE-2026-13438 |
 | **Alloy** | `v1.16.0` | 25/04/2026 | Estabilidade de memory usage OK |
 | **Loki** | `3.7.1` | 25/04/2026 | Bloom filters habilitados OK |
 | **Mimir** | `3.0.6` | 25/04/2026 | Ingestão Lean OK |
@@ -191,7 +207,7 @@ Se após o upgrade o serviço entrar em `CrashLoopBackOff` ou os logs indicarem 
 Sempre realize estes testes após um upgrade:
 
 - [ ] **Ingestão de Métricas:** Explore → Mimir → Query: `up` (todos devem estar 1).
-- [ ] **Ingestão de Logs:** Explore → Loki → `{container="alloy-gateway"}` (veja se novos logs aparecem).
+- [ ] **Ingestão de Logs:** Explore → Loki → `{service_name="ssh"}` (label real deste projeto; `container` não existe no schema de labels — ver [LOGS.md](LOGS.md)). Veja se novos logs aparecem.
 - [ ] **Leitura de Histórico:** Busque uma métrica de 24h atrás. Se o índice quebrou, o histórico estará vazio ou dará erro de query.
 - [ ] **Healthcheck da UI:** Acesse `http://localhost:12345` e valide se todos os componentes do Alloy estão "Healthy".
 

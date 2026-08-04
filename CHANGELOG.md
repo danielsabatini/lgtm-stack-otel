@@ -5,6 +5,26 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.11] - 2026-08-04
+### Alterado
+- Grafana atualizado `13.0.1` → `13.1.2` (corrige CVE-2026-13438). Confirmado
+  que a stack não usa nenhum dos recursos removidos na 13.1.0 (auth Azure/
+  sigv4 no datasource Prometheus nativo, plugin Zipkin) — `datasources.yaml`
+  usa apenas `prometheus`/`loki`/`tempo` sem auth especial. Upgrade validado
+  na prática: migração SQLite limpa (5 migrações executadas, 0 erros novos),
+  healthcheck OK, ingestão de métricas/logs confirmada via API.
+
+### Corrigido
+- `UPGRADE.md`: item do checklist `{container="alloy-gateway"}` nunca
+  retornava dados — o label `container` não existe no schema de labels
+  deste projeto (é `service_name`). Substituído por `{service_name="ssh"}`.
+- `UPGRADE.md`: adicionadas notas sobre (a) upgrade só do Grafana não exigir
+  parar a stack inteira (SQLite local, sem WAL compartilhado com TSDBs),
+  (b) `docker compose pull` sem argumento baixar imagens que não mudaram,
+  (c) a imagem do Grafana não ter um modo verify-config/dry-run como os
+  TSDBs — o entrypoint sempre inicia o servidor completo.
+- `UPGRADE.md`: Matriz de Compatibilidade atualizada com Grafana 13.1.2.
+
 ## [0.0.10] - 2026-08-04
 ### Adicionado
 - Seção opcional de Traces via Beyla eBPF em `examples/linux/config.alloy`
