@@ -124,8 +124,11 @@ Terminou de configurar as duas pontas? Faça um teste rápido para ver se as mé
 1. **Consulta (Query Ingestion):** Execute uma busca via API no Mimir para confirmar o recebimento dos dados base:
    ```bash
    docker exec grafana curl -sG "http://mimir:9009/prometheus/api/v1/query" \
-     --data-urlencode 'query=up{instance="<INSTANCE_NAME>"}' | jq '.data.result'
+     --data-urlencode 'query=up{instance="<INSTANCE_NAME>"}'
    ```
+   > A imagem do Grafana não tem `jq` instalado — o comando retorna o JSON
+   > bruto. Procure por `"result":[...]` não vazio para confirmar que os
+   > dados chegaram.
 
 ---
 

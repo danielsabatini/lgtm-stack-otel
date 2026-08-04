@@ -80,7 +80,6 @@ prometheus.relabel "windows_host_labels" {
 
       // CPU & System
       "windows_cpu_time_total|" +
-      "windows_system_boot_time_timestamp|" +
       "windows_system_processor_queue_length|" +
 
       // Memory

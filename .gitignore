@@ -37,3 +37,9 @@ build/
 *.egg-info/
 # Temporary workspace files
 workspace/
+
+# AI Agents
+.opencode
+AGENTS.md
+CLAUDE.md
+OPENCODE.md

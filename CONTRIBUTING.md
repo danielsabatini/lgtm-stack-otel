@@ -17,6 +17,13 @@ Se você adicionar um novo painel ao Grafana que exige uma métrica ainda não c
 2.  Adicione o nome da métrica na regra `keep` do arquivo `.alloy` correspondente em `alloy-agent/conf.d/`.
 3.  Atualize o `SIZING.md` se a cardinalidade aumentar significativamente.
 
+### 1.1 Editando templates em `examples/`
+Os templates de `examples/` são arquivos únicos e autocontidos por design — feitos para copiar direto num host remoto sem depender de outros arquivos do repositório. Isso significa que a allowlist de métricas e os labels de identidade global aparecem duplicados entre arquivos que deveriam espelhar um ao outro (ex.: `linux/config.alloy` ↔ `remote-scrape/pull-linux-hosts.alloy`). Ao criar ou editar qualquer `.alloy` em `examples/`, rode:
+```bash
+python3 scripts/check-examples-consistency.py
+```
+Ele valida a sintaxe (via `alloy validate`) e verifica se as edições foram replicadas nos arquivos-espelho, evitando o tipo de drift silencioso que esse script foi criado para pegar.
+
 ### 2. Documentação
 A regra de ouro é: **Single Source of Truth**.
 - Se alterar a rede, atualize o `ARCHITECTURE.md`.

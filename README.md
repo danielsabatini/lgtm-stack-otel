@@ -72,6 +72,10 @@ cd lgtm-stack/examples/<plataforma>
 | Coleta via Pull: Linux + PostgreSQL | [examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql) |
 | Coleta via Pull: Outras plataformas | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
 
+> **Traces (Beyla eBPF):** disponível como seção opcional dentro do guia Linux —
+> consulte [examples/linux/INSTALL.md, seção "Traces (Beyla eBPF) — Opcional"](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
+> Não aplicável a Windows, DBaaS gerenciado ou coleta via Pull — detalhes em [TRACES.md](TRACES.md).
+
 > Para atualizar as configurações em servidores já instalados: `git pull` no
 > diretório clonado e reinicie o serviço Alloy.
 

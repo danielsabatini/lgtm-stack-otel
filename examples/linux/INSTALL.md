@@ -1,7 +1,8 @@
 # Grafana Alloy — Instalação em Servidor Linux (Modo Agent)
 
 Guia para instalar o Grafana Alloy em um servidor Linux remoto e configurá-lo
-para enviar métricas e logs para o `alloy-gateway` da stack LGTM.
+para enviar métricas, logs e, opcionalmente, traces (via Beyla eBPF) para o
+`alloy-gateway` da stack LGTM.
 
 ---
 
@@ -158,6 +159,115 @@ sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
 
 ---
 
+## 5.1. Traces (Beyla eBPF) — Opcional
+
+> Pule esta seção se você não for coletar traces distribuídos (`beyla.ebpf`)
+> deste host. Métricas e logs funcionam normalmente sem este passo.
+
+O Alloy `v1.16.0` já inclui nativamente o componente `beyla.ebpf` — não é
+necessário instalar um binário Beyla separado. Porém, auto-instrumentação
+eBPF exige requisitos de kernel e capabilities que o pacote systemd padrão
+do Alloy **não** concede por padrão (o serviço roda como usuário dedicado,
+não root).
+
+### Pré-requisitos
+
+- Kernel Linux `>= 5.8` com suporte a BTF (`CONFIG_DEBUG_INFO_BTF=y`)
+- Acesso root/sudo para conceder capabilities ao serviço `alloy`
+- Serviço HTTP/gRPC rodando neste host, cuja porta você conhece
+  (usada em `open_ports` no `config.alloy`)
+
+### Validar o kernel antes de prosseguir
+
+```bash
+# Versão do kernel (precisa ser >= 5.8)
+uname -r
+
+# BTF habilitado — qualquer um dos dois deve confirmar
+ls /sys/kernel/btf/vmlinux 2>/dev/null && echo "BTF OK via sysfs"
+zcat /proc/config.gz 2>/dev/null | grep CONFIG_DEBUG_INFO_BTF
+```
+
+Se `/sys/kernel/btf/vmlinux` não existir e `CONFIG_DEBUG_INFO_BTF` não
+aparecer como `y`, o `beyla.ebpf` falhará ao iniciar. Não prossiga sem
+resolver isso (geralmente exige kernel mais recente da distribuição).
+
+### Conceder capabilities ao serviço Alloy
+
+O Beyla precisa de capabilities eBPF específicas — não é necessário rodar
+o Alloy inteiro como root. Crie um drop-in systemd:
+
+```bash
+sudo systemctl edit alloy
+```
+
+Cole o seguinte conteúdo no editor (entre os marcadores que o systemd
+já insere):
+
+```ini
+[Service]
+AmbientCapabilities=CAP_BPF CAP_SYS_PTRACE CAP_NET_RAW CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_PERFMON CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_SYS_PTRACE CAP_NET_RAW CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_PERFMON CAP_SYS_ADMIN
+```
+
+Salve e feche o editor. O systemd grava o arquivo em
+`/etc/systemd/system/alloy.service.d/override.conf`.
+
+> **Nota:** `CAP_SYS_ADMIN` não está na lista de capabilities documentada
+> oficialmente pelo Beyla, mas foi necessária em teste real (Debian 13,
+> kernel 6.12) para o `discover.ProcessWatcher` funcionar — sem ela, o
+> Beyla loga `Unable to load eBPF watcher for process events... permission
+> denied` e só descobre processos que já estavam rodando antes do Alloy
+> iniciar (não detecta novos processos abrindo a porta depois).
+
+Aplique:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart alloy
+```
+
+### Configurar a porta do serviço a instrumentar
+
+No arquivo `/etc/alloy/config.alloy` já copiado (passo 5), edite a seção
+`TRACES: Beyla eBPF (Opcional)`:
+
+```hcl
+open_ports = "8080"  // troque pela porta real do seu serviço
+name       = "app"   // troque pelo nome lógico do serviço
+```
+
+Reaplique:
+
+```bash
+sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
+sudo systemctl restart alloy
+```
+
+### Testar
+
+```bash
+# Gere tráfego real no serviço instrumentado (ajuste porta/rota)
+curl -s http://localhost:8080/ > /dev/null
+
+# Acompanhe o Alloy processando os spans
+sudo journalctl -u alloy -f | grep -i beyla
+```
+
+No Grafana:
+
+1. Acesse **Explore** → datasource **Tempo**.
+2. Busque por `{ resource.service.name = "app" }` (ajuste ao `name`
+   configurado) ou filtre pelo label `instance` do host.
+3. Confirme que o trace aparece com os atributos
+   `instance`/`environment`/`cloud_provider`/`cloud_region`/`cloud_availability_zone`.
+4. Opcional: no datasource **Mimir**, busque
+   `traces_spanmetrics_calls_total{service="app"}` — deve popular
+   automaticamente a partir do primeiro trace recebido pelo Tempo (gerado
+   pelo `metrics_generator` do Tempo, sem configuração adicional).
+
+---
+
 ## 6. Permissão para leitura do journal
 
 O usuário do serviço Alloy precisa de acesso aos logs do systemd:
@@ -191,17 +301,37 @@ sudo systemctl status alloy
 sudo journalctl -u alloy -f
 ```
 
-Procure por linhas indicando conexão bem-sucedida com `lgtm-stack`:
+**Importante:** quando o envio dá certo, o Alloy fica em silêncio — ele não
+loga nada a cada batch enviado com sucesso. Um envio malsucedido, por outro
+lado, aparece explicitamente como `WARN`:
 
 ```
-msg="Writing metrics" url=http://lgtm-stack:9999/api/v1/metrics/write
-msg="Successfully flushed" url=http://lgtm-stack:9998/loki/api/v1/push
+level=warn msg="Failed to send batch, retrying" component_id=prometheus.remote_write.gateway err="dial tcp ...: connect: connection refused"
 ```
+
+Ou seja: **ausência de erro/warn no log não confirma envio, só a ausência de
+falha.** Para confirmar positivamente que os dados chegaram, consulte a API
+do Mimir/Loki diretamente (rode a partir do servidor LGTM, dentro do
+container `grafana`, que tem acesso à rede interna):
+
+```bash
+docker exec grafana curl -sG "http://mimir:9009/prometheus/api/v1/query" \
+  --data-urlencode 'query=up{instance="<INSTANCE_NAME_OU_HOSTNAME>"}'
+
+docker exec grafana curl -sG "http://loki:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={instance="<INSTANCE_NAME_OU_HOSTNAME>"}' \
+  --data-urlencode 'limit=5'
+```
+
+> A imagem do Grafana não tem `jq`/`python3` instalado — o comando acima
+> retorna o JSON bruto. Procure por `"result":[...]` **não vazio**: se
+> aparecer pelo menos um item, os dados chegaram. `"result":[]` significa
+> que nada foi recebido ainda para esse `instance`.
 
 ### Confirmar no Grafana
 
 1. Acesse o Grafana da stack (`http://<IP_DO_SERVIDOR_LGTM>:3000`)
-2. Abra o dashboard **Node Exporter Linux (Remote)**
+2. Abra o dashboard **Linux Hosts**
 3. Selecione o `instance` correspondente ao novo servidor
 4. Verifique se métricas e logs estão chegando
 
@@ -262,3 +392,30 @@ sudo systemctl restart alloy
 ```bash
 alloy fmt /etc/alloy/config.alloy
 ```
+
+**`beyla.ebpf` falha ao iniciar / erros de permissão nos logs**
+```bash
+sudo journalctl -u alloy -n 100 | grep -i -E "beyla|bpf|permission|capabilit"
+```
+Causas comuns:
+- Kernel sem BTF → revalidar `/sys/kernel/btf/vmlinux` (seção 5.1).
+- Capability faltando → confirme o drop-in com `systemctl cat alloy` e
+  verifique se as 6 capabilities aparecem em `AmbientCapabilities` e
+  `CapabilityBoundingSet`.
+- Kernel `< 5.8` → não há workaround; Beyla eBPF não é suportado neste host.
+
+**Nenhum span de trace aparece no Tempo**
+- Confirme que `open_ports` corresponde à porta real do processo:
+  `sudo ss -tlnp | grep <porta>`.
+- Confirme que o processo gerou tráfego HTTP/gRPC real durante a janela
+  de observação (Beyla só instrumenta requisições que efetivamente
+  trafegam pela porta monitorada).
+- Confirme conectividade com o gateway na porta gRPC do Alloy Gateway:
+  `curl -v http://lgtm-stack:4317`.
+
+**Volume de spans excessivo no Tempo**
+- Não reduza o `sampler` do Beyla para um valor por ratio (`traceidratio`)
+  — isso quebra a garantia de retenção de 100% de erros/traces lentos do
+  tail sampling do Alloy Gateway. O ajuste de volume é feito
+  exclusivamente nas políticas de `otelcol.processor.tail_sampling` do
+  Gateway central (fora do escopo deste guia — consulte `TRACES.md`).

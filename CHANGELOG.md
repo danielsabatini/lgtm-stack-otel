@@ -5,6 +5,81 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.9] - 2026-08-04
+### Adicionado
+- Seção opcional de Traces via Beyla eBPF em `examples/linux/config.alloy`
+  (`beyla.ebpf` → `otelcol.processor.transform` → `otelcol.processor.batch`
+  → `otelcol.exporter.otlp`), com sampler `always_on` delegando o corte de
+  volume ao tail sampling já existente no Alloy Gateway. Configuração
+  validada com `alloy validate` contra a imagem `grafana/alloy:v1.16.0`.
+- Guia de pré-requisitos, capabilities eBPF (drop-in systemd) e
+  troubleshooting em `examples/linux/INSTALL.md`, seção
+  "Traces (Beyla eBPF) — Opcional".
+- Nova seção em `TRACES.md` documentando o escopo de coleta remota via
+  Beyla (Linux apenas; não aplicável a DBaaS gerenciado nem ao modelo pull).
+- Nota de cardinalidade de `traces_spanmetrics_*` em `SIZING.md`.
+
+### Corrigido
+- **Crítico** — `tempo/tempo.yaml`: o receiver OTLP (`distributor.receivers.otlp.protocols`) não
+  declarava `endpoint`, e o Tempo 2.10.5 usa por padrão `127.0.0.1` (loopback) em vez de `0.0.0.0`
+  para esse caso — o Alloy Gateway nunca conseguia alcançar `tempo:4317`/`tempo:4318` pela rede
+  Docker (`connection refused`). Isso bloqueava **qualquer** ingestão de traces na stack, não
+  apenas Beyla. Corrigido declarando `endpoint: 0.0.0.0:4317`/`0.0.0.0:4318` explicitamente.
+  Encontrado e validado em teste end-to-end real (Beyla eBPF em host Debian 13 remoto → Alloy
+  Gateway → tail sampling → Tempo → Grafana), confirmado via `otelcol_exporter_sent_spans_total`
+  e busca de traces na API do Tempo.
+- `examples/linux/INSTALL.md`: capability `CAP_SYS_ADMIN` adicionada ao drop-in systemd do
+  Beyla — não documentada oficialmente, mas necessária em teste real (Debian 13, kernel 6.12)
+  para o `discover.ProcessWatcher` (sem ela, o Beyla só detecta processos já em execução antes
+  do Alloy iniciar).
+- `examples/linux/INSTALL.md`: seção "Verificar o envio de dados" instruía procurar as
+  mensagens de log `"Writing metrics"`/`"Successfully flushed"`, que não existem na versão
+  atual do Alloy (`v1.16.0` fica em silêncio em envios bem-sucedidos, só loga em `WARN` nas
+  falhas) — substituído por consulta direta à API do Mimir/Loki. Nome do dashboard citado
+  corrigido de "Node Exporter Linux (Remote)" (inexistente) para "Linux Hosts" (título real
+  do provisioning).
+- `examples/linux/INSTALL.md` e `examples/remote-scrape/INSTALL.md`: comandos de verificação
+  via `docker exec grafana curl ... | jq` nunca funcionaram — a imagem oficial do Grafana não
+  inclui `jq`. Removido o pipe, com nota explicando o que procurar no JSON bruto retornado.
+- `examples/linux/config.alloy`: blocos `rule { ... }` com múltiplos
+  atributos compactados em uma única linha (seções LOGS e GLOBAL LABELS)
+  não passavam em `alloy validate` — reformatados para um atributo por
+  linha, sem alteração de comportamento.
+- `examples/windows/config.alloy`: arquivo estava truncado (faltavam as
+  seções de Logs Security/System/Application/Platform, Global Identity e
+  Outputs anunciadas no próprio cabeçalho) — o Alloy nunca conseguia
+  iniciar com esse arquivo. Reconstruído a partir do padrão já validado
+  em `examples/windows-mssql/config.alloy`.
+- `examples/linux-mysql/config.alloy` e `examples/linux-pgsql/config.alloy`:
+  endpoint do gateway usava `alloy-gateway.meudominio.internal` em vez do
+  padrão `lgtm-stack`; nenhum label de identidade (`instance`,
+  `environment`, `cloud_provider`, `cloud_region`, `cloud_availability_zone`)
+  era injetado, causando colisão de `instance` (`__address__` bruto) entre
+  múltiplos hosts monitorados pelo mesmo template.
+- Referências de caminho quebradas em `examples/remote-scrape/pull-windows-mssql-hosts.alloy`
+  (apontava para `examples/mssql/` inexistente) e `pull-linux-hosts.alloy`
+  (apontava para arquivos numerados dentro de `examples/linux/`, que na
+  verdade vivem em `alloy-agent/conf.d/`).
+- Todos os `.alloy` de `examples/` validados com `alloy validate` contra
+  `grafana/alloy:v1.16.0`.
+- `examples/linux-mysql/config.alloy` e `examples/linux-pgsql/config.alloy`:
+  credenciais de banco (`data_source_name`/`data_source_names`) estavam
+  hardcoded no arquivo — externalizadas via `sys.env("MYSQL_EXPORTER_DSN")`/
+  `sys.env("POSTGRES_EXPORTER_DSN")`, mesmo padrão usado no resto do repo
+  para valores sensíveis/variáveis. Adicionada seção "Alloy Self" (ausente
+  nesses dois templates) para monitorar a saúde do próprio agente.
+- Removida entrada duplicada `windows_system_boot_time_timestamp` na
+  allowlist de métricas Windows, presente em 4 arquivos
+  (`examples/windows/config.alloy`, `examples/windows-mssql/config.alloy`,
+  `examples/remote-scrape/pull-windows-hosts.alloy`,
+  `examples/remote-scrape/pull-windows-mssql-hosts.alloy`).
+
+### Alterado
+- Identidade global de traces (`instance`, `environment`, `cloud_provider`,
+  `cloud_region`, `cloud_availability_zone`) padronizada com os mesmos
+  nomes e valores já usados nos pipelines de métricas e logs, garantindo
+  correlação por label entre os 3 sinais no Grafana Explore.
+
 ## [0.0.8] - 2026-05-04
 ### Adicionado
 - Seção "Passo Zero: Teste de Conectividade" no guia de instalação de coleta remota, priorizando a validação de rede via `curl`/`wget`.

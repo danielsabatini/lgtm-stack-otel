@@ -1,6 +1,11 @@
 // =============================================================================
 // Grafana Alloy — Linux Single File Reference
 // =============================================================================
+//
+// Traces (Beyla eBPF): seção opcional — requer kernel Linux >=5.8 com BTF e
+// capabilities eBPF (ver INSTALL.md, seção "Traces (Beyla eBPF) — Opcional").
+// Ajuste open_ports/name na seção TRACES antes de habilitar.
+// =============================================================================
 
 // -------------------- METRICS: Alloy Self --------------------
 
@@ -147,11 +152,36 @@ loki.source.journal "ssh" {
 loki.relabel "ssh_labels" {
   forward_to = [loki.process.ssh_normalize.receiver]
 
-  rule { source_labels=["priority"] regex="[012]" target_label="level" replacement="critical" }
-  rule { source_labels=["priority"] regex="3" target_label="level" replacement="error" }
-  rule { source_labels=["priority"] regex="[45]" target_label="level" replacement="warn" }
-  rule { source_labels=["priority"] regex="6" target_label="level" replacement="info" }
-  rule { source_labels=["priority"] regex="7" target_label="level" replacement="debug" }
+  rule {
+    source_labels = ["priority"]
+    regex = "[012]"
+    target_label = "level"
+    replacement = "critical"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex = "3"
+    target_label = "level"
+    replacement = "error"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex = "[45]"
+    target_label = "level"
+    replacement = "warn"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex = "6"
+    target_label = "level"
+    replacement = "info"
+  }
+  rule {
+    source_labels = ["priority"]
+    regex = "7"
+    target_label = "level"
+    replacement = "debug"
+  }
 
   rule {
     source_labels=["level"]
@@ -196,11 +226,36 @@ loki.source.journal "kernel" {
 loki.relabel "kernel_labels" {
  forward_to=[loki.process.kernel_normalize.receiver]
 
- rule { source_labels=["priority"] regex="[012]" target_label="level" replacement="critical" }
- rule { source_labels=["priority"] regex="3" target_label="level" replacement="error" }
- rule { source_labels=["priority"] regex="[45]" target_label="level" replacement="warn" }
- rule { source_labels=["priority"] regex="6" target_label="level" replacement="info" }
- rule { source_labels=["priority"] regex="7" target_label="level" replacement="debug" }
+ rule {
+   source_labels = ["priority"]
+   regex = "[012]"
+   target_label = "level"
+   replacement = "critical"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "3"
+   target_label = "level"
+   replacement = "error"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "[45]"
+   target_label = "level"
+   replacement = "warn"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "6"
+   target_label = "level"
+   replacement = "info"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "7"
+   target_label = "level"
+   replacement = "debug"
+ }
 
  rule {
    source_labels=["level"]
@@ -250,11 +305,36 @@ loki.source.journal "cron" {
 loki.relabel "cron_labels" {
  forward_to=[loki.process.cron_normalize.receiver]
 
- rule { source_labels=["priority"] regex="[012]" target_label="level" replacement="critical" }
- rule { source_labels=["priority"] regex="3" target_label="level" replacement="error" }
- rule { source_labels=["priority"] regex="[45]" target_label="level" replacement="warn" }
- rule { source_labels=["priority"] regex="6" target_label="level" replacement="info" }
- rule { source_labels=["priority"] regex="7" target_label="level" replacement="debug" }
+ rule {
+   source_labels = ["priority"]
+   regex = "[012]"
+   target_label = "level"
+   replacement = "critical"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "3"
+   target_label = "level"
+   replacement = "error"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "[45]"
+   target_label = "level"
+   replacement = "warn"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "6"
+   target_label = "level"
+   replacement = "info"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "7"
+   target_label = "level"
+   replacement = "debug"
+ }
 
  rule {
    source_labels=["level"]
@@ -304,11 +384,36 @@ loki.source.journal "systemd" {
 loki.relabel "systemd_labels" {
  forward_to=[loki.process.systemd_normalize.receiver]
 
- rule { source_labels=["priority"] regex="[012]" target_label="level" replacement="critical" }
- rule { source_labels=["priority"] regex="3" target_label="level" replacement="error" }
- rule { source_labels=["priority"] regex="[45]" target_label="level" replacement="warn" }
- rule { source_labels=["priority"] regex="6" target_label="level" replacement="info" }
- rule { source_labels=["priority"] regex="7" target_label="level" replacement="debug" }
+ rule {
+   source_labels = ["priority"]
+   regex = "[012]"
+   target_label = "level"
+   replacement = "critical"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "3"
+   target_label = "level"
+   replacement = "error"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "[45]"
+   target_label = "level"
+   replacement = "warn"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "6"
+   target_label = "level"
+   replacement = "info"
+ }
+ rule {
+   source_labels = ["priority"]
+   regex = "7"
+   target_label = "level"
+   replacement = "debug"
+ }
 
  rule {
    source_labels=["level"]
@@ -336,6 +441,48 @@ loki.process "systemd_normalize" {
      service_name="systemd",
    }
  }
+}
+
+
+// -------------------- TRACES: Beyla eBPF (Opcional) --------------------
+// Referência: https://grafana.com/docs/alloy/latest/reference/components/beyla/beyla.ebpf/
+
+beyla.ebpf "app_instrument" {
+  // Falha alto e cedo se faltar alguma capability eBPF, em vez de degradar
+  // silenciosamente (ver INSTALL.md, seção "Traces (Beyla eBPF) — Opcional").
+  enforce_sys_caps = true
+
+  discovery {
+    instrument {
+      // TODO: ajuste a porta do seu serviço (ex: "8080", "80,443", "3000-3010")
+      open_ports = "8080"
+
+      // TODO: ajuste o nome lógico do serviço (aparece como service_name no Tempo/Grafana)
+      name = "app"
+
+      sampler {
+        // NUNCA troque para um sampler por ratio (ex: "traceidratio") aqui.
+        // O Alloy Gateway já aplica tail sampling (alloy-gateway/conf.d/003-otlp-gtw-local.alloy):
+        // retém 100% de erros, 100% de traces >1000ms, e amostra 5% do restante "OK".
+        // Se o Beyla descartar spans por ratio ANTES do gateway, a decisão é cega ao
+        // status/latência e uma fração de erros/lentidão se perde para sempre.
+        name = "always_on"
+      }
+    }
+  }
+
+  // Exemplo opcional: descomente e ajuste se o serviço expõe paths com segmentos
+  // dinâmicos (IDs, UUIDs, slugs) para evitar explosão de cardinalidade em http.route.
+  /*
+  routes {
+    patterns                     = ["/api/v1/users/{id}", "/api/v1/orders/{id}"]
+    max_path_segment_cardinality = 10
+  }
+  */
+
+  output {
+    traces = [otelcol.processor.transform.global_identity_traces.input]
+  }
 }
 
 
@@ -389,21 +536,76 @@ prometheus.relabel "host_info_extractor" {
 prometheus.relabel "global_identity" {
  forward_to=[prometheus.remote_write.gateway.receiver]
 
- rule { target_label="instance" replacement=sys.env("HOSTNAME") }
- rule { target_label="environment" replacement="prd" }
- rule { target_label="cloud_provider" replacement="mgc" }
- rule { target_label="cloud_region" replacement="br-se1" }
- rule { target_label="cloud_availability_zone" replacement="a" }
+ rule {
+   target_label = "instance"
+   replacement = sys.env("HOSTNAME")
+ }
+ rule {
+   target_label = "environment"
+   replacement = "prd"
+ }
+ rule {
+   target_label = "cloud_provider"
+   replacement = "mgc"
+ }
+ rule {
+   target_label = "cloud_region"
+   replacement = "br-se1"
+ }
+ rule {
+   target_label = "cloud_availability_zone"
+   replacement = "a"
+ }
 }
 
 loki.relabel "global_identity" {
  forward_to=[loki.write.gateway.receiver]
 
- rule { target_label="instance" replacement=sys.env("HOSTNAME") }
- rule { target_label="environment" replacement="prd" }
- rule { target_label="cloud_provider" replacement="mgc" }
- rule { target_label="cloud_region" replacement="br-se1" }
- rule { target_label="cloud_availability_zone" replacement="a" }
+ rule {
+   target_label = "instance"
+   replacement = sys.env("HOSTNAME")
+ }
+ rule {
+   target_label = "environment"
+   replacement = "prd"
+ }
+ rule {
+   target_label = "cloud_provider"
+   replacement = "mgc"
+ }
+ rule {
+   target_label = "cloud_region"
+   replacement = "br-se1"
+ }
+ rule {
+   target_label = "cloud_availability_zone"
+   replacement = "a"
+ }
+}
+
+otelcol.processor.transform "global_identity_traces" {
+  error_mode = "ignore"
+
+  trace_statements {
+    context = "resource"
+    statements = [
+      `set(attributes["instance"], "` + sys.env("HOSTNAME") + `")`,
+      `set(attributes["environment"], "prd")`,
+      `set(attributes["cloud_provider"], "mgc")`,
+      `set(attributes["cloud_region"], "br-se1")`,
+      `set(attributes["cloud_availability_zone"], "a")`,
+    ]
+  }
+
+  output {
+    traces = [otelcol.processor.batch.traces_batch.input]
+  }
+}
+
+otelcol.processor.batch "traces_batch" {
+  output {
+    traces = [otelcol.exporter.otlp.gateway_traces.input]
+  }
 }
 
 
@@ -419,4 +621,15 @@ loki.write "gateway" {
  endpoint {
    url="http://lgtm-stack:9998/loki/api/v1/push"
  }
+}
+
+otelcol.exporter.otlp "gateway_traces" {
+  client {
+    endpoint = "lgtm-stack:4317"
+
+    tls {
+      // TODO: ajuste conforme a política de TLS do seu ambiente.
+      insecure = true
+    }
+  }
 }

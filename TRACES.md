@@ -15,6 +15,36 @@ exporter, _ := otlptracegrpc.New(ctx,
 )
 ```
 
+## Coleta remota via Beyla eBPF (hosts Linux)
+
+Além da instrumentação manual via SDK OTel (seção anterior), hosts Linux remotos
+monitorados pela stack podem gerar traces automaticamente via **Beyla eBPF**
+(`beyla.ebpf`, componente nativo do Alloy v1.x) — auto-instrumentação de serviços
+HTTP/S e gRPC sem alterar código de aplicação. O template está em
+[examples/linux/config.alloy](examples/linux/config.alloy), com guia completo de
+pré-requisitos e instalação em
+[examples/linux/INSTALL.md, seção "Traces (Beyla eBPF) — Opcional"](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
+
+**Escopo:**
+- Somente hosts **Linux** — eBPF é uma tecnologia de kernel Linux, não roda em Windows.
+- **Não aplicável** aos templates de DBaaS (`examples/linux-mysql`, `examples/linux-pgsql`):
+  não há processo de aplicação colocalizado para instrumentar, apenas exporters PromQL
+  de bancos gerenciados.
+- **Não aplicável** ao modelo pull (`examples/remote-scrape`): o eBPF precisa rodar no
+  mesmo kernel do processo-alvo, o que é incompatível com scrape remoto via HTTP.
+
+**Sampling:** o produtor (Beyla) deve sempre enviar 100% dos spans
+(`sampler { name = "always_on" }`) — o corte de volume já é feito pelo tail sampling
+do Alloy Gateway (ver seção acima). Nenhuma configuração adicional é necessária no
+lado do Gateway ao habilitar Beyla em um host.
+
+**Correlação automática:** assim que os primeiros traces chegarem, o `metrics_generator`
+do Tempo (já ativo, `service-graphs` + `span-metrics`) passa a gerar métricas RED
+(`traces_spanmetrics_*`) e o Service Graph no Grafana automaticamente, sem configuração
+adicional — ver [SIZING.md](SIZING.md) para o impacto de cardinalidade.
+
+---
+
 ## Tail sampling
 
 Um fato matemático na captura de Traces em produção: Seu banco Tempo afogará em disco se receber milhões de repetições de _HTTP 200 OK_. A esmagadora maioria são chamadas perfeitas e imutáveis das funções, sem variação analítica pertinente, ocupando RAM e disco.

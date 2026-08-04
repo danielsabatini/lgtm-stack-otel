@@ -74,6 +74,15 @@ Para o servidor central que executará a Stack LGTM:
   - **Alloy Agent (Local):** ~0.5 vCPU / 1 GB.
 - A soma do worst-case retém até 4 GB livres para o SO (bash, sshd).
 
+> **Traces (Beyla eBPF):** ao habilitar `beyla.ebpf` em um host (ver [TRACES.md](TRACES.md)),
+> o `metrics_generator` do Tempo passa a gerar automaticamente as séries
+> `traces_spanmetrics_calls_total` e `traces_spanmetrics_duration_milliseconds_bucket`
+> no Mimir — cardinalidade adicional proporcional a `service_name × http.route × status_code`
+> (mais os labels de identidade `instance`/`environment`/`cloud_*`). O bloco `routes`/
+> `max_path_segment_cardinality` do `beyla.ebpf` é o controle primário para evitar
+> explosão de cardinalidade em `http.route` com paths dinâmicos (IDs, UUIDs). Reavalie
+> o sizing de métricas do Mimir ao habilitar Beyla em múltiplos hosts.
+
 ---
 
 # Detalhes Técnicos: Sizing Audit Report

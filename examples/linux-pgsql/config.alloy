@@ -5,11 +5,35 @@
 // =============================================================================
 
 // =============================================================================
+// 0. ALLOY SELF (saúde do próprio agente)
+// =============================================================================
+prometheus.exporter.self "alloy" { }
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.relabel.alloy_labels.receiver]
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.relabel "alloy_labels" {
+  forward_to = [prometheus.relabel.global_identity.receiver]
+
+  rule {
+    target_label = "service_name"
+    replacement  = "alloy"
+  }
+}
+
+// =============================================================================
 // 1. MÉTRICAS (Mínimas Necessárias)
 // =============================================================================
 prometheus.exporter.postgres "db_pg" {
+  // Credencial NUNCA deve ficar hardcoded neste arquivo. Exporte a variável
+  // de ambiente antes de subir o Alloy, ex:
+  //   export POSTGRES_EXPORTER_DSN="postgresql://alloy_exporter:senha_segura@localhost:5432/postgres?sslmode=disable"
   data_source_names = [
-    "postgresql://alloy_exporter:senha_segura@localhost:5432/postgres?sslmode=disable",
+    sys.env("POSTGRES_EXPORTER_DSN"),
   ]
 
   // Mantemos estritamente saúde do banco e incidentes de trava (Locks)
@@ -25,13 +49,56 @@ prometheus.scrape "pg_metrics" {
   targets         = prometheus.exporter.postgres.db_pg.targets
   job_name        = "postgres-cluster"
   scrape_interval = "60s"
-  
-  forward_to      = [prometheus.remote_write.gateway.receiver]
+
+  forward_to      = [prometheus.relabel.pg_labels.receiver]
+}
+
+prometheus.relabel "pg_labels" {
+  forward_to = [prometheus.relabel.global_identity.receiver]
+
+  rule {
+    target_label = "service_name"
+    replacement  = "postgres-exporter"
+  }
+}
+
+// Identidade global — mesmos labels usados nos demais templates (linux, windows,
+// windows-mssql), necessários para o $instance dos dashboards e para correlação
+// entre métricas/logs/traces no Grafana Explore.
+// TODO: ajuste environment/cloud_provider/cloud_region/cloud_availability_zone
+// conforme o ambiente real deste host.
+prometheus.relabel "global_identity" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
 }
 
 prometheus.remote_write "gateway" {
   endpoint {
-    url = "http://alloy-gateway.meudominio.internal:9999/api/v1/metrics/write"
+    url = "http://lgtm-stack:9999/api/v1/metrics/write"
   }
 }
 
@@ -67,15 +134,44 @@ loki.process "pg_filter" {
 }
 
 loki.relabel "pg_format" {
-  forward_to = [loki.write.gateway_logs.receiver]
+  forward_to = [loki.relabel.global_identity_logs.receiver]
   rule {
     target_label = "service_name"
     replacement  = "postgresql"
   }
 }
 
+loki.relabel "global_identity_logs" {
+  forward_to = [loki.write.gateway_logs.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prd"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "mgc"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "br-se1"
+  }
+
+  rule {
+    target_label = "cloud_availability_zone"
+    replacement  = "a"
+  }
+}
+
 loki.write "gateway_logs" {
   endpoint {
-    url = "http://alloy-gateway.meudominio.internal:9998/loki/api/v1/push"
+    url = "http://lgtm-stack:9998/loki/api/v1/push"
   }
 }
