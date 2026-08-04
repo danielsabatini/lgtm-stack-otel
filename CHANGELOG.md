@@ -5,6 +5,37 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.12] - 2026-08-04
+### Alterado
+- Mimir atualizado `3.0.6` → `3.1.4` (corrige múltiplos CVEs de Go/dependências:
+  CVE-2026-39822, CVE-2026-42505, CVE-2026-39833, CVE-2026-39882, CVE-2026-2303).
+  Nenhuma flag removida na 3.1 (`-distributor.metric-relabeling-enabled`,
+  `-querier.response-streaming-enabled`, etc.) está em uso em `mimir.yaml`.
+- Validado com reset completo do ambiente (`docker compose down -v` + subida
+  limpa): todos os 6 dashboards provisionados carregam, os 3 datasources
+  (Mimir/Loki/Tempo) saudáveis, e um Alloy Agent remoto (host de teste real)
+  reconectou automaticamente sem reconfiguração.
+
+### Corrigido
+- `UPGRADE.md`: os 3 comandos de "Validação a Seco" (Loki/Mimir/Tempo)
+  nunca funcionavam — faltava `-config.expand-env=true`, então o parser
+  sempre falhava com `not a valid duration string: "${...}"` mesmo em
+  configs válidas (falso negativo). Todos os `.yaml` desses TSDBs usam
+  variáveis de ambiente (`${MIMIR_RETENTION}` etc.) e o `compose.yaml`
+  já roda com essa flag — só faltava no comando documentado.
+- `UPGRADE.md`: checklist de "Leitura de Histórico" não alertava que a
+  checagem só é conclusiva com blocos já compactados no storage — dados
+  recém-ingeridos ficam no WAL/ingester e não exercitam mudanças de
+  formato de bloco/índice entre versões de TSDB. Nota adicionada com
+  comando para verificar blocos existentes antes de confiar no teste.
+
+### Observado (não bloqueante)
+- Grafana 13.1.2 loga `[SHOULD NOT HAPPEN] failed to update managedFields`
+  ao carregar `linux-pgsql-hosts.json` (campos do schema v2 não reconhecidos
+  no tracking interno de managedFields). O dashboard carrega normalmente
+  (58 painéis, confirmado via API) — não afeta os outros 5 dashboards.
+  Não investigado a fundo; registrar aqui para acompanhar em upgrades futuros.
+
 ## [0.0.11] - 2026-08-04
 ### Alterado
 - Grafana atualizado `13.0.1` → `13.1.2` (corrige CVE-2026-13438). Confirmado

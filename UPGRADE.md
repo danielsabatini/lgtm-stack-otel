@@ -82,23 +82,30 @@ docker compose pull
 docker run --rm \
   -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml \
   grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.1} \
-  -config.file=/etc/loki/local-config.yaml -verify-config \
+  -config.file=/etc/loki/local-config.yaml -config.expand-env=true -verify-config \
   && echo "✓ loki.yaml válido"
 
 # Mimir
 docker run --rm \
+  -e MIMIR_RETENTION=${MIMIR_RETENTION:-30d} \
   -v $(pwd)/mimir/mimir.yaml:/etc/mimir.yaml \
   grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.0.5} \
-  -config.file=/etc/mimir.yaml -modules \
+  -config.file=/etc/mimir.yaml -config.expand-env=true -modules \
   && echo "✓ mimir.yaml válido"
 
 # Tempo
 docker run --rm \
+  -e TEMPO_RETENTION=${TEMPO_RETENTION:-336h} \
   -v $(pwd)/tempo/tempo.yaml:/etc/tempo.yaml \
   grafana/tempo:${GRAFANA_TEMPO_VERSION:-2.10.3} \
-  -config.file=/etc/tempo.yaml -version \
+  -config.file=/etc/tempo.yaml -config.expand-env=true -version \
   && echo "✓ tempo.yaml válido"
 ```
+
+> **Nota:** os três TSDBs rodam com `-config.expand-env=true` no `compose.yaml`
+> (os arquivos `.yaml` usam variáveis como `${MIMIR_RETENTION}`). Sem essa
+> flag no comando de validação, o parser falha em qualquer config válida
+> com o erro `not a valid duration string: "${...}"` — um falso negativo.
 
 > **Grafana não tem verify-config.** Diferente dos TSDBs, a imagem
 > `grafana/grafana` sempre inicia o servidor completo — não existe um modo
@@ -185,7 +192,7 @@ As versões abaixo foram testadas exaustivamente neste repositório e são consi
 | **Grafana** | `13.1.2` | 04/08/2026 | UI, Provisioning e migração SQLite OK; corrige CVE-2026-13438 |
 | **Alloy** | `v1.16.0` | 25/04/2026 | Estabilidade de memory usage OK |
 | **Loki** | `3.7.1` | 25/04/2026 | Bloom filters habilitados OK |
-| **Mimir** | `3.0.6` | 25/04/2026 | Ingestão Lean OK |
+| **Mimir** | `3.1.4` | 04/08/2026 | Corrige múltiplos CVEs (Go/deps). Validado com `docker compose down -v` + subida limpa: ingester/WAL, datasources Grafana e reconexão de agente remoto OK. Mudança de índice de bloco v2 (blocos já compactados) **não foi exercitada** neste teste — ver nota no checklist. |
 | **Tempo** | `2.10.5` | 25/04/2026 | Tail Sampling OK |
 
 ---
@@ -209,6 +216,14 @@ Sempre realize estes testes após um upgrade:
 - [ ] **Ingestão de Métricas:** Explore → Mimir → Query: `up` (todos devem estar 1).
 - [ ] **Ingestão de Logs:** Explore → Loki → `{service_name="ssh"}` (label real deste projeto; `container` não existe no schema de labels — ver [LOGS.md](LOGS.md)). Veja se novos logs aparecem.
 - [ ] **Leitura de Histórico:** Busque uma métrica de 24h atrás. Se o índice quebrou, o histórico estará vazio ou dará erro de query.
+  > **Atenção:** essa checagem só é conclusiva se já existirem **blocos
+  > compactados** no storage (`docker run --rm -v lgtm-stack_mimir-data:/data:ro
+  > busybox find /data/storage/blocks` — deve listar blocos além de
+  > `__mimir_cluster`). Dados recém-ingeridos ainda estão no WAL/ingester e
+  > não exercitam mudanças de formato de bloco/índice (ex: Mimir 3.1 mudou
+  > para índice v2). Em stacks novas ou recém-reiniciadas, force a
+  > compactação ou aguarde o intervalo do compactor antes de confiar
+  > nesse teste.
 - [ ] **Healthcheck da UI:** Acesse `http://localhost:12345` e valide se todos os componentes do Alloy estão "Healthy".
 
 ---
