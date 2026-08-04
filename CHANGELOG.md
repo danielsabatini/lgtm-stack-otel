@@ -5,7 +5,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.9] - 2026-08-04
+## [0.0.10] - 2026-08-04
 ### Adicionado
 - Seção opcional de Traces via Beyla eBPF em `examples/linux/config.alloy`
   (`beyla.ebpf` → `otelcol.processor.transform` → `otelcol.processor.batch`
@@ -79,6 +79,12 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   `cloud_region`, `cloud_availability_zone`) padronizada com os mesmos
   nomes e valores já usados nos pipelines de métricas e logs, garantindo
   correlação por label entre os 3 sinais no Grafana Explore.
+
+## [0.0.9] - 2026-05-04
+### Alterado
+- Auditoria 1:1 e implementação de *Strict Whitelisting* nos templates Alloy (`pull-linux-dbaas-mysql-hosts.alloy`, `pull-linux-dbaas-pgsql-hosts.alloy` e `001-metric-node-local.alloy`), restringindo o envio ao Mimir de forma exata às métricas consumidas nos dashboards.
+- Padronização de nomenclatura de componentes em todos os templates Alloy (prefixo `pull_` implementado para blocos `scrape`, `relabel` e `remote_write`).
+- Revisão completa e precisão aumentada no dimensionamento de armazenamento de métricas documentado no `SIZING.md` (v1.5).
 
 ## [0.0.8] - 2026-05-04
 ### Adicionado

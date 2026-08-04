@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 // NODE METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_mysql_node" {
+prometheus.scrape "pull_linux_mysql_node" {
   targets = [
     {
       "__address__"             = "[IP_ADDRESS]:8080",
@@ -40,11 +40,11 @@ prometheus.scrape "linux_mysql_node" {
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_mysql_node_transformer.receiver]
+  forward_to = [prometheus.relabel.pull_linux_mysql_node_transformer.receiver]
 }
 
-prometheus.relabel "linux_mysql_node_transformer" {
-  forward_to = [prometheus.relabel.linux_mysql_node_host_info.receiver]
+prometheus.relabel "pull_linux_mysql_node_transformer" {
+  forward_to = [prometheus.relabel.pull_linux_mysql_node_host_info.receiver]
 
   rule {
     source_labels = ["__name__"]
@@ -52,7 +52,6 @@ prometheus.relabel "linux_mysql_node_transformer" {
     regex         =
       // Core & Metadata
       "node_boot_time_seconds|" +
-      "node_uname_info|" +
       "node_os_info|" +
 
       // CPU & Load
@@ -62,11 +61,14 @@ prometheus.relabel "linux_mysql_node_transformer" {
       "node_load15|" +
 
       // Memory
-      "node_memory_Cached_bytes|" +
-      "node_memory_MemFree_bytes|" +
       "node_memory_MemTotal_bytes|" +
-      "node_memory_SwapFree_bytes|" +
+      "node_memory_MemFree_bytes|" +
+      "node_memory_MemAvailable_bytes|" +
+      "node_memory_Cached_bytes|" +
+      "node_memory_Buffers_bytes|" +
+      "node_memory_SReclaimable_bytes|" +
       "node_memory_SwapTotal_bytes|" +
+      "node_memory_SwapFree_bytes|" +
 
       // System Pressure
       "node_pressure_cpu_waiting_seconds_total|" +
@@ -75,22 +77,23 @@ prometheus.relabel "linux_mysql_node_transformer" {
 
       // Disk & Filesystem
       "node_disk_read_bytes_total|" +
-      "node_disk_read_time_seconds_total|" +
-      "node_disk_reads_completed_total|" +
-      "node_disk_write_time_seconds_total|" +
-      "node_disk_writes_completed_total|" +
       "node_disk_written_bytes_total|" +
+      "node_disk_reads_completed_total|" +
+      "node_disk_writes_completed_total|" +
+      "node_disk_read_time_seconds_total|" +
+      "node_disk_write_time_seconds_total|" +
+      "node_filesystem_size_bytes|" +
       "node_filesystem_avail_bytes|" +
+      "node_filesystem_free_bytes|" +
       "node_filesystem_files|" +
       "node_filesystem_files_free|" +
-      "node_filesystem_size_bytes|" +
 
       // Network
       "node_network_receive_bytes_total|" +
-      "node_network_receive_drop_total|" +
-      "node_network_receive_errs_total|" +
       "node_network_transmit_bytes_total|" +
+      "node_network_receive_drop_total|" +
       "node_network_transmit_drop_total|" +
+      "node_network_receive_errs_total|" +
       "node_network_transmit_errs_total"
   }
 
@@ -106,8 +109,8 @@ prometheus.relabel "linux_mysql_node_transformer" {
   }
 }
 
-prometheus.relabel "linux_mysql_node_host_info" {
-  forward_to = [prometheus.remote_write.linux_mysql_gateway.receiver]
+prometheus.relabel "pull_linux_mysql_node_host_info" {
+  forward_to = [prometheus.remote_write.pull_linux_mysql_gateway.receiver]
 
   // Para node_uname_info: sysname → os (lowercase)
   rule {
@@ -159,7 +162,7 @@ prometheus.relabel "linux_mysql_node_host_info" {
 // -----------------------------------------------------------------------------
 // MYSQL METRICS
 // -----------------------------------------------------------------------------
-prometheus.scrape "linux_mysql_db" {
+prometheus.scrape "pull_linux_mysql_db" {
   targets = [
     {
       "__address__"             = "[IP_ADDRESS]:8080",
@@ -185,11 +188,11 @@ prometheus.scrape "linux_mysql_db" {
   scrape_interval = "30s"
   scrape_timeout  = "10s"
 
-  forward_to = [prometheus.relabel.linux_mysql_db_transformer.receiver]
+  forward_to = [prometheus.relabel.pull_linux_mysql_db_transformer.receiver]
 }
 
-prometheus.relabel "linux_mysql_db_transformer" {
-  forward_to = [prometheus.remote_write.linux_mysql_gateway.receiver]
+prometheus.relabel "pull_linux_mysql_db_transformer" {
+  forward_to = [prometheus.remote_write.pull_linux_mysql_gateway.receiver]
 
   rule {
     source_labels = ["__name__"]
@@ -199,14 +202,11 @@ prometheus.relabel "linux_mysql_db_transformer" {
       "mysql_up|" +
       "mysql_global_variables_max_connections|" +
       "mysql_global_status_threads_connected|" +
+      "mysql_global_status_uptime|" +
 
-      // Storage & Replication
+      // Storage & Performance
       "mysql_global_status_innodb_redo_log_physical_size|" +
-
-      // Temp Storage
       "mysql_global_status_created_tmp_disk_tables|" +
-
-      // Transaction Activity
       "mysql_global_status_questions|" +
 
       // Row Operations (InnoDB)
@@ -215,14 +215,9 @@ prometheus.relabel "linux_mysql_db_transformer" {
       "mysql_global_status_innodb_system_rows_updated|" +
       "mysql_global_status_innodb_system_rows_deleted|" +
 
-      // InnoDB Buffer Pool & Data
+      // InnoDB Buffer Pool & Locking
       "mysql_global_status_innodb_buffer_pool_bytes_data|" +
-
-      // Locking & Conflicts
-      "mysql_global_status_innodb_row_lock_waits|" +
-
-      // Other
-      "mysql_global_status_uptime"
+      "mysql_global_status_innodb_row_lock_waits"
   }
 
   rule {
@@ -234,6 +229,6 @@ prometheus.relabel "linux_mysql_db_transformer" {
 // -----------------------------------------------------------------------------
 // REMOTE WRITE
 // -----------------------------------------------------------------------------
-prometheus.remote_write "linux_mysql_gateway" {
+prometheus.remote_write "pull_linux_mysql_gateway" {
   endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
 }

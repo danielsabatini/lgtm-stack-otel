@@ -43,3 +43,6 @@ workspace/
 AGENTS.md
 CLAUDE.md
 OPENCODE.md
+
+# Ignore instance-specific remote scrape configurations in gateway
+alloy-gateway/conf.d/pull*
