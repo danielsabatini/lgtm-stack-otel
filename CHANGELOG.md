@@ -5,6 +5,28 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.13] - 2026-08-04
+### Alterado
+- **Stack completa atualizada para as últimas versões estáveis**: Loki
+  `3.7.1` → `3.7.4`, Alloy `v1.16.0` → `v1.18.0`, Tempo `2.10.5` → `3.0.2`
+  (major version). Validado com `docker compose down -v` + subida limpa de
+  todos os serviços, mais teste end-to-end real (Beyla eBPF em host remoto
+  → Alloy Gateway → tail sampling → Tempo 3.0.2 → métricas RED no Mimir):
+  tail sampling idêntico ao anterior (1 trace `keep-slow`, 3 traces
+  `keep-errors`), `traces_spanmetrics_calls_total` populando, agente
+  remoto reconectou automaticamente.
+- `tempo/tempo.yaml`: migrado para a estrutura 3.0 — blocos `ingester` e
+  `compactor` removidos; retenção/compactação movida para
+  `backend_scheduler.provider.compaction.compaction.block_retention` e
+  `backend_worker.compaction.block_retention` (configurados nos dois
+  lugares com o mesmo valor de `${TEMPO_RETENTION}`, confirmado via
+  `/status/config` do binário real). Modo monolítico sem Kafka, sem
+  componentes novos.
+- `UPGRADE.md`: novo apêndice "Tempo 2.x → 3.x" documentando o processo
+  real de migração (descoberto por tentativa/erro contra o binário 3.0.2,
+  já que a documentação oficial não tinha exemplo de YAML completo) e o
+  aviso de que não há caminho de downgrade de 3.0 para 2.x.
+
 ## [0.0.12] - 2026-08-04
 ### Alterado
 - Mimir atualizado `3.0.6` → `3.1.4` (corrige múltiplos CVEs de Go/dependências:

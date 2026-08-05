@@ -181,6 +181,25 @@ Se você ainda opera Loki 2.x e planeja migrar:
 | Formato vParquet obrigatório | Blocos antigos ilegíveis | Aguarde expiração da retenção ou migre manualmente |
 | `overrides.metrics_generator_processors` movido | Config inválida | Use `overrides.defaults.metrics_generator.processors` |
 
+### Tempo 2.x → 3.x (migração obrigatória, sem downgrade)
+
+> **Sem caminho de downgrade de 3.0 para 2.x.** Faça backup do volume `tempo-data`
+> antes de migrar (ver [BACKUP.md](BACKUP.md)). Blocos em formato **v2 ou vParquet3
+> deixam de ser legíveis** — se sua stack tem histórico real de produção, valide
+> primeiro contra uma cópia do volume, não direto em produção.
+
+Modo **monolítico** (o desta stack, `-target=all` implícito, sem Kafka) segue
+funcionando sem componentes novos — o distributor entrega direto ao `live-store`
+e ao `metrics_generator` in-process. Testado e validado neste repositório.
+
+| Breaking Change | Impacto | Ação Necessária |
+|---|---|---|
+| Blocos `ingester` e `compactor` removidos do YAML | Boot falha: `field ingester not found in type app.Config` | Remova os dois blocos por completo do `tempo.yaml` |
+| Retenção/compactação movida | `compactor.compaction.block_retention` não existe mais | Configure em **dois** lugares: `backend_scheduler.provider.compaction.compaction.block_retention` e `backend_worker.compaction.block_retention` (mesmo valor nos dois — ver `tempo/tempo.yaml` deste repo) |
+| Formato de bloco vParquet4 obrigatório | Blocos v2/vParquet3 existentes ilegíveis | Sem conversão automática documentada; ambientes com histórico real precisam de plano de migração dedicado antes de atualizar |
+| `distributor.receivers.otlp.protocols` | Sem mudança | Nenhuma ação necessária |
+| `metrics_generator` (service-graphs/span-metrics) | Sem mudança em modo monolítico | Continua funcionando in-process, sem Kafka |
+
 ---
 
 ## 🎖️ Matriz de Compatibilidade (Versões Gold)
@@ -190,10 +209,10 @@ As versões abaixo foram testadas exaustivamente neste repositório e são consi
 | Componente | Versão (Stable) | Data do Teste | Nota |
 |---|---|---|---|
 | **Grafana** | `13.1.2` | 04/08/2026 | UI, Provisioning e migração SQLite OK; corrige CVE-2026-13438 |
-| **Alloy** | `v1.16.0` | 25/04/2026 | Estabilidade de memory usage OK |
-| **Loki** | `3.7.1` | 25/04/2026 | Bloom filters habilitados OK |
+| **Alloy** | `v1.18.0` | 04/08/2026 | `alloy-agent/conf.d`, `alloy-gateway/conf.d` e todo `examples/` validados. Pipeline de traces (Beyla → Gateway → tail sampling → Tempo 3.0.2) confirmado ponta a ponta com host remoto real. |
+| **Loki** | `3.7.4` | 04/08/2026 | Sem breaking changes aplicáveis (não usamos Promtail nem OpenShift) |
 | **Mimir** | `3.1.4` | 04/08/2026 | Corrige múltiplos CVEs (Go/deps). Validado com `docker compose down -v` + subida limpa: ingester/WAL, datasources Grafana e reconexão de agente remoto OK. Mudança de índice de bloco v2 (blocos já compactados) **não foi exercitada** neste teste — ver nota no checklist. |
-| **Tempo** | `2.10.5` | 25/04/2026 | Tail Sampling OK |
+| **Tempo** | `3.0.2` | 04/08/2026 | Major version — ver Apêndice "Tempo 2.x → 3.x". Modo monolítico sem Kafka. Tail sampling, metrics_generator (service-graphs/span-metrics) e ingestão de traces reais (Beyla remoto) validados ponta a ponta. |
 
 ---
 

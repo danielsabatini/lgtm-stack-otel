@@ -10,14 +10,6 @@ distributor:
         grpc:
           endpoint: 0.0.0.0:4317
 
-ingester:
-  max_block_duration: 30m
-
-compactor:
-  compaction:
-    block_retention: ${TEMPO_RETENTION}
-    compaction_window: 1h
-
 storage:
   trace:
     backend: local
@@ -25,6 +17,18 @@ storage:
       path: /var/tempo/traces
     wal:
       path: /var/tempo/wal
+
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        block_retention: ${TEMPO_RETENTION}
+        compaction_window: 1h
+
+backend_worker:
+  compaction:
+    block_retention: ${TEMPO_RETENTION}
+    compaction_window: 1h
 
 metrics_generator:
   registry:
