@@ -56,7 +56,7 @@
                         "expr": "avg by(instance, mode) (rate(node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval]))",
                         "instant": false,
                         "interval": "",
-                        "legendFormat": "{{instance}} | {{mode}}",
+                        "legendFormat": "{{mode}}",
                         "range": true
                       }
                     },
@@ -308,7 +308,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_disk_read_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Leitura ({{device}})",
+                        "legendFormat": "Leitura ({{device}})",
                         "range": true
                       }
                     },
@@ -330,7 +330,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_disk_written_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Escrita ({{device}})",
+                        "legendFormat": "Escrita ({{device}})",
                         "range": true
                       }
                     },
@@ -476,7 +476,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_disk_reads_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Leitura ({{device}})",
+                        "legendFormat": "Leitura ({{device}})",
                         "range": true
                       }
                     },
@@ -498,7 +498,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_disk_writes_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Escrita ({{device}})",
+                        "legendFormat": "Escrita ({{device}})",
                         "range": true
                       }
                     },
@@ -659,7 +659,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_free_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Ocupado (/)",
+                        "legendFormat": "Ocupado (/)",
                         "range": true
                       }
                     },
@@ -680,7 +680,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_avail_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Disponível (/)",
+                        "legendFormat": "Disponível (/)",
                         "range": true
                       }
                     },
@@ -701,7 +701,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Total (/)",
+                        "legendFormat": "Total (/)",
                         "range": true
                       }
                     },
@@ -929,7 +929,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Inodes Usados (/)",
+                        "legendFormat": "Inodes Usados (/)",
                         "range": true
                       }
                     },
@@ -950,7 +950,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Inodes Livres (/)",
+                        "legendFormat": "Inodes Livres (/)",
                         "range": true
                       }
                     },
@@ -971,7 +971,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Total Inodes (/)",
+                        "legendFormat": "Total Inodes (/)",
                         "range": true
                       }
                     },
@@ -1146,7 +1146,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_receive_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Entrada ({{device}})",
+                        "legendFormat": "Entrada ({{device}})",
                         "range": true
                       }
                     },
@@ -1168,7 +1168,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_transmit_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Saída ({{device}})",
+                        "legendFormat": "Saída ({{device}})",
                         "range": true
                       }
                     },
@@ -1344,7 +1344,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_receive_errs_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Erros Entrada ({{device}})",
+                        "legendFormat": "Erros Entrada ({{device}})",
                         "range": true
                       }
                     },
@@ -1366,7 +1366,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_transmit_errs_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Erros Saída ({{device}})",
+                        "legendFormat": "Erros Saída ({{device}})",
                         "range": true
                       }
                     },
@@ -1388,7 +1388,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_receive_drop_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Descartes Entrada ({{device}})",
+                        "legendFormat": "Descartes Entrada ({{device}})",
                         "range": true
                       }
                     },
@@ -1410,7 +1410,7 @@
                         "editorMode": "builder",
                         "expr": "rate(node_network_transmit_drop_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "{{instance}} | Descartes Saída ({{device}})",
+                        "legendFormat": "Descartes Saída ({{device}})",
                         "range": true
                       }
                     },
@@ -1646,7 +1646,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "count by(instance) (node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"})",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -1729,7 +1729,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -1813,7 +1813,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -1895,7 +1895,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -1979,7 +1979,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "time() - node_boot_time_seconds{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -2338,7 +2338,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "(sum by(instance) (rate(node_network_receive_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"lo.*\"}[$__rate_interval])) + sum by(instance) (rate(node_network_transmit_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"lo.*\"}[$__rate_interval]))) * 8",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -2432,7 +2432,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Usado",
+                        "legendFormat": "Swap Usado",
                         "range": true
                       }
                     },
@@ -2453,7 +2453,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Livre",
+                        "legendFormat": "Swap Livre",
                         "range": true
                       }
                     },
@@ -2474,7 +2474,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Total",
+                        "legendFormat": "Swap Total",
                         "range": true
                       }
                     },
@@ -2660,7 +2660,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "rate(node_pressure_cpu_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
-                        "legendFormat": "{{instance}} | Pressão CPU (PSI)",
+                        "legendFormat": "Pressão CPU (PSI)",
                         "range": true
                       }
                     },
@@ -2814,7 +2814,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum by(instance, device) (rate(node_disk_read_time_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])) / clamp_min(sum by(instance, device) (rate(node_disk_reads_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])), 1e-9)",
-                        "legendFormat": "{{instance}} | Leitura ({{device}})",
+                        "legendFormat": "Leitura ({{device}})",
                         "range": true
                       }
                     },
@@ -2835,7 +2835,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum by(instance, device) (rate(node_disk_write_time_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])) / clamp_min(sum by(instance, device) (rate(node_disk_writes_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])), 1e-9)",
-                        "legendFormat": "{{instance}} | Escrita ({{device}})",
+                        "legendFormat": "Escrita ({{device}})",
                         "range": true
                       }
                     },
@@ -2960,7 +2960,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "1 - avg by(instance) (rate(node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"}[$__rate_interval]))",
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -3069,7 +3069,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "rate(node_pressure_memory_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
-                        "legendFormat": "{{instance}} | Pressão Memória (PSI)",
+                        "legendFormat": "Pressão Memória (PSI)",
                         "range": true
                       }
                     },
@@ -3215,7 +3215,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "rate(node_pressure_io_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
-                        "legendFormat": "{{instance}} | Pressão I/O (PSI)",
+                        "legendFormat": "Pressão I/O (PSI)",
                         "range": true
                       }
                     },
@@ -3361,7 +3361,7 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "node_os_info{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} > {{pretty_name}}",
+                        "legendFormat": "{{pretty_name}}",
                         "range": true
                       }
                     },
@@ -3447,7 +3447,7 @@
                         "editorMode": "code",
                         "expr": "(node_filesystem_size_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"} - node_filesystem_free_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"}) / node_filesystem_size_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"}",
                         "instant": false,
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -3556,7 +3556,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_load1{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Load (1m)",
+                        "legendFormat": "Load (1m)",
                         "range": true
                       }
                     },
@@ -3577,7 +3577,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_load5{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Load (5m)",
+                        "legendFormat": "Load (5m)",
                         "range": true
                       }
                     },
@@ -3598,7 +3598,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_load15{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Load (15m)",
+                        "legendFormat": "Load (15m)",
                         "range": true
                       }
                     },
@@ -3619,7 +3619,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "count by(instance) (node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"})",
-                        "legendFormat": "{{instance}} | Cores (Limite)",
+                        "legendFormat": "Cores (Limite)",
                         "range": true
                       }
                     },
@@ -3799,7 +3799,7 @@
                         "exemplar": false,
                         "expr": "(node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_MemAvailable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}) / node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
                         "instant": false,
-                        "legendFormat": "{{instance}}",
+                        "legendFormat": "",
                         "range": true
                       }
                     },
@@ -3908,7 +3908,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - (node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"})",
-                        "legendFormat": "{{instance}} | Em Uso (Used)",
+                        "legendFormat": "Em Uso (Used)",
                         "range": true
                       }
                     },
@@ -3929,7 +3929,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Cache & Buffers",
+                        "legendFormat": "Cache & Buffers",
                         "range": true
                       }
                     },
@@ -3950,7 +3950,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Livre (Free)",
+                        "legendFormat": "Livre (Free)",
                         "range": true
                       }
                     },
@@ -3971,7 +3971,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | RAM Total",
+                        "legendFormat": "RAM Total",
                         "range": true
                       }
                     },
