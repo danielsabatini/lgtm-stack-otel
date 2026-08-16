@@ -9654,7 +9654,11 @@
     "links": [],
     "liveNow": false,
     "preload": false,
-    "tags": [],
+    "tags": [
+      "linux",
+      "coredns",
+      "etcd"
+    ],
     "timeSettings": {
       "timezone": "browser",
       "from": "now-5m",
