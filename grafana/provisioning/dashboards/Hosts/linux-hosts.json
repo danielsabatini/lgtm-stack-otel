@@ -4175,7 +4175,7 @@
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
-                            "maxColumnCount": 2,
+                            "maxColumnCount": 4,
                             "columnWidthMode": "narrow",
                             "rowHeightMode": "short",
                             "items": [
@@ -4401,7 +4401,7 @@
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
-                            "maxColumnCount": 2,
+                            "maxColumnCount": 3,
                             "columnWidthMode": "narrow",
                             "rowHeightMode": "short",
                             "items": [
@@ -4558,8 +4558,8 @@
         "spec": {
           "name": "instance",
           "current": {
-            "text": "",
-            "value": ""
+            "text": "dns-ne1-1",
+            "value": "dns-ne1-1"
           },
           "label": "Instance",
           "hide": "dontHide",
@@ -4583,10 +4583,10 @@
           "sort": "disabled",
           "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
           "options": [],
-          "multi": true,
-          "includeAll": true,
-          "allowCustomValue": false,
-          "allValue": ".*"
+          "multi": false,
+          "includeAll": false,
+          "allValue": "",
+          "allowCustomValue": false
         }
       }
     ],
