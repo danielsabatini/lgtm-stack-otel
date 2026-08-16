@@ -9,30 +9,33 @@
       {
         "kind": "AnnotationQuery",
         "spec": {
-          "builtIn": true,
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
           "enable": true,
           "hide": true,
           "iconColor": "rgba(0, 211, 255, 1)",
           "name": "Annotations & Alerts",
-          "query": {
-            "datasource": {
-              "name": "-- Grafana --"
-            },
-            "group": "grafana",
-            "kind": "DataQuery",
-            "spec": {},
-            "version": "v0"
-          }
+          "builtIn": true
         }
       }
     ],
     "cursorSync": "Off",
     "editable": true,
-    "uid": "linux-hosts",
     "elements": {
       "panel-1": {
         "kind": "Panel",
         "spec": {
+          "id": 1,
+          "title": "CPU - Usage by Mode (%)",
+          "description": "Decomposição do tempo de CPU por modo de operação: user (processos), system (kernel), iowait (bloqueado aguardando disco), idle (ocioso) e irq (interrupções).\n• O que observar: Alto 'user' indica carga de aplicação; alto 'iowait' indica gargalo no disco físico (e não falta de CPU); alto 'system' indica excesso de context switches.\n• Ação em caso de problema: Se o iowait estiver elevado (> 15%), mover volumes pesados para discos mais rápidos (NVMe) e verificar contenção no I/O.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -40,44 +43,76 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
                         "exemplar": false,
-                        "expr": "avg by(mode) (rate(node_cpu_seconds_total{instance=\"$instance\"}[$__rate_interval]))",
+                        "expr": "avg by(instance, mode) (rate(node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval]))",
                         "instant": false,
                         "interval": "",
-                        "legendFormat": "{{mode}}",
+                        "legendFormat": "{{instance}} | {{mode}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "S\u00e9rie temporal do consumo de CPU decomposto por modo: user (processos de espa\u00e7o de usu\u00e1rio), system (chamadas de kernel), iowait (aguardando I/O de disco), idle (ocioso). Alto iowait indica gargalo de I/O, n\u00e3o de CPU.",
-          "id": 1,
-          "links": [],
-          "title": "CPU - Usage by Mode (%)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -114,19 +149,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
+                  }
                 },
                 "overrides": [
                   {
@@ -255,7 +278,78 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-13": {
+        "kind": "Panel",
+        "spec": {
+          "id": 13,
+          "title": "Disk - Throughput (bytes/s)",
+          "description": "Taxa de leitura e gravação física em disco em bytes por segundo por dispositivo de bloco.\n• O que observar: Ritmo de I/O de disco da máquina. Picos pontuais são normais durante rotações de snapshot ou compactações de banco TSDB.\n• Ação em caso de problema: Se a taxa de transferência ficar travada no teto do disco por minutos seguidos, investigue o processo causador com 'sudo iotop -oP'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_disk_read_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Leitura ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_disk_written_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Escrita ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -265,9 +359,12 @@
                   "calcs": [
                     "lastNotNull",
                     "max",
+                    "min",
                     "mean"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -276,80 +373,21 @@
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-13": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_disk_read_bytes_total{instance=\"$instance\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "read ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_disk_written_bytes_total{instance=\"$instance\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "write ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Taxa de leitura e escrita em bytes/s por dispositivo de bloco f\u00edsico. Valores pr\u00f3ximos ao limite de throughput do disco (ex: 200 MB/s em HDD) indicam satura\u00e7\u00e3o de I/O.",
-          "id": 13,
-          "links": [],
-          "title": "Disk - Throughput (bytes/s)",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "unit": "binBps",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -386,19 +424,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "binBps"
+                  }
                 },
                 "overrides": [
                   {
@@ -420,7 +446,78 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-14": {
+        "kind": "Panel",
+        "spec": {
+          "id": 14,
+          "title": "Disk - IOPS",
+          "description": "Quantidade de operações de leitura e escrita completadas por segundo em cada disco físico.\n• O que observar: Deve operar dentro dos limites nominais contratados para o volume de bloco (ex: 3.000 a 10.000 IOPS).\n• Ação em caso de problema: Se o IOPS atingir o teto do provedor de nuvem, o disco sofrerá estrangulamento (throttling), elevando a latência de toda a stack.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_disk_reads_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Leitura ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_disk_writes_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Escrita ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -434,6 +531,8 @@
                     "mean"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -442,80 +541,21 @@
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-14": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_disk_reads_completed_total{instance=\"$instance\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "read ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_disk_writes_completed_total{instance=\"$instance\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "write ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Opera\u00e7\u00f5es de I/O completadas por segundo (leituras + escritas) por dispositivo. Alto IOPS com baixo throughput indica opera\u00e7\u00f5es pequenas e aleat\u00f3rias \u2014 padr\u00e3o t\u00edpico de bancos de dados como Mimir e Loki.",
-          "id": 14,
-          "links": [],
-          "title": "Disk - IOPS",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "unit": "iops",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -552,19 +592,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "iops"
+                  }
                 },
                 "overrides": [
                   {
@@ -602,7 +630,97 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-16": {
+        "kind": "Panel",
+        "spec": {
+          "id": 16,
+          "title": "Root FS - Usage (bytes)",
+          "description": "Espaço absoluto em disco no filesystem raiz (/), exibindo o tamanho total e o espaço livre restante (Total − Usado).\n• O que observar: Margem livre de disco disponível. Permite prever com segurança o tempo até a necessidade de expansão de storage.\n• Ação em caso de problema: Se o espaço livre cair abaixo de 20 GB, planeje a expansão do volume no provedor de nuvem ou execute a rotação de arquivos de log.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_free_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Ocupado (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_avail_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Disponível (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Total (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -610,12 +728,11 @@
                 },
                 "legend": {
                   "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
+                    "lastNotNull"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -624,80 +741,21 @@
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-16": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_filesystem_size_bytes{instance=\"$instance\", mountpoint=\"/\"}",
-                        "instant": false,
-                        "legendFormat": "total ({{mountpoint}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_filesystem_avail_bytes{instance=\"$instance\", mountpoint=\"/\"}",
-                        "instant": false,
-                        "legendFormat": "available ({{mountpoint}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Espa\u00e7o total, usado e dispon\u00edvel por ponto de montagem. Filtro exclui filesystems virtuais (tmpfs, overlay, devtmpfs). Acompanhe para evitar esgotamento de disco nos volumes de dados.",
-          "id": 16,
-          "links": [],
-          "title": "Root FS - Usage (bytes)",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "unit": "bytes",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -734,19 +792,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
+                  }
                 },
                 "overrides": [
                   {
@@ -854,7 +900,97 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-17": {
+        "kind": "Panel",
+        "spec": {
+          "id": 17,
+          "title": "Root FS - Inode Usage",
+          "description": "Quantidade de inodes (estruturas de ponteiros de arquivos) alocados vs. livres no sistema de arquivos.\n• O que observar: Deve haver abundância de inodes livres. Um disco pode ficar sem capacidade de criar novos arquivos mesmo tendo gigabytes livres se esgotar os inodes.\n• Ação em caso de problema: Se os inodes estiverem esgotando, localize diretórios com milhões de arquivos minúsculos (ex: caches de sessão órfãos em /tmp) com 'find / -xdev -printf '%h\\n' | sort | uniq -c | sort -k 1 -n | tail -10'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Inodes Usados (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Inodes Livres (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}} | Total Inodes (/)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -865,6 +1001,8 @@
                     "lastNotNull"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -873,80 +1011,20 @@
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-17": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_filesystem_files{instance=\"$instance\", mountpoint=\"/\"}",
-                        "instant": false,
-                        "legendFormat": "total ({{mountpoint}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_filesystem_files_free{instance=\"$instance\", mountpoint=\"/\"}",
-                        "instant": false,
-                        "legendFormat": "free ({{mountpoint}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Percentual de inodes utilizados por filesystem. Um disco pode ter espa\u00e7o livre em bytes mas bloquear cria\u00e7\u00e3o de arquivos se os inodes se esgotarem \u2014 comum em diret\u00f3rios com muitos arquivos pequenos.",
-          "id": 17,
-          "links": [],
-          "title": "Root FS - Inode Usage",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -983,17 +1061,6 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 0,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
                   }
                 },
                 "overrides": [
@@ -1049,7 +1116,78 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-19": {
+        "kind": "Panel",
+        "spec": {
+          "id": 19,
+          "title": "Network - Throughput (bytes/s)",
+          "description": "Volume de tráfego de rede transmitido e recebido por segundo em cada interface física.\n• O que observar: Volume de dados transitando nas placas de rede. Permite correlacionar aumento de tráfego com eventos de ingestão de telemetria.\n• Ação em caso de problema: Se houver consumo anômalo contínuo, inspecione conexões ativas com 'sudo iftop' ou 'ss -tuna'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_receive_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Entrada ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "in",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_transmit_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Saída ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "out",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -1057,9 +1195,14 @@
                 },
                 "legend": {
                   "calcs": [
-                    "lastNotNull"
+                    "lastNotNull",
+                    "max",
+                    "min",
+                    "mean"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -1068,80 +1211,21 @@
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-19": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_receive_bytes_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "in ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "in"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_transmit_bytes_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "out ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "out"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Taxa de tr\u00e1fego de rede em bytes/s separada por interface e dire\u00e7\u00e3o (recebimento / envio). Indica satura\u00e7\u00e3o de banda; compare com a capacidade nominal da interface (ex: 1 Gbps = ~125 MB/s).",
-          "id": 19,
-          "links": [],
-          "title": "Network - Throughput (bytes/s)",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "unit": "binBps",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -1178,19 +1262,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "binBps"
+                  }
                 },
                 "overrides": [
                   {
@@ -1242,7 +1314,122 @@
                     ]
                   }
                 ]
-              },
+              }
+            }
+          }
+        }
+      },
+      "panel-20": {
+        "kind": "Panel",
+        "spec": {
+          "id": 20,
+          "title": "Network Errors/Drops",
+          "description": "Taxa de pacotes descartados (drops) ou com erro de transmissão na placa de rede por segundo.\n• O que observar: Deve permanecer rigorosamente em zero. Valores > 0 indicam saturação do buffer de recepção da placa ou cabo/link com falha.\n• Ação em caso de problema: Aumentar os buffers de rede do kernel ('net.core.rmem_max', 'net.core.netdev_max_backlog') ou verificar instabilidade física de rede.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_receive_errs_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Erros Entrada ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "in_errs",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_transmit_errs_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Erros Saída ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "out_errs",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_receive_drop_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Descartes Entrada ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "in_drop",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "builder",
+                        "expr": "rate(node_network_transmit_drop_total{instance=~\"$instance\", service_name=\"node-exporter\", device!=\"lo\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Descartes Saída ({{device}})",
+                        "range": true
+                      }
+                    },
+                    "refId": "out_drop",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
               "options": {
                 "annotations": {
                   "clustering": -1,
@@ -1251,137 +1438,35 @@
                 "legend": {
                   "calcs": [
                     "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
+                    "max"
                   ],
                   "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
                   "placement": "bottom",
-                  "showLegend": true
+                  "showLegend": true,
+                  "sortBy": "Name",
+                  "sortDesc": true
                 },
                 "tooltip": {
                   "hideZeros": false,
                   "mode": "multi",
                   "sort": "desc"
                 }
-              }
-            },
-            "version": "13.0.1"
-          }
-        }
-      },
-      "panel-20": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_receive_errs_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "in errors ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "in_errs"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_transmit_errs_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "out errors ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "out_errs"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_receive_drop_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "in drops ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "in_drop"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "rate(node_network_transmit_drop_total{instance=\"$instance\", device!=\"lo\"}[$__rate_interval])",
-                        "instant": false,
-                        "legendFormat": "out drops ({{device}})",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "out_drop"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "interval": "30s"
               },
-              "transformations": []
-            }
-          },
-          "description": "Contagem de erros e pacotes descartados por interface de rede. Valores crescentes indicam problemas de hardware, congestionamento de fila, ou configura\u00e7\u00e3o incorreta de buffer (ring buffer, txqueue).",
-          "id": 20,
-          "links": [],
-          "title": "Network Errors/Drops",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -1418,17 +1503,6 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 0,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
                   }
                 },
                 "overrides": [
@@ -1543,37 +1617,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true,
-                  "sortBy": "Name",
-                  "sortDesc": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-21": {
         "kind": "Panel",
         "spec": {
+          "id": 21,
+          "title": "CPU Total",
+          "description": "Quantidade total de núcleos de CPU lógicos (vCPUs/threads) disponíveis no servidor.\n• O que observar: Deve corresponder ao contratado no flavor da VM ou hardware físico.\n• Ação em caso de problema: Serve como denominador estático para o dimensionamento do limite de carga (CPU Load).",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1581,56 +1636,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "count(node_cpu_seconds_total{instance=\"$instance\", mode=\"idle\"})",
-                        "legendFormat": "__auto",
+                        "expr": "count by(instance) (node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"})",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "N\u00famero de vCPUs / threads l\u00f3gicas vis\u00edveis ao SO. Base de normaliza\u00e7\u00e3o para percentual de utiliza\u00e7\u00e3o: utilize este valor ao avaliar CPU Utilization (%).",
-          "id": 21,
-          "links": [],
-          "title": "CPU Total",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  }
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -1646,17 +1681,37 @@
                 },
                 "showPercentChange": false,
                 "text": {},
-                "textMode": "auto",
+                "textMode": "value_and_name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-23": {
         "kind": "Panel",
         "spec": {
+          "id": 23,
+          "title": "Swap Total",
+          "description": "Tamanho total da partição ou arquivo de swap alocado no sistema operacional.\n• O que observar: Valor configurado no particionamento do host.\n• Ação em caso de problema: Se o swap estiver zerado e o ambiente exigir proteção contra picos, criar arquivo de swap com 'sudo fallocate -l 4G /swapfile'.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1664,58 +1719,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "node_memory_SwapTotal_bytes{instance=\"$instance\"}",
-                        "legendFormat": "__auto",
+                        "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Capacidade total de swap configurada. Uso elevado de swap indica press\u00e3o severa de RAM; monitorar em conjunto com Memory Utilization (%).",
-          "id": 23,
-          "links": [],
-          "title": "Swap Total",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -1730,17 +1763,39 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "textMode": "auto",
+                "textMode": "value_and_name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-24": {
         "kind": "Panel",
         "spec": {
+          "id": 24,
+          "title": "FS Root Total",
+          "description": "Capacidade total formatada do disco no ponto de montagem raiz (/).\n• O que observar: Teto máximo de armazenamento disponível para o sistema e volumes.\n• Ação em caso de problema: Serve de referência para o planejamento de expansão do volume LVM.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1748,57 +1803,34 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "node_filesystem_size_bytes{instance=\"$instance\", mountpoint=\"/\"}",
-                        "legendFormat": "__auto",
+                        "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
-              "queryOptions": {},
-              "transformations": []
+              "transformations": [],
+              "queryOptions": {}
             }
           },
-          "description": "Tamanho total do filesystem raiz (/) em bytes. Compare com Root Disk Space (%) para estimar o volume de espa\u00e7o livre absoluto.",
-          "id": 24,
-          "links": [],
-          "title": "FS Root Total",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "displayName": "RootFS Total",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -1813,20 +1845,39 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "text": {
-                  "titleSize": 1
-                },
-                "textMode": "value",
+                "textMode": "value_and_name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-26": {
         "kind": "Panel",
         "spec": {
+          "id": 26,
+          "title": "Memory Total",
+          "description": "Capacidade total de memória RAM física instalada e reconhecida pelo kernel do Linux.\n• O que observar: Deve corresponder exatamente à quantidade de RAM contratada na instância.\n• Ação em caso de problema: Serve como teto máximo de referência para o painel Memory Utilization e cálculo de folga.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1834,58 +1885,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"}",
-                        "legendFormat": "__auto",
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Capacidade total de RAM instalada, conforme reportada pelo kernel via /proc/meminfo (MemTotal). Refer\u00eancia para dimensionar memory_limit de containers.",
-          "id": 26,
-          "links": [],
-          "title": "Memory Total",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -1900,17 +1929,39 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "textMode": "auto",
+                "textMode": "value_and_name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-27": {
         "kind": "Panel",
         "spec": {
+          "id": 27,
+          "title": "Uptime",
+          "description": "Tempo contínuo desde a última inicialização do sistema operacional Linux.\n• O que observar: Crescimento contínuo. Queda repentina indica reinício da máquina virtual.\n• Ação em caso de problema: Se não foi um reboot programado, consultar o log do kernel anterior com 'sudo journalctl -b -1 -e' para investigar kernel panic ou falta de energia.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1918,57 +1969,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "time() - node_boot_time_seconds{instance=\"$instance\"}",
-                        "legendFormat": "__auto",
+                        "expr": "time() - node_boot_time_seconds{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Tempo decorrido desde a \u00faltima inicializa\u00e7\u00e3o do sistema operacional, derivado de node_boot_time_seconds. Reboots n\u00e3o planejados aparecem como queda brusca neste valor.",
-          "id": 27,
-          "links": [],
-          "title": "Uptime",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "s"
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -1983,17 +2013,38 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "textMode": "auto",
+                "textMode": "value_and_name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-30": {
         "kind": "Panel",
         "spec": {
+          "id": 30,
+          "title": "Security",
+          "description": "Stream de logs de segurança do host (autenticações SSH, comandos sudo, acessos negados e eventos de auditoria).\n• O que observar: Monitorar tentativas de login falhas consecutivas ou execuções não autorizadas de comandos administrativos.\n• Ação em caso de problema: Em caso de ataque de força bruta, bloquear os IPs de origem no firewall ('sudo ufw deny from <ip>') ou configurar fail2ban.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2001,43 +2052,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
                       "datasource": {
                         "name": "loki"
                       },
-                      "group": "loki",
-                      "kind": "DataQuery",
                       "spec": {
                         "direction": "backward",
                         "editorMode": "builder",
-                        "expr": "{instance=\"$instance\", category=\"security\"} |= ``",
+                        "expr": "{instance=~\"$instance\", category=\"security\"} |= ``",
                         "queryType": "range"
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 30,
-          "links": [],
-          "title": "Security",
           "vizConfig": {
-            "group": "logs",
             "kind": "VizConfig",
+            "group": "logs",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              },
               "options": {
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
@@ -2054,15 +2098,22 @@
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
                 "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-31": {
         "kind": "Panel",
         "spec": {
+          "id": 31,
+          "title": "System",
+          "description": "Stream de logs do kernel e do sistema operacional (mensagens de boot, hardware, mensagens dmesg e intervenções do OOM Killer).\n• O que observar: Mensagens de erro de driver, discos entrando em modo somente leitura (read-only) ou processos encerrados por falta de memória.\n• Ação em caso de problema: Se o OOM Killer foi acionado, identificar o processo encerrado e revisar o limite de memória dos containers.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2070,43 +2121,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
                       "datasource": {
                         "name": "loki"
                       },
-                      "group": "loki",
-                      "kind": "DataQuery",
                       "spec": {
                         "direction": "backward",
                         "editorMode": "builder",
-                        "expr": "{instance=\"$instance\", category=\"system\"} |= ``",
+                        "expr": "{instance=~\"$instance\", category=\"system\"} |= ``",
                         "queryType": "range"
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 31,
-          "links": [],
-          "title": "System",
           "vizConfig": {
-            "group": "logs",
             "kind": "VizConfig",
+            "group": "logs",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              },
               "options": {
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
@@ -2123,15 +2167,22 @@
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
                 "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-32": {
         "kind": "Panel",
         "spec": {
+          "id": 32,
+          "title": "Application",
+          "description": "Stream de logs dos motores de contêiner (Docker, containerd) e serviços auxiliares de aplicação (tarefas cron).\n• O que observar: Falhas no startup de contêineres, erros de download de imagens ou tarefas agendadas falhando.\n• Ação em caso de problema: Inspecione os logs detalhados do daemon com 'sudo journalctl -u docker -e' ou verifique o script agendado no crontab.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2139,43 +2190,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
                       "datasource": {
                         "name": "loki"
                       },
-                      "group": "loki",
-                      "kind": "DataQuery",
                       "spec": {
                         "direction": "backward",
                         "editorMode": "builder",
-                        "expr": "{instance=\"$instance\", category=\"application\"} |= ``",
+                        "expr": "{instance=~\"$instance\", category=\"application\"} |= ``",
                         "queryType": "range"
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 32,
-          "links": [],
-          "title": "Application",
           "vizConfig": {
-            "group": "logs",
             "kind": "VizConfig",
+            "group": "logs",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              },
               "options": {
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
@@ -2192,15 +2236,22 @@
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
                 "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-33": {
         "kind": "Panel",
         "spec": {
+          "id": 33,
+          "title": "Platform",
+          "description": "Stream de logs do gerenciador de serviços do sistema (systemd e Service Control Manager).\n• O que observar: Units de serviço entrando em estado de falha (failed) ou reiniciando em loop contínuo.\n• Ação em caso de problema: Inspecione a unit com falha usando 'sudo systemctl status <servico>' e consulte o log específico com 'journalctl -u <servico>'.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2208,43 +2259,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
                       "datasource": {
                         "name": "loki"
                       },
-                      "group": "loki",
-                      "kind": "DataQuery",
                       "spec": {
                         "direction": "backward",
                         "editorMode": "builder",
-                        "expr": "{instance=\"$instance\", category=\"platform\"} |= ``",
+                        "expr": "{instance=~\"$instance\", category=\"platform\"} |= ``",
                         "queryType": "range"
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 33,
-          "links": [],
-          "title": "Platform",
           "vizConfig": {
-            "group": "logs",
             "kind": "VizConfig",
+            "group": "logs",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              },
               "options": {
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
@@ -2261,15 +2305,22 @@
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
                 "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-34": {
         "kind": "Panel",
         "spec": {
+          "id": 34,
+          "title": "Net Throughput (bits/sec)",
+          "description": "Vazão total de tráfego de rede (recebido + transmitido) em bits por segundo, excluindo a interface de loopback.\n• O que observar: Deve acompanhar a demanda normal de rede do servidor. Picos anormais podem indicar ataques de negação de serviço (DDoS) ou tráfego de replicação massivo.\n• Ação em caso de problema: Se o tráfego se aproximar do limite da placa de rede (1 Gbps), investigar se há pacotes descartados no painel 'Network Errors/Drops' em Diagnostics.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2277,99 +2328,36 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": true,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum(rate(node_network_receive_bytes_total{instance=\"$instance\", device!~\"lo.*\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
+                        "editorMode": "code",
+                        "expr": "(sum by(instance) (rate(node_network_receive_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"lo.*\"}[$__rate_interval])) + sum by(instance) (rate(node_network_transmit_bytes_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"lo.*\"}[$__rate_interval]))) * 8",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": true,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum(rate(node_network_transmit_bytes_total{instance=\"$instance\", device!~\"lo.*\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "__expr__"
-                      },
-                      "group": "__expr__",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "expression": "($A + $B) * 8",
-                        "type": "math"
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "C"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 34,
-          "links": [],
-          "title": "Net Throughput (bits/sec)",
           "vizConfig": {
-            "group": "gauge",
             "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bps"
-                },
-                "overrides": []
-              },
               "options": {
                 "barShape": "flat",
                 "barWidthFactor": 0.5,
@@ -2397,15 +2385,36 @@
                 "sizing": "auto",
                 "sparkline": true,
                 "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bps",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-35": {
         "kind": "Panel",
         "spec": {
+          "id": 35,
+          "title": "Swap - Usage (bytes)",
+          "description": "Espaço de memória virtual em disco (Swap) utilizado vs. total configurado.\n• O que observar: Em servidores de observabilidade de alta performance, o swap em uso deve ser zero ou mínimo. Uso intenso de swap degrada violentamente o tempo de resposta.\n• Ação em caso de problema: Identifique processos que estão sofrendo paging com 'smem -s swap' ou reduza a propensão de swap do kernel (vm.swappiness=10).",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2413,63 +2422,113 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_memory_SwapFree_bytes{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "free",
+                        "editorMode": "code",
+                        "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Swap Usado",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "B"
+                    "refId": "A",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_memory_SwapTotal_bytes{instance=\"$instance\"}",
-                        "legendFormat": "total",
+                        "editorMode": "code",
+                        "expr": "node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Swap Livre",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Swap Total",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 35,
-          "links": [],
-          "title": "Swap - Usage (bytes)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "bytes",
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -2509,18 +2568,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
+                  }
                 },
                 "overrides": [
                   {
@@ -2583,35 +2631,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-36": {
         "kind": "Panel",
         "spec": {
+          "id": 36,
+          "title": "CPU - Pressure (%)",
+          "description": "Métrica PSI (Pressure Stall Information) de CPU: porcentagem de tempo em que processos ficaram paralisados em fila esperando por ciclos de CPU.\n• O que observar: Deve permanecer próximo de zero. Qualquer valor sustentado > 5% comprova que tarefas estão ativamente travadas por escassez de processador.\n• Ação em caso de problema: Reduzir concorrência de processos ou realizar upgrade do tamanho da instância/VM (adicionar vCPUs).",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2619,41 +2650,86 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "rate(node_pressure_cpu_waiting_seconds_total{instance=\"$instance\"}[$__rate_interval])",
-                        "legendFormat": "pressure",
+                        "expr": "rate(node_pressure_cpu_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
+                        "legendFormat": "{{instance}} | Pressão CPU (PSI)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Mede o tempo que as tarefas ficaram na fila aguardando ciclos de processamento.",
-          "id": 36,
-          "links": [],
-          "title": "CPU - Pressure (%)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "min",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 5,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 25,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 50,
+                        "color": "#E24D42"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -2690,31 +2766,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "yellow",
-                        "value": 5
-                      },
-                      {
-                        "color": "orange",
-                        "value": 25
-                      },
-                      {
-                        "color": "#E24D42",
-                        "value": 50
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
+                  }
                 },
                 "overrides": [
                   {
@@ -2733,37 +2785,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-39": {
         "kind": "Panel",
         "spec": {
+          "id": 39,
+          "title": "Disk - Latency (sec)",
+          "description": "Tempo médio de resposta por operação de leitura e gravação em disco em segundos.\n• O que observar: Discos modernos (NVMe/SSD) devem responder em menos de 0.005 s (5 ms). Valores acima de 0.020 s (20 ms) causam lentidão perceptível.\n• Ação em caso de problema: Verificar se há operações concorrentes de backup/compactação ou se o disco está sofrendo throttling pelo provedor.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2771,127 +2804,94 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": true,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum by(device) (rate(node_disk_read_time_seconds_total{instance=\"$instance\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
+                        "editorMode": "code",
+                        "expr": "sum by(instance, device) (rate(node_disk_read_time_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])) / clamp_min(sum by(instance, device) (rate(node_disk_reads_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])), 1e-9)",
+                        "legendFormat": "{{instance}} | Leitura ({{device}})",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": true,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum by(device) (rate(node_disk_write_time_seconds_total{instance=\"$instance\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
+                        "editorMode": "code",
+                        "expr": "sum by(instance, device) (rate(node_disk_write_time_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])) / clamp_min(sum by(instance, device) (rate(node_disk_writes_completed_total{instance=~\"$instance\", service_name=\"node-exporter\", device!~\"loop.*|ram.*|fd.*|sr.*|dm-.*\"}[$__rate_interval])), 1e-9)",
+                        "legendFormat": "{{instance}} | Escrita ({{device}})",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "B"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": true,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum by(device) (rate(node_disk_reads_completed_total{instance=\"$instance\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "C"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": true,
-                    "query": {
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "builder",
-                        "expr": "sum by(device) (rate(node_disk_writes_completed_total{instance=\"$instance\"}[$__rate_interval]))",
-                        "instant": false,
-                        "legendFormat": "__auto",
-                        "range": true
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "D"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "__expr__"
-                      },
-                      "group": "__expr__",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "expression": "($A + $B) / ($C + $D)",
-                        "type": "math"
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "E"
+                    "refId": "B",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "",
-          "id": 39,
-          "links": [],
-          "title": "Disk - Latency (sec)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "min",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -2928,51 +2928,21 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "s"
+                  }
                 },
                 "overrides": []
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-4": {
         "kind": "Panel",
         "spec": {
+          "id": 4,
+          "title": "CPU Utilization (%)",
+          "description": "Percentual de uso de CPU do host em cada nó (calculado como 100% menos o tempo ocioso/idle de todos os cores).\n• O que observar: Deve permanecer abaixo de 70% (Verde). Valores sustentados acima de 80% (Laranja) e 90% (Vermelho) indicam sobrecarga de processamento.\n• Ação em caso de problema: Verificar no painel 'CPU - Usage by Mode' em Diagnostics se o consumo é de processos (user), chamadas de kernel (system) ou espera de disco (iowait) e identificar o processo com 'top' ou 'htop' no terminal.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2980,97 +2950,42 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": true,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "avg(rate(node_cpu_seconds_total{instance=\"$instance\", mode=\"idle\"}[$__rate_interval]))",
-                        "legendFormat": "idle",
+                        "editorMode": "code",
+                        "expr": "1 - avg by(instance) (rate(node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"}[$__rate_interval]))",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "__expr__"
-                      },
-                      "group": "__expr__",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "expression": "1 - $A",
-                        "type": "math"
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "B"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Percentual de uso de CPU agregado do host. Calculado como 1 \u2212 tempo idle m\u00e9dio de todos os cores. Thresholds: verde < 70 %, amarelo 70\u201380 %, laranja 80\u201390 %, vermelho > 90 %.",
-          "id": 4,
-          "links": [],
-          "title": "CPU Utilization (%)",
           "vizConfig": {
-            "group": "gauge",
             "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "max": 1,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "yellow",
-                        "value": 70
-                      },
-                      {
-                        "color": "orange",
-                        "value": 80
-                      },
-                      {
-                        "color": "red",
-                        "value": 90
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
-                },
-                "overrides": []
-              },
               "options": {
                 "barShape": "flat",
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": true,
+                  "centerGlow": false,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -3081,26 +2996,62 @@
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^B$/",
+                  "fields": "",
                   "values": false
                 },
                 "segmentCount": 1,
                 "segmentSpacing": 0.3,
                 "shape": "gauge",
                 "showThresholdLabels": false,
-                "showThresholdMarkers": false,
+                "showThresholdMarkers": true,
                 "sizing": "auto",
                 "sparkline": true,
                 "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 80,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-40": {
         "kind": "Panel",
         "spec": {
+          "id": 40,
+          "title": "Memory - Pressure (%)",
+          "description": "Métrica PSI de Memória: porcentagem de tempo em que processos foram paralisados aguardando o kernel recuperar páginas de memória.\n• O que observar: Deve ficar em 0.00%. Valores acima de zero indicam que o kernel está sob estresse severo de memória, descartando buffers em pânico.\n• Ação em caso de problema: Adicionar memória RAM imediatamente ao servidor ou reduzir o tamanho de buffers e caches das aplicações.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3108,41 +3059,78 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "rate(node_pressure_memory_waiting_seconds_total{instance=\"$instance\"}[$__rate_interval])",
-                        "legendFormat": "pressure",
+                        "expr": "rate(node_pressure_memory_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
+                        "legendFormat": "{{instance}} | Pressão Memória (PSI)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": " Mede o tempo de paralisa\u00e7\u00e3o causado pela falta de RAM. Ela indica que o kernel est\u00e1 gastando tempo limpando cache ou movendo dados para o swap (thrashing).",
-          "id": 40,
-          "links": [],
-          "title": "Memory - Pressure (%)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "min",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 15,
+                        "color": "#E24D42"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -3179,23 +3167,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "#E24D42",
-                        "value": 15
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
+                  }
                 },
                 "overrides": [
                   {
@@ -3214,37 +3186,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-41": {
         "kind": "Panel",
         "spec": {
+          "id": 41,
+          "title": "Disk - IO Pressure (%)",
+          "description": "Métrica PSI de I/O: porcentagem de tempo em que threads ficaram paralisadas aguardando a resposta do disco físico.\n• O que observar: Deve ficar próximo de zero. Valores elevados confirmam que o gargalo do servidor é a velocidade do subsistema de armazenamento.\n• Ação em caso de problema: Migrar o disco para storage com maior entrega de IOPS ou desacoplar operações de gravação pesadas.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3252,41 +3205,78 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "rate(node_pressure_io_waiting_seconds_total{instance=\"$instance\"}[$__rate_interval])",
-                        "legendFormat": "pressure",
+                        "expr": "rate(node_pressure_io_waiting_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\"}[$__rate_interval])",
+                        "legendFormat": "{{instance}} | Pressão I/O (PSI)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": " Mede o tempo que os processos ficaram parados esperando o disco responder. Diferente do throughput (vaz\u00e3o), ela mostra o congestionamento do armazenamento.",
-          "id": 41,
-          "links": [],
-          "title": "Disk - IO Pressure (%)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "min",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 15,
+                        "color": "#E24D42"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -3323,23 +3313,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "#E24D42",
-                        "value": 15
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
+                  }
                 },
                 "overrides": [
                   {
@@ -3358,37 +3332,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "min",
-                    "mean"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-42": {
         "kind": "Panel",
         "spec": {
+          "id": 42,
+          "title": "OS",
+          "description": "Distribuição e versão do sistema operacional Linux em execução em cada nó.\n• O que observar: Todos os servidores do cluster devem operar na mesma versão estável homologada (ex: Ubuntu 24.04 LTS).\n• Ação em caso de problema: Divergências de versão indicam hosts despadronizados que devem ser atualizados via automação (Ansible/Terraform).",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3396,99 +3351,84 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "node_os_info{instance=\"$instance\"}",
-                        "legendFormat": "__auto",
+                        "expr": "node_os_info{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} > {{pretty_name}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": [
-                {
-                  "group": "labelsToFields",
-                  "kind": "Transformation",
-                  "spec": {
-                    "options": {
-                      "keepLabels": [
-                        "os_product",
-                        "os_version",
-                        "pretty_name",
-                        "service_name",
-                        "version",
-                        "version_codename",
-                        "version_id"
-                      ]
-                    }
-                  }
-                }
-              ]
+              }
             }
           },
-          "description": "",
-          "id": 42,
-          "links": [],
-          "title": "OS",
           "vizConfig": {
-            "group": "stat",
             "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "text",
-                        "value": 0
-                      }
-                    ]
-                  }
-                },
-                "overrides": []
-              },
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^pretty_name$/",
+                  "fields": "",
                   "values": false
                 },
                 "showPercentChange": false,
-                "textMode": "auto",
+                "text": {
+                  "valueSize": 16
+                },
+                "textMode": "name",
                 "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-5": {
         "kind": "Panel",
         "spec": {
+          "id": 5,
+          "title": "FS Root Utilization (%)",
+          "description": "Percentual de espaço em disco ocupado no sistema de arquivos raiz (/).\n• O que observar: Deve ficar abaixo de 70% (Verde). Acima de 85% (Laranja) e 95% (Vermelho) exige limpeza imediata antes do travamento de escrita no sistema.\n• Ação em caso de problema: Verificar diretórios pesados com 'sudo du -sh /var/log/* /docker/*' e limpar logs antigos ou expandir o volume LVM.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3496,79 +3436,43 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "(node_filesystem_size_bytes{mountpoint=\"/\", instance=\"$instance\"} - node_filesystem_free_bytes{mountpoint=\"/\", instance=\"$instance\"}) / node_filesystem_size_bytes{mountpoint=\"/\", instance=\"$instance\"}",
+                        "expr": "(node_filesystem_size_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"} - node_filesystem_free_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"}) / node_filesystem_size_bytes{mountpoint=\"/\", instance=~\"$instance\", service_name=\"node-exporter\"}",
                         "instant": false,
-                        "legendFormat": "utilization",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Percentual do espa\u00e7o utilizado no filesystem raiz (/). Thresholds indicam proximidade com esgotamento; ao atingir 100 % o sistema pode travar processos de escrita.",
-          "id": 5,
-          "links": [],
-          "title": "FS Root Utilization (%)",
           "vizConfig": {
-            "group": "gauge",
             "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "max": 1,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "yellow",
-                        "value": 70
-                      },
-                      {
-                        "color": "orange",
-                        "value": 80
-                      },
-                      {
-                        "color": "red",
-                        "value": 90
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
-                },
-                "overrides": []
-              },
               "options": {
                 "barShape": "flat",
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": true,
+                  "centerGlow": false,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -3579,7 +3483,7 @@
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^utilization$/",
+                  "fields": "",
                   "values": false
                 },
                 "segmentCount": 1,
@@ -3590,15 +3494,51 @@
                 "sizing": "auto",
                 "sparkline": true,
                 "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 80,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-6": {
         "kind": "Panel",
         "spec": {
+          "id": 6,
+          "title": "CPU - Load",
+          "description": "Médias de carga do sistema (Load Average) em 1, 5 e 15 minutos comparadas com a linha de quantidade total de núcleos de CPU (Cores).\n• O que observar: A carga deve ficar abaixo do número total de cores. Se a linha de 15m ultrapassar os cores, há processos enfileirados aguardando CPU ou disco.\n• Ação em caso de problema: Inspecione o estado das threads com 'vmstat 1' (coluna 'r' para CPU, coluna 'b' para processos bloqueados em disco).",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3606,108 +3546,132 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_load1{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "load (1m)",
+                        "editorMode": "code",
+                        "expr": "node_load1{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Load (1m)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "1"
+                    "refId": "A",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_load5{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "load (5m)",
+                        "editorMode": "code",
+                        "expr": "node_load5{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Load (5m)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "5"
+                    "refId": "B",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "node_load15{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "load (15m)",
+                        "editorMode": "code",
+                        "expr": "node_load15{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Load (15m)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "15"
+                    "refId": "C",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
-                        "editorMode": "builder",
-                        "expr": "count(count by(cpu) (node_cpu_seconds_total{instance=\"$instance\"}))",
-                        "instant": false,
-                        "legendFormat": "cores",
+                        "editorMode": "code",
+                        "expr": "count by(instance) (node_cpu_seconds_total{instance=~\"$instance\", service_name=\"node-exporter\", mode=\"idle\"})",
+                        "legendFormat": "{{instance}} | Cores (Limite)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "cpus"
+                    "refId": "D",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "M\u00e9dias de carga (load average) em 1, 5 e 15 minutos. Valores consistentemente acima do n\u00famero de CPUs indicam fila de processos aguardando execu\u00e7\u00e3o \u2014 risco de lat\u00eancia elevada em toda a stack.",
-          "id": 6,
-          "links": [],
-          "title": "CPU - Load",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -3744,24 +3708,14 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
                   }
                 },
                 "overrides": [
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "cores",
-                      "scope": "series"
+                      "scope": "series",
+                      "options": "cores"
                     },
                     "properties": [
                       {
@@ -3814,34 +3768,18 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-8": {
         "kind": "Panel",
         "spec": {
+          "id": 8,
+          "title": "Memory Utilization (%)",
+          "description": "Percentual de memória RAM física em uso no host em cada nó.\n• O que observar: Deve operar confortavelmente abaixo de 80% (Verde). Acima de 90% (Vermelho) há risco iminente de acionamento do OOM Killer pelo kernel.\n• Ação em caso de problema: Consultar o detalhamento no painel 'Memory - Usage by Type' em Capacity para ver quanto é cache/buffer reaproveitável e identificar processos pesados com 'ps aux --sort=-%mem | head -10'.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3849,80 +3787,44 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "(node_memory_MemTotal_bytes{instance=\"$instance\"} - node_memory_MemAvailable_bytes{instance=\"$instance\"}) / node_memory_MemTotal_bytes{instance=\"$instance\"}",
+                        "expr": "(node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_MemAvailable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}) / node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
                         "instant": false,
-                        "legendFormat": "utilization",
+                        "legendFormat": "{{instance}}",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "A"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Percentual de RAM em uso. Calculado como (MemTotal \u2212 MemAvailable) / MemTotal. Inclui cache e buffers reaproveit\u00e1veis pelo kernel, portanto o valor real consumido por aplica\u00e7\u00f5es tende a ser menor.",
-          "id": 8,
-          "links": [],
-          "title": "Memory Utilization (%)",
           "vizConfig": {
-            "group": "gauge",
             "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.1.2",
             "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 1,
-                  "max": 1,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "yellow",
-                        "value": 70
-                      },
-                      {
-                        "color": "orange",
-                        "value": 80
-                      },
-                      {
-                        "color": "red",
-                        "value": 90
-                      }
-                    ]
-                  },
-                  "unit": "percentunit"
-                },
-                "overrides": []
-              },
               "options": {
                 "barShape": "flat",
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": true,
+                  "centerGlow": false,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -3933,7 +3835,7 @@
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^utilization$/",
+                  "fields": "",
                   "values": false
                 },
                 "segmentCount": 1,
@@ -3944,15 +3846,51 @@
                 "sizing": "auto",
                 "sparkline": true,
                 "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 80,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       },
       "panel-9": {
         "kind": "Panel",
         "spec": {
+          "id": 9,
+          "title": "Memory - Usage by Type (bytes)",
+          "description": "Composição detalhada da memória RAM física por nó: memória em uso por processos, cache de disco, buffers e memória livre, comparados com a RAM Total.\n• O que observar: A maior parte da memória fora de uso por processos deve estar alocada como cache do kernel (que é liberada automaticamente se necessário).\n• Ação em caso de problema: Se a memória 'used' de processos encostar na linha 'total', reiniciar serviços com vazamento ou adicionar memória física ao host.",
+          "links": [],
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3960,108 +3898,136 @@
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"} - node_memory_MemFree_bytes{instance=\"$instance\"} - (node_memory_Cached_bytes{instance=\"$instance\"} + node_memory_Buffers_bytes{instance=\"$instance\"} + node_memory_SReclaimable_bytes{instance=\"$instance\"})",
-                        "instant": false,
-                        "legendFormat": "used",
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - (node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"})",
+                        "legendFormat": "{{instance}} | Em Uso (Used)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "used"
+                    "refId": "A",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_Cached_bytes{instance=\"$instance\"} + node_memory_Buffers_bytes{instance=\"$instance\"} + node_memory_SReclaimable_bytes{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "cache",
+                        "expr": "node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Cache & Buffers",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "cache"
+                    "refId": "B",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_MemFree_bytes{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "free",
+                        "expr": "node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | Livre (Free)",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "free"
+                    "refId": "C",
+                    "hidden": false
                   }
                 },
                 {
                   "kind": "PanelQuery",
                   "spec": {
-                    "hidden": false,
                     "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
                       "datasource": {
                         "name": "mimir"
                       },
-                      "group": "prometheus",
-                      "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_MemTotal_bytes{instance=\"$instance\"}",
-                        "instant": false,
-                        "legendFormat": "total",
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "legendFormat": "{{instance}} | RAM Total",
                         "range": true
-                      },
-                      "version": "v0"
+                      }
                     },
-                    "refId": "total"
+                    "refId": "D",
+                    "hidden": false
                   }
                 }
               ],
+              "transformations": [],
               "queryOptions": {
                 "interval": "30s"
-              },
-              "transformations": []
+              }
             }
           },
-          "description": "Breakdown detalhado do uso de RAM: total, em uso, dispon\u00edvel, buffers, cache e slab reclaimable. Permite distinguir consumo real de aplica\u00e7\u00f5es do cache de disco gerenciado pelo kernel.",
-          "id": 9,
-          "links": [],
-          "title": "Memory - Usage by Type (bytes)",
           "vizConfig": {
-            "group": "timeseries",
             "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
             "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max",
+                    "mean"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
               "fieldConfig": {
                 "defaults": {
+                  "unit": "bytes",
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -4098,26 +4064,14 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "bytes"
+                  }
                 },
                 "overrides": [
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "total",
-                      "scope": "series"
+                      "scope": "series",
+                      "options": "total"
                     },
                     "properties": [
                       {
@@ -4149,8 +4103,8 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "used",
-                      "scope": "series"
+                      "scope": "series",
+                      "options": "used"
                     },
                     "properties": [
                       {
@@ -4165,8 +4119,8 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "cache",
-                      "scope": "series"
+                      "scope": "series",
+                      "options": "cache"
                     },
                     "properties": [
                       {
@@ -4181,8 +4135,8 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "free",
-                      "scope": "series"
+                      "scope": "series",
+                      "options": "free"
                     },
                     "properties": [
                       {
@@ -4195,30 +4149,8 @@
                     ]
                   }
                 ]
-              },
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max",
-                    "mean"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
               }
-            },
-            "version": "13.0.1"
+            }
           }
         }
       }
@@ -4230,6 +4162,7 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
+              "title": "Linux",
               "collapse": false,
               "layout": {
                 "kind": "TabsLayout",
@@ -4238,10 +4171,13 @@
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Health",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 2,
                             "columnWidthMode": "narrow",
+                            "rowHeightMode": "short",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4279,21 +4215,21 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 4,
-                            "rowHeightMode": "short"
+                            ]
                           }
-                        },
-                        "title": "Health"
+                        }
                       }
                     },
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Capacity",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 1,
                             "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4340,21 +4276,21 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 1,
-                            "rowHeightMode": "standard"
+                            ]
                           }
-                        },
-                        "title": "Capacity"
+                        }
                       }
                     },
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Activity",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 1,
                             "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4383,21 +4319,21 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 1,
-                            "rowHeightMode": "standard"
+                            ]
                           }
-                        },
-                        "title": "Activity"
+                        }
                       }
                     },
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Diagnostics",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 1,
                             "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4453,21 +4389,21 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 1,
-                            "rowHeightMode": "standard"
+                            ]
                           }
-                        },
-                        "title": "Diagnostics"
+                        }
                       }
                     },
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Inventory",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 2,
                             "columnWidthMode": "narrow",
+                            "rowHeightMode": "short",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4523,21 +4459,21 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 3,
-                            "rowHeightMode": "short"
+                            ]
                           }
-                        },
-                        "title": "Inventory"
+                        }
                       }
                     },
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
+                        "title": "Logs",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
+                            "maxColumnCount": 1,
                             "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
@@ -4575,18 +4511,14 @@
                                   }
                                 }
                               }
-                            ],
-                            "maxColumnCount": 1,
-                            "rowHeightMode": "standard"
+                            ]
                           }
-                        },
-                        "title": "Logs"
+                        }
                       }
                     }
                   ]
                 }
-              },
-              "title": "Linux"
+              }
             }
           }
         ]
@@ -4600,6 +4532,9 @@
       "host"
     ],
     "timeSettings": {
+      "timezone": "browser",
+      "from": "now-12h",
+      "to": "now",
       "autoRefresh": "",
       "autoRefreshIntervals": [
         "5s",
@@ -4613,49 +4548,48 @@
         "2h",
         "1d"
       ],
-      "fiscalYearStartMonth": 0,
-      "from": "now-12h",
       "hideTimepicker": false,
-      "timezone": "browser",
-      "to": "now"
+      "fiscalYearStartMonth": 0
     },
     "title": "Linux Hosts",
     "variables": [
       {
         "kind": "QueryVariable",
         "spec": {
-          "allowCustomValue": false,
+          "name": "instance",
           "current": {
             "text": "",
             "value": ""
           },
-          "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
-          "hide": "dontHide",
-          "includeAll": false,
           "label": "Instance",
-          "multi": false,
-          "name": "instance",
-          "options": [],
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
           "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
             "datasource": {
               "name": "mimir"
             },
-            "group": "prometheus",
-            "kind": "DataQuery",
             "spec": {
               "qryType": 1,
               "query": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
-            },
-            "version": "v0"
+            }
           },
-          "refresh": "onDashboardLoad",
           "regex": "",
           "regexApplyTo": "value",
-          "skipUrlSync": false,
-          "sort": "disabled"
+          "sort": "disabled",
+          "definition": "label_values(node_uname_info{instance!=\"lgtm-stack-node\"},instance)",
+          "options": [],
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false,
+          "allValue": ".*"
         }
       }
-    ]
+    ],
+    "uid": "linux-hosts"
   }
 }
