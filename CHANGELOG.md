@@ -5,6 +5,63 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.14] - 2026-08-13
+### Adicionado
+- **`docs/OBSERVABILITY-METHODOLOGY.md`**: nova referência única conceitual e
+  metodológica para a taxonomia de pilares (Health, Capacity, Activity,
+  Diagnostics, Inventory, Logs, Traces), correlação de sinais (Métricas, Logs,
+  Traces via Exemplars/TraceID), gestão de confiabilidade com SLIs/SLOs/Error
+  Budgets, governança de cardinalidade Lean e playbook de incidentes em 4 fases.
+- **`.agents/`**: link simbólico canônico (somente leitura, mesmo padrão de
+  `AGENTS.md`) para o repositório compartilhado `ai-agent-platform/.agents`,
+  alinhando este projeto ao `AGENTS.md` §9 (`.agents/` como repositório
+  canônico de agentes/skills).
+
+### Alterado
+- **Reorganização da documentação**: a documentação temática não-padrão
+  (`ARCHITECTURE.md`, `INFRASTRUCTURE.md`, `SIZING.md`, `BACKUP.md`,
+  `UPGRADE.md`, `METRICS.md`, `LOGS.md`, `TRACES.md`, `DASHBOARDS.md`,
+  `ALERTS.md`) foi movida da raiz para `docs/`. `ROADMAP.md` permanece
+  (e retorna, após correção de conformidade — ver abaixo) na raiz: é um
+  dos 5 arquivos padrão exigidos por `AGENTS.md` §11.1
+  (`README.md`/`ROADMAP.md`/`CHANGELOG.md`/`CONTRIBUTING.md`/`LICENSE`),
+  não documentação temática. A raiz do repositório agora contém os 5
+  arquivos padrão mais `AGENTS.md`, `PROJECT.md`, `MEMORY.md` e os
+  `<FERRAMENTA>.md` (`CLAUDE.md`, `OPENCODE.md`, `COPILOT.md`).
+  `CLAUDE.md`/`OPENCODE.md`/`COPILOT.md` permanecem na raiz
+  propositalmente — são arquivos de configuração de ferramenta, não
+  documentação de produto. Todos os links cruzados entre documentos
+  (`README.md`, `CONTRIBUTING.md`, `load-test/LOAD-TEST.md`, e entre os
+  próprios docs movidos) foram atualizados para o novo caminho.
+- **Reorganização de artefatos não-documentais**: `load-test/` e
+  `scripts/` foram movidos para `artifacts/load-test/` e
+  `artifacts/scripts/`. A planilha de referência de métricas do CoreDNS
+  passou a viver em `artifacts/sheets/`. Referências em
+  `CONTRIBUTING.md`, `docs/BACKUP.md` e
+  `examples/remote-scrape/INSTALL.md` foram atualizadas para os novos
+  caminhos.
+
+### Corrigido
+- **Duplicação de `ROADMAP.md`**: a reorganização de documentação acima
+  havia movido `ROADMAP.md` para `docs/`, mas um novo `ROADMAP.md` na
+  raiz chegou a ser criado em paralelo sem remover o de `docs/`,
+  deixando duas fontes de verdade divergentes. Consolidado em
+  `ROADMAP.md` (raiz, conteúdo mais atual) por ser um dos 5 arquivos
+  padrão obrigatórios de raiz (`AGENTS.md` §11.1.2/§11.1.9);
+  `docs/ROADMAP.md` foi removido e todos os links (`README.md`,
+  `PROJECT.md`, `docs/ALERTS.md`) apontam agora para a raiz.
+- **Referências de seção obsoletas ao `AGENTS.md`**: `MEMORY.md`,
+  `CLAUDE.md`, `OPENCODE.md`, `COPILOT.md`,
+  `.github/copilot-instructions.md`, `PROJECT.md` e `.gitignore` citavam
+  números de seção do `AGENTS.md` (`§6.1`, `§6.3`, `§7.7`, `§13`,
+  `§16.1`, `§17`) que não correspondem mais à numeração atual (v3.0).
+  Todas as referências foram corrigidas para as seções vigentes.
+- **`.opencode` deixou de ser symlink**: passou a ser uma pasta local real
+  (workspace individual da ferramenta opencode, `AGENTS.md` §10), com
+  `.opencode/agents` e `.opencode/skills` como symlinks internos para
+  `.agents/agents` e `.agents/skills` — preserva o funcionamento do
+  opencode sem apontar a pasta inteira para fora do projeto.
+
 ## [0.0.13] - 2026-08-04
 ### Alterado
 - **Stack completa atualizada para as últimas versões estáveis**: Loki

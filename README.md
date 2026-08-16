@@ -9,22 +9,23 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 - `alloy-gateway/`: entrada OTLP e fanout para Loki, Mimir e Tempo.
 - `grafana/provisioning/`: datasources e dashboards provisionados.
 - `examples/`: templates de agentes e cenários legados.
-- `load-test/`: scripts SQL para teste de carga e validação de métricas.
+- `artifacts/load-test/`: scripts SQL para teste de carga e validação de métricas.
 
 ## Documentação oficial do repositório (Governança)
 
 > [!IMPORTANT]
 > **Regra de Governança (Single Source of Truth):** Cada arquivo `.md` neste repositório é a **única referência da verdade** sobre o seu respectivo tema. É terminantemente proibido duplicar informações técnicas (como sizing, comandos de backup ou configurações de rede) entre arquivos. Sempre referencie o documento original através de links.
 
-- [ARCHITECTURE.md](ARCHITECTURE.md): topologia, papéis de cada componente e fronteiras de rede.
-- [INFRASTRUCTURE.md](INFRASTRUCTURE.md): setup físico, disco e volumes.
-- [SIZING.md](SIZING.md): dimensionamento, projeção de custos e limites de hardware.
-- [BACKUP.md](BACKUP.md): backup, snapshot e disaster recovery.
-- [UPGRADE.md](UPGRADE.md): processo de upgrade e validações.
-- [METRICS.md](METRICS.md): política de métricas, labels e retenção no Mimir.
-- [LOGS.md](LOGS.md): política de logs, labels e retenção no Loki.
-- [TRACES.md](TRACES.md): ingestão OTLP e política de traces no Tempo.
-- [DASHBOARDS.md](DASHBOARDS.md): templates de dashboard para diferentes tipos de host.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): topologia, papéis de cada componente e fronteiras de rede.
+- [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md): setup físico, disco e volumes.
+- [docs/SIZING.md](docs/SIZING.md): dimensionamento, projeção de custos e limites de hardware.
+- [docs/BACKUP.md](docs/BACKUP.md): backup, snapshot e disaster recovery.
+- [docs/UPGRADE.md](docs/UPGRADE.md): processo de upgrade e validações.
+- [docs/METRICS.md](docs/METRICS.md): política de métricas, labels e retenção no Mimir.
+- [docs/LOGS.md](docs/LOGS.md): política de logs, labels e retenção no Loki.
+- [docs/TRACES.md](docs/TRACES.md): ingestão OTLP e política de traces no Tempo.
+- [docs/DASHBOARDS.md](docs/DASHBOARDS.md): templates de dashboard para diferentes tipos de host.
+- [docs/OBSERVABILITY-METHODOLOGY.md](docs/OBSERVABILITY-METHODOLOGY.md): metodologia de observabilidade, taxonomia de pilares (Health, Capacity, Activity, Diagnostics, Inventory, Logs, Traces), correlação de sinais (M/L/T), SLIs/SLOs e playbook de incidentes.
 - [CHANGELOG.md](CHANGELOG.md): histórico de versões e mudanças.
 - [CONTRIBUTING.md](CONTRIBUTING.md): guia de contribuição e governança técnica.
 - [ROADMAP.md](ROADMAP.md): visão de futuro e próximas funcionalidades.
@@ -32,7 +33,7 @@ Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
 ## Início rápido
 
 > [!IMPORTANT]
-> Certifique-se de ter o **Docker** e o **Docker Compose (V2)** instalados antes de prosseguir. Para guias de instalação e requisitos, consulte [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+> Certifique-se de ter o **Docker** e o **Docker Compose (V2)** instalados antes de prosseguir. Para guias de instalação e requisitos, consulte [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
 
 Para laboratório ou desenvolvimento local:
 
@@ -43,13 +44,13 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Para ambiente produtivo com disco dedicado, siga [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+Para ambiente produtivo com disco dedicado, siga [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
 
 ## Endpoints e Topologia de Rede
 
 Para verificar quais portas a stack expõe nativamente, a responsabilidade de cada componente e como o isolamento de rede foi desenhado (ex: o motivo do Loki, Mimir e Tempo não exporem portas no host), consulte o documento oficial de topologia:
 
-👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
+👉 **[docs/ARCHITECTURE.md (Fronteiras de Rede)](docs/ARCHITECTURE.md)**
 
 
 ## Instalação em servidores remotos
@@ -74,7 +75,7 @@ cd lgtm-stack/examples/<plataforma>
 
 > **Traces (Beyla eBPF):** disponível como seção opcional dentro do guia Linux —
 > consulte [examples/linux/INSTALL.md, seção "Traces (Beyla eBPF) — Opcional"](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
-> Não aplicável a Windows, DBaaS gerenciado ou coleta via Pull — detalhes em [TRACES.md](TRACES.md).
+> Não aplicável a Windows, DBaaS gerenciado ou coleta via Pull — detalhes em [docs/TRACES.md](docs/TRACES.md).
 
 > Para atualizar as configurações em servidores já instalados: `git pull` no
 > diretório clonado e reinicie o serviço Alloy.

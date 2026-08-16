@@ -56,7 +56,10 @@ prometheus.relabel "pull_linux_host_transformer" {
   rule {
     source_labels = ["__name__"]
     action        = "keep"
-    regex         = 
+    regex         =
+      // Disponibilidade do target
+      "up|" +
+
       // Core & Metadata
       "node_boot_time_seconds|" +
       "node_uname_info|" +

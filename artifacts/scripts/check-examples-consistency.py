@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 EXAMPLES = ROOT / "examples"
 ENV_EXAMPLE = ROOT / ".env.example"
 
@@ -38,6 +38,8 @@ GATEWAY_FILES = [
     "remote-scrape/pull-windows-mssql-hosts.alloy",
     "remote-scrape/pull-linux-dbaas-mysql-hosts.alloy",
     "remote-scrape/pull-linux-dbaas-pgsql-hosts.alloy",
+    "remote-scrape/pull-coredns-hosts.alloy",
+    "remote-scrape/pull-etcd-hosts.alloy",
 ]
 
 # Grupos de arquivos cuja allowlist de métricas (mesmo prefixo) deve ser

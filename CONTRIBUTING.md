@@ -15,19 +15,21 @@ Obrigado pelo interesse em contribuir com a LGTM Stack! Este projeto foca em **L
 Se você adicionar um novo painel ao Grafana que exige uma métrica ainda não coletada:
 1.  Identifique a métrica no exporter (Node Exporter, cAdvisor, etc).
 2.  Adicione o nome da métrica na regra `keep` do arquivo `.alloy` correspondente em `alloy-agent/conf.d/`.
-3.  Atualize o `SIZING.md` se a cardinalidade aumentar significativamente.
+3.  Atualize o `docs/SIZING.md` se a cardinalidade aumentar significativamente.
 
 ### 1.1 Editando templates em `examples/`
 Os templates de `examples/` são arquivos únicos e autocontidos por design — feitos para copiar direto num host remoto sem depender de outros arquivos do repositório. Isso significa que a allowlist de métricas e os labels de identidade global aparecem duplicados entre arquivos que deveriam espelhar um ao outro (ex.: `linux/config.alloy` ↔ `remote-scrape/pull-linux-hosts.alloy`). Ao criar ou editar qualquer `.alloy` em `examples/`, rode:
 ```bash
-python3 scripts/check-examples-consistency.py
+python3 artifacts/scripts/check-examples-consistency.py
 ```
 Ele valida a sintaxe (via `alloy validate`) e verifica se as edições foram replicadas nos arquivos-espelho, evitando o tipo de drift silencioso que esse script foi criado para pegar.
 
 ### 2. Documentação
-A regra de ouro é: **Single Source of Truth**.
-- Se alterar a rede, atualize o `ARCHITECTURE.md`.
-- Se alterar métricas, atualize o `METRICS.md` e o `SIZING.md`.
+A regra de ouro é: **Single Source of Truth** com **Linguagem Simples, Direta e Numerada**.
+- Toda documentação em `docs/` deve ser **estruturada e numerada** (`1. Introdução`, `2. Objetivo`, etc.) e escrita em **linguagem simples, direta e de fácil entendimento**, evitando termos obscuros sem explicação prática.
+- Se alterar a rede, atualize o `docs/ARCHITECTURE.md`.
+- Se alterar métricas ou padrões de painéis, atualize o `docs/METRICS.md` e o `docs/SIZING.md`.
+- Se alterar a taxonomia de dashboards ou metodologia de sinais, atualize o `docs/OBSERVABILITY-METHODOLOGY.md`.
 - Sempre registre as mudanças no `CHANGELOG.md`.
 
 ## Padrões de Código
