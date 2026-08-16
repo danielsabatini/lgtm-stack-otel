@@ -24,21 +24,29 @@
 prometheus.scrape "pull_linux_host" {
   targets = [
     {
-      "__address__"             = "[IP_ADDRESS]:9100",
-      "instance"                = "[INSTANCE_NAME]",
+      "__address__"             = "host.docker.internal:19100",
+      "instance"                = "dns-ne1-1",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
       "cloud_region"            = "br-se1",
       "cloud_availability_zone" = "a",
     },
-    // {
-    //   "__address__"             = "[IP_ADDRESS]:9100",
-    //   "instance"                = "[INSTANCE_NAME]",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "host.docker.internal:29100",
+      "instance"                = "dns-ne1-2",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-se1",
+      "cloud_availability_zone" = "a",
+    },
+    {
+      "__address__"             = "host.docker.internal:39100",
+      "instance"                = "dns-ne1-3",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-se1",
+      "cloud_availability_zone" = "a",
+    },
   ]
 
   job_name        = "linux-legacy"

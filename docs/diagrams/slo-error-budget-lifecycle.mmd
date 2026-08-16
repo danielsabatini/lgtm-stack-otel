@@ -1,0 +1,71 @@
+flowchart TD
+    %% =========================================================================
+    %% Diagrama: Ciclo de Vida de SLIs, SLOs e Error Budget
+    %% Documento: docs/OBSERVABILITY-METHODOLOGY.md
+    %% =========================================================================
+
+    subgraph ReliabilityFramework ["Ciclo Contínuo de Confiabilidade e Governança de Releases"]
+        direction TB
+
+        subgraph MeasurementPhase ["1. MEDIÇÃO CONTÍNUA (Telemetria Real)"]
+            direction LR
+            SLI["<b>SLI — Indicador de Nível de Serviço</b><br/><i>(Service Level Indicator)</i><br/>• Medição contínua via pilar <b>Health</b><br/>• Proporção de eventos válidos e rápidos<br/>• <b>Fórmula:</b> <code>(Reqs Boas / Reqs Totais) * 100</code><br/>• <b>Exemplo:</b> 99.95% de sucesso (< 200ms)"]
+        end
+
+        subgraph ObjectivePhase ["2. COMPROMISSO DE CONFIABILIDADE (Alinhamento de Negócio)"]
+            direction LR
+            SLO["<b>SLO — Objetivo de Nível de Serviço</b><br/><i>(Service Level Objective)</i><br/>• Meta contratual e operacional de disponibilidade<br/>• Janela temporal móvel (ex: 30 dias)<br/>• <b>Meta Definida:</b> <code>99.9% de disponibilidade</code><br/>• Acordo entre Engenharia e Produto"]
+            ErrorBudgetCalc["<b>ERROR BUDGET — Orçamento de Falhas</b><br/><i>(Margem Permitida para Inovação)</i><br/>• Cálculo: <code>100% - SLO = 0.1% de erro permitido</code><br/>• Em 30 dias: ~43.2 minutos de downtime tolerável<br/>• <b>Conceito:</b> 100% de confiabilidade é antieconômico"]
+        end
+
+        subgraph BudgetEvaluation ["3. ANÁLISE DO CONSUMO E VELOCIDADE DE QUEIMA (Burn Rate)"]
+            direction TB
+            DecisionNode{"<b>Estado do Error Budget Restante</b><br/><i>Monitoramento Contínuo de Consumo</i>"}
+        end
+
+        subgraph ActionPaths ["4. TOMADA DE DECISÃO E GOVERNANÇA OPERACIONAL"]
+            direction LR
+
+            subgraph HealthyBudget ["Budget Saudável (> 20% Restante / Baixo Burn Rate)"]
+                direction TB
+                InnovationAction["<b>🟢 Foco em Velocidade & Inovação</b><br/>• Liberação de novos deploys e releases frequentes<br/>• Experimentação, testes de carga e novas features<br/>• Assunção calculada de risco operacional<br/>• Engenharia focada em evolução do produto"]
+            end
+
+            subgraph DepletedBudget ["Budget Esgotado ou Queima Rápida (≤ 20% / Alto Burn Rate)"]
+                direction TB
+                StabilityAction["<b>🔴 Foco em Estabilidade & Resiliência</b><br/>• <i>Feature Freeze:</i> Bloqueio de releases de alto risco<br/>• Priorização máxima de correção de bugs e débito técnico<br/>• Refatoração, hardening de infra e melhorias de SLO<br/>• Análise de causa raiz (RCA) e mitigação imediata"]
+            end
+        end
+
+        %% Fluxos e Relações
+        SLI -->|"Alimenta cálculo na janela móvel"| SLO
+        SLO -->|"Define margem de tolerância (100% - SLO)"| ErrorBudgetCalc
+        ErrorBudgetCalc -->|"Calcula saldo restante e burn rate"| DecisionNode
+
+        DecisionNode -->|"<b>Budget > 20%</b><br/>Risco Aceitável"| InnovationAction
+        DecisionNode -->|"<b>Budget ≤ 20% ou Queima Rápida</b><br/>Risco Inaceitável"| StabilityAction
+
+        InnovationAction -.->|"Novos deploys geram novas medições"| SLI
+        StabilityAction -.->|"Correções restauram a saúde do serviço"| SLI
+    end
+
+    %% Estilização Visual Profissional
+    classDef containerStyle fill:#0b0f19,stroke:#475569,stroke-width:1.5px,stroke-dasharray: 5 5,color:#e2e8f0;
+    classDef sliStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef sloStyle fill:#1e3a8a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef budgetCalcStyle fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+    classDef decisionStyle fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef innovationStyle fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef stabilityStyle fill:#831843,stroke:#f43f5e,stroke-width:2px,color:#f8fafc;
+    classDef subSectionHealthy fill:#022c22,stroke:#059669,stroke-width:1px,stroke-dasharray: 4 4,color:#a7f3d0;
+    classDef subSectionDepleted fill:#4c0519,stroke:#e11d48,stroke-width:1px,stroke-dasharray: 4 4,color:#fecdd3;
+
+    class ReliabilityFramework,MeasurementPhase,ObjectivePhase,BudgetEvaluation,ActionPaths containerStyle;
+    class SLI sliStyle;
+    class SLO sloStyle;
+    class ErrorBudgetCalc budgetCalcStyle;
+    class DecisionNode decisionStyle;
+    class InnovationAction innovationStyle;
+    class StabilityAction stabilityStyle;
+    class HealthyBudget subSectionHealthy;
+    class DepletedBudget subSectionDepleted;

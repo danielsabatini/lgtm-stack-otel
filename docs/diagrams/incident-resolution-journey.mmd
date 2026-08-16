@@ -1,0 +1,77 @@
+flowchart TD
+    %% =========================================================================
+    %% Diagrama: Jornada de Resolução de Incidentes em 4 Fases
+    %% Documento: docs/OBSERVABILITY-METHODOLOGY.md
+    %% =========================================================================
+
+    subgraph IncidentJourney ["Jornada de Resolução de Incidentes em 4 Fases (Playbook Mental de Triangulação)"]
+        direction TB
+
+        %% FASE 1
+        subgraph Phase1 ["FASE 1: DETECÇÃO & ALARME (0s a 30s) — Pilar Health"]
+            direction LR
+            P1_Trigger["<b>🚨 Disparo do Alerta</b><br/>• Notificação via Alertmanager/Pager<br/>• Violação de SLO / Limiar de Health<br/>• <b>Pergunta:</b> <i>'O sistema está degradado?'</i>"]
+            P1_Action["<b>🎯 Identificação do Serviço</b><br/>• Reconhece o serviço/pod afetado<br/>• Normalização de sinais vitais (% e UP/DOWN)<br/>• <b>Exemplo:</b> <code>Taxa de Erro HTTP > 5%</code> ou <code>p99 > 1.5s</code>"]
+            P1_Trigger --> P1_Action
+        end
+
+        %% FASE 2
+        subgraph Phase2 ["FASE 2: CONTEXTO & PRESSÃO (30s a 1m) — Pilares Capacity & Activity"]
+            direction LR
+            P2_Activity["<b>📈 Análise de Demanda (Activity)</b><br/>• Verifica volume e taxa de entrada<br/>• <b>Pergunta:</b> <i>'Houve pico de tráfego?'</i><br/>• <b>Métricas:</b> Req/s, Throughput, IOPS"]
+            P2_Capacity["<b>💾 Análise de Folga (Capacity)</b><br/>• Mede folga livre <code>(Total - Usado)</code><br/>• <b>Pergunta:</b> <i>'Houve exaustão física?'</i><br/>• <b>Métricas:</b> Pool de conexões, RAM (bytes), Disco"]
+            P2_Activity <--> P2_Capacity
+        end
+
+        %% FASE 3
+        subgraph Phase3 ["FASE 3: ISOLAMENTO & LOCALIZAÇÃO (1m a 2m) — Pilares Diagnostics & Traces"]
+            direction LR
+            P3_Diagnostics["<b>🔬 Métricas de 2ª Ordem (Diagnostics)</b><br/>• Decomposição de erros por código e rota<br/>• Análise de saturação de threads e tempo de lock<br/>• <b>Pergunta:</b> <i>'Qual rota ou subsistema está falhando?'</i>"]
+            P3_Traces["<b>🗺️ Rastreamento Distribuído (Traces)</b><br/>• Grafo de serviços e Waterfall de spans<br/>• Localiza o span crítico com status <code>ERROR</code><br/>• <b>Identificador:</b> Captura o <code>TraceID</code> da requisição falha"]
+            P3_Diagnostics --> P3_Traces
+        end
+
+        %% FASE 4
+        subgraph Phase4 ["FASE 4: CAUSA RAIZ & RESOLUÇÃO (2m a 3m) — Pilar Logs & Ação Corretiva"]
+            direction LR
+            P4_Logs["<b>📜 Evidência Textual (Logs via TraceID)</b><br/>• Salto direto: <i>Trace to Logs</i> via <code>trace_id</code><br/>• Filtro por <code>level=error</code> no Grafana Loki<br/>• Visualização da stack trace exata e payload da falha"]
+            P4_Remediation["<b>✅ Resolução & Recuperação (MTTR)</b><br/>• Rollback de versão, ajuste de escala ou patch<br/>• Validação do retorno dos sinais vitais no Health<br/>• Fechamento do incidente e abertura de post-mortem"]
+            P4_Logs --> P4_Remediation
+        end
+
+        %% Conexões entre Fases
+        Phase1 ==>|"<b>Triagem Rápida:</b> Serviço isolado"| Phase2
+        Phase2 ==>|"<b>Contexto Estabelecido:</b> Causa não é saturação externa"| Phase3
+        Phase3 ==>|"<b>Ponto Crítico Isolado:</b> TraceID identificado"| Phase4
+    end
+
+    %% Estilização Visual Profissional
+    classDef containerStyle fill:#0b0f19,stroke:#475569,stroke-width:1.5px,stroke-dasharray: 5 5,color:#e2e8f0;
+    classDef phase1Style fill:#0f172a,stroke:#f43f5e,stroke-width:2px,color:#f8fafc;
+    classDef phase2Style fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+    classDef phase3Style fill:#0f172a,stroke:#14b8a6,stroke-width:2px,color:#f8fafc;
+    classDef phase4Style fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    classDef triggerStyle fill:#831843,stroke:#f43f5e,stroke-width:1.5px,color:#f8fafc;
+    classDef healthActionStyle fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#f8fafc;
+    classDef activityStyle fill:#1e3a8a,stroke:#38bdf8,stroke-width:1.5px,color:#f8fafc;
+    classDef capacityStyle fill:#4c1d95,stroke:#8b5cf6,stroke-width:1.5px,color:#f8fafc;
+    classDef diagStyle fill:#831843,stroke:#f43f5e,stroke-width:1.5px,color:#f8fafc;
+    classDef traceStyle fill:#134e4a,stroke:#14b8a6,stroke-width:1.5px,color:#f8fafc;
+    classDef logStyle fill:#78350f,stroke:#f59e0b,stroke-width:1.5px,color:#f8fafc;
+    classDef remedyStyle fill:#064e3b,stroke:#34d399,stroke-width:1.5px,color:#f8fafc;
+
+    class IncidentJourney containerStyle;
+    class Phase1 phase1Style;
+    class Phase2 phase2Style;
+    class Phase3 phase3Style;
+    class Phase4 phase4Style;
+
+    class P1_Trigger triggerStyle;
+    class P1_Action healthActionStyle;
+    class P2_Activity activityStyle;
+    class P2_Capacity capacityStyle;
+    class P3_Diagnostics diagStyle;
+    class P3_Traces traceStyle;
+    class P4_Logs logStyle;
+    class P4_Remediation remedyStyle;

@@ -1,0 +1,21 @@
+[Unit]
+Description=Teste de carga DNS (CoreDNS + etcd) — LGTM Stack
+Documentation=https://github.com/magalu/lgtm-stack/blob/main/artifacts/load-test/README.md
+# Sem After=coredns.service de propósito: o teste tolera o CoreDNS fora do ar
+# (as consultas simplesmente falham, que é justamente o cenário que se quer
+# poder observar no dashboard). Ordenar por ele só atrasaria o start.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=QPS=20
+Environment=POOL_MAX=400
+ExecStart=/opt/dns-loadtest/dns-load-test.sh
+Restart=on-failure
+RestartSec=10
+StateDirectory=dns-loadtest
+
+[Install]
+WantedBy=multi-user.target

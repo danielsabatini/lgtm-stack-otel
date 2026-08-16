@@ -38,11 +38,16 @@ build/
 # Temporary workspace files
 workspace/
 
-# AI Agents
-.opencode
+# AI Agents — repositório canônico compartilhado, somente leitura (AGENTS.md §9, §29)
+.agents
 AGENTS.md
-CLAUDE.md
-OPENCODE.md
+
+# Workspace individual da ferramenta opencode — pasta local com symlinks internos
+# para .agents/agents e .agents/skills, não portável entre máquinas/clones (AGENTS.md §10)
+.opencode
+
+# Journal de execução — histórico local, não atravessa clone/máquina (AGENTS.md §14.11)
+.journal/
 
 # Ignore instance-specific remote scrape configurations in gateway
 alloy-gateway/conf.d/pull*

@@ -1,0 +1,32 @@
+flowchart TD
+    %% Contexto do Recurso
+    subgraph ResourceContext ["Recurso Monitorado (Ex: Memória RAM, File Descriptors, Filesystem)"]
+        direction TB
+
+        Inventory["<b>1. TOTAL DISPONÍVEL (Inventory)</b><br/><i>Teto Máximo e Configuração Estática</i><br/>• Pergunta: <i>'Quanto existe no total instalado/configurado?'</i><br/>• Denominador de referência (constante física/lógica)<br/>• <b>Exemplo:</b> Memória Total: 8 GB | Limite de FDs: 65.536 conexões"]
+
+        subgraph OperationalViews ["Perspectivas Complementares de Diagnóstico"]
+            direction LR
+
+            Health["<b>2. USO PERCENTUAL % (Health)</b><br/><i>Sinal Vital e Alarme Imediato</i><br/>• Pergunta: <i>'Qual a % ocupada agora?'</i><br/>• Cálculo: <code>(Usado / Total) * 100</code><br/>• Thresholds visuais portáteis (Verde / Amarelo / Vermelho)<br/>• Disparo de alarmes imediatos (MTTD/MTTR)<br/>• <b>Exemplo:</b> Uso de Memória = 80% (Alerta se > 85%)"]
+
+            Capacity["<b>3. FOLGA LIVRE (Capacity)</b><br/><i>Volume Real e Composição</i><br/>• Pergunta: <i>'Quanto sobra? O que está gastando?'</i><br/>• Cálculo: <code>Folga Livre = Total - Usado</code><br/>• Composição detalhada por componente (bytes / contagem)<br/>• Margem de manobra antes do esgotamento total<br/>• <b>Exemplo:</b> Usado: 6.4 GB | Cache: 1.0 GB | Livre: 0.6 GB"]
+        end
+    end
+
+    %% Relações e Fluxo de Informação
+    Inventory -->|"Fornece Denominador para Normalização"| Health
+    Inventory -->|"Estabelece Teto para Cálculo de Margem"| Capacity
+    Health -.->|"Detecta Saturação e Dispara Alarme<br/><i>(Quando agir?)</i>"| Capacity
+    Capacity -.->|"Evidencia Composição e Folga Real<br/><i>(Onde agir e quanto resta?)</i>"| Health
+
+    %% Estilização Visual Profissional
+    classDef inventoryStyle fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef healthStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef capacityStyle fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+    classDef contextStyle fill:#0f172a,stroke:#64748b,stroke-width:1px,stroke-dasharray: 5 5,color:#cbd5e1;
+
+    class Inventory inventoryStyle;
+    class Health healthStyle;
+    class Capacity capacityStyle;
+    class ResourceContext,OperationalViews contextStyle;

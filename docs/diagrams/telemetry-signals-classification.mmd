@@ -1,0 +1,60 @@
+flowchart TB
+    %% Separação Fundamental dos Sinais de Telemetria
+    subgraph TelemetryModel ["Taxonomia Fundamental dos Sinais de Observabilidade"]
+        direction TB
+
+        subgraph MetricsDomain ["1. SINAIS MÉTRICOS / SÉRIES TEMPORAIS (TSDB)"]
+            direction TB
+            MetricsFocus["<b>Foco Operacional:</b> Dados Numéricos Agregados ao Longo do Tempo<br/><i>Responde: <b>SE</b> e <b>QUANDO</b> há problemas de degradação ou saturação</i>"]
+
+            subgraph MetricsPillars ["Pilares de Métricas"]
+                direction LR
+                Health["<b>HEALTH</b><br/><i>Sinais Vitais e Alarmes</i><br/>• Uso percentual (%) e status binário<br/>• Limiares universais (Verde/Amarelo/Vermelho)<br/>• <b>Exemplos:</b> CPU %, Memória %, Latência p99"]
+                Capacity["<b>CAPACITY</b><br/><i>Composição e Folga Livre</i><br/>• Unidades absolutas (Total - Usado)<br/>• Prevenção de exaustão e dimensionamento<br/>• <b>Exemplos:</b> Bytes alocados, Conexões ativas"]
+                Activity["<b>ACTIVITY</b><br/><i>Volume e Trabalho</i><br/>• Taxa de transferência e vazão temporal<br/>• Contexto de demanda do negócio (/s)<br/>• <b>Exemplos:</b> IOPS, Throughput, Req/s, Ops/s"]
+                Diagnostics["<b>DIAGNOSTICS</b><br/><i>Causa Raiz e Análise</i><br/>• Indicadores de segunda ordem e contadores<br/>• Investigação aprofundada pós-alerta<br/>• <b>Exemplos:</b> Falhas por código, Espera de I/O"]
+            end
+            MetricsFocus --> MetricsPillars
+        end
+
+        subgraph EventsDomain ["2. SINAIS DE EVENTOS E FLUXO DISTRIBUÍDO"]
+            direction TB
+            EventsFocus["<b>Foco Investigativo:</b> Evidências Detalhadas e Correlação Estruturada<br/><i>Responde: <b>ONDE</b> e <b>COMO</b> a falha ocorreu no ecossistema</i>"]
+
+            subgraph EventsPillars ["Compartimentos Dedicados"]
+                direction LR
+                Logs["<b>LOGS</b><br/><i>Eventos Textuais Estruturados</i><br/>• Linhas de log enriquecidas e estruturadas<br/>• Filtro por contexto e severidade em tempo real<br/>• <b>Categorias:</b> Segurança, Sistema, Aplicação, Negócio"]
+                Traces["<b>TRACES</b><br/><i>Fluxo Ponta a Ponta e Spans</i><br/>• Transações distribuídas (OpenTelemetry)<br/>• Grafo de dependências e latência por span<br/>• <b>Visão:</b> Rastreamento completo entre microsserviços"]
+            end
+            EventsFocus --> EventsPillars
+        end
+
+        %% Correlação entre os dois mundos
+        MetricsDomain -.->|"<b>Detecção:</b> Alertas delimitam anomalias e janela temporal"| EventsDomain
+        EventsDomain -.->|"<b>Diagnóstico:</b> Spans e logs isolam a linha de código e causa exata"| MetricsDomain
+    end
+
+    %% Estilização Visual Profissional
+    classDef containerStyle fill:#0b0f19,stroke:#475569,stroke-width:1px,stroke-dasharray: 5 5,color:#e2e8f0;
+    classDef domainStyle fill:#0f172a,stroke:#3b82f6,stroke-width:1.5px,color:#f8fafc;
+    classDef domainEventsStyle fill:#0f172a,stroke:#ec4899,stroke-width:1.5px,color:#f8fafc;
+    classDef focusMetricsStyle fill:#1e293b,stroke:#60a5fa,stroke-width:1.5px,color:#f1f5f9;
+    classDef focusEventsStyle fill:#1e293b,stroke:#f472b6,stroke-width:1.5px,color:#f1f5f9;
+    classDef healthStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef capacityStyle fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+    classDef activityStyle fill:#1e3a8a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef diagnosticsStyle fill:#831843,stroke:#f43f5e,stroke-width:2px,color:#f8fafc;
+    classDef logsStyle fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef tracesStyle fill:#134e4a,stroke:#14b8a6,stroke-width:2px,color:#f8fafc;
+
+    class TelemetryModel,MetricsPillars,EventsPillars containerStyle;
+    class MetricsDomain domainStyle;
+    class EventsDomain domainEventsStyle;
+    class MetricsFocus focusMetricsStyle;
+    class EventsFocus focusEventsStyle;
+    class Health healthStyle;
+    class Capacity capacityStyle;
+    class Activity activityStyle;
+    class Diagnostics diagnosticsStyle;
+    class Logs logsStyle;
+    class Traces tracesStyle;

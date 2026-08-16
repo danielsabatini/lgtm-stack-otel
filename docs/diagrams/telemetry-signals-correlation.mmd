@@ -1,0 +1,116 @@
+flowchart TB
+    %% =========================================================================
+    %% Diagrama: Correlação e Navegação entre os 3 Sinais da Observabilidade
+    %% Documento: docs/OBSERVABILITY-METHODOLOGY.md
+    %% =========================================================================
+
+    subgraph ObservabilityPillars ["Correlação e Navegação entre Sinais de Telemetria (Métricas, Traces e Logs)"]
+        direction TB
+
+        %% ---------------------------------------------------------------------
+        %% 1. DOMÍNIO DE MÉTRICAS
+        %% ---------------------------------------------------------------------
+        subgraph MetricsDomain ["1. MÉTRICAS — Detecção & Alarme ('SE e QUANDO quebrou?')"]
+            direction TB
+            MetricsInfo["<b>Objetivo:</b> Identificar anomalias e delimitar a janela temporal do incidente<br/><i>Foco: Séries temporais numéricas contínuas e agregações estatísticas</i>"]
+
+            subgraph MetricsComponents ["Visão de Painéis de Métricas (Mimir / Prometheus)"]
+                direction LR
+                Alerts["<b>Alertas & SLOs</b><br/>• Disparo via Alertmanager<br/>• Violação de limiares (Health)<br/>• Saturação e aumento de erro %"]
+                TimeSeries["<b>Gráfico de Séries Temporais</b><br/>• Latência p95/p99 e Throughput<br/>• Ponto de pico e anomalia temporal<br/>• Janela exata da ocorrência"]
+                Exemplars["<b>Pontos com Exemplars</b><br/>• Amostras de alta latência ou erro<br/>• Metadado embutido: <code>TraceID</code><br/>• Link direto para o rastreamento"]
+            end
+            MetricsInfo --> MetricsComponents
+            Alerts --> TimeSeries
+            TimeSeries --> Exemplars
+        end
+
+        %% ---------------------------------------------------------------------
+        %% 2. DOMÍNIO DE TRACES
+        %% ---------------------------------------------------------------------
+        subgraph TracesDomain ["2. TRACES — Localização & Contexto ('ONDE e QUAL COMPONENTE quebrou?')"]
+            direction TB
+            TracesInfo["<b>Objetivo:</b> Isolar o microsserviço, dependência ou query responsável pelo gargalo/falha<br/><i>Foco: Fluxo distribuído ponta a ponta e cascata de latência</i>"]
+
+            subgraph TracesComponents ["Visão de Rastreamento Distribuído (Grafana Tempo)"]
+                direction LR
+                ServiceGraph["<b>Grafo de Serviços</b><br/>• Topologia ponta a ponta<br/>• Relação cliente-servidor<br/>• Taxa de erro por dependência"]
+                TraceWaterfall["<b>Árvore de Spans (Waterfall)</b><br/>• Caminho crítico da requisição<br/>• Duração por etapa / chamada<br/>• Destaque no span com erro (5xx)"]
+                SpanDetails["<b>Detalhes do Span</b><br/>• <code>trace_id</code> e <code>span_id</code><br/>• Tags, atributos HTTP/DB<br/>• Status OpenTelemetry <code>ERROR</code>"]
+            end
+            TracesInfo --> TracesComponents
+            ServiceGraph --> TraceWaterfall
+            TraceWaterfall --> SpanDetails
+        end
+
+        %% ---------------------------------------------------------------------
+        %% 3. DOMÍNIO DE LOGS
+        %% ---------------------------------------------------------------------
+        subgraph LogsDomain ["3. LOGS — Evidência & Causa Raiz ('POR QUE quebrou?')"]
+            direction TB
+            LogsInfo["<b>Objetivo:</b> Revelar a mensagem textual exata, stack trace e variáveis de erro<br/><i>Foco: Eventos discretos estruturados e contextualizados</i>"]
+
+            subgraph LogsComponents ["Visão de Eventos Estruturados (Grafana Loki)"]
+                direction LR
+                LogStreams["<b>Streams Filtrados</b><br/>• Labels: <code>service_name</code>, <code>instance</code><br/>• Filtro por severidade (<code>level=error</code>)<br/>• Alinhamento na janela temporal"]
+                LogDetails["<b>Linha de Log & Stack Trace</b><br/>• Exceção detalhada do runtime<br/>• Query SQL exata / Payload de falha<br/>• Causa raiz definitiva do incidente"]
+                LogCorrelation["<b>Campos de Correlação</b><br/>• Tags estruturadas no JSON<br/>• <code>trace_id: 4bf92f35...</code><br/>• <code>span_id: 00f067aa...</code>"]
+            end
+            LogsInfo --> LogsComponents
+            LogStreams --> LogDetails
+            LogDetails --> LogCorrelation
+        end
+
+        %% ---------------------------------------------------------------------
+        %% RELAÇÕES E MECANISMOS DE INTEGRAÇÃO / CORRELAÇÃO
+        %% ---------------------------------------------------------------------
+        Exemplars ==>|"<b>1. Exemplar Click (TraceID)</b><br/><i>Salta da anomalia temporal direto para a transação</i>"| TraceWaterfall
+        SpanDetails ==>|"<b>2. Trace to Logs (TraceID + SpanID)</b><br/><i>Abre apenas os logs emitidos durante aquele span</i>"| LogDetails
+        LogCorrelation -.->|"<b>3. Logs to Trace (Busca Reversa)</b><br/><i>Localiza o trace a partir do trace_id no log</i>"| TraceWaterfall
+        TimeSeries -.->|"<b>4. Data Link de Contexto</b><br/><i>Navega por janela temporal, host e service_name</i>"| LogStreams
+    end
+
+    %% =========================================================================
+    %% ESTILIZAÇÃO VISUAL PROFISSIONAL (Dark Theme Alinhado)
+    %% =========================================================================
+    classDef containerStyle fill:#0b0f19,stroke:#475569,stroke-width:1.5px,stroke-dasharray: 5 5,color:#e2e8f0;
+    classDef domainMetricsStyle fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef domainTracesStyle fill:#0f172a,stroke:#14b8a6,stroke-width:2px,color:#f8fafc;
+    classDef domainLogsStyle fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+
+    classDef infoMetricsStyle fill:#1e293b,stroke:#60a5fa,stroke-width:1px,color:#f1f5f9;
+    classDef infoTracesStyle fill:#1e293b,stroke:#2dd4bf,stroke-width:1px,color:#f1f5f9;
+    classDef infoLogsStyle fill:#1e293b,stroke:#fbbf24,stroke-width:1px,color:#f1f5f9;
+
+    classDef alertStyle fill:#831843,stroke:#f43f5e,stroke-width:2px,color:#f8fafc;
+    classDef metricStyle fill:#1e3a8a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef exemplarStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    classDef serviceGraphStyle fill:#134e4a,stroke:#14b8a6,stroke-width:2px,color:#f8fafc;
+    classDef traceWaterfallStyle fill:#0f766e,stroke:#2dd4bf,stroke-width:2px,color:#f8fafc;
+    classDef spanDetailStyle fill:#115e59,stroke:#5eead4,stroke-width:2px,color:#f8fafc;
+
+    classDef logStreamStyle fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef logDetailStyle fill:#92400e,stroke:#fbbf24,stroke-width:2px,color:#f8fafc;
+    classDef logCorrelationStyle fill:#451a03,stroke:#d97706,stroke-width:2px,color:#f8fafc;
+
+    class ObservabilityPillars,MetricsComponents,TracesComponents,LogsComponents containerStyle;
+    class MetricsDomain domainMetricsStyle;
+    class TracesDomain domainTracesStyle;
+    class LogsDomain domainLogsStyle;
+
+    class MetricsInfo infoMetricsStyle;
+    class TracesInfo infoTracesStyle;
+    class LogsInfo infoLogsStyle;
+
+    class Alerts alertStyle;
+    class TimeSeries metricStyle;
+    class Exemplars exemplarStyle;
+
+    class ServiceGraph serviceGraphStyle;
+    class TraceWaterfall traceWaterfallStyle;
+    class SpanDetails spanDetailStyle;
+
+    class LogStreams logStreamStyle;
+    class LogDetails logDetailStyle;
+    class LogCorrelation logCorrelationStyle;

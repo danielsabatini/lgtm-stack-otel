@@ -171,7 +171,7 @@ mysql -h <IP_ADDRESS> -u root -p < mysql-load-test.sql
 ```
 
 Para entender melhor sobre diagnósticos de lentidão, locks e troubleshooting baseando-se nos painéis:
-👉 **[Guia de Testes de Carga (LOAD-TEST.md)](../../load-test/LOAD-TEST.md)**
+👉 **[Guia de Testes de Carga (LOAD-TEST.md)](../../artifacts/load-test/LOAD-TEST.md)**
 
 ---
 
