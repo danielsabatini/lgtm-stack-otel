@@ -1,132 +1,142 @@
 # Gerenciamento e Provisionamento de Dashboards
 
-> **Referência Técnica:** Este documento estabelece o fluxo de edição, backup, conversão para o schema Kubernetes do Grafana 13 (`dashboard.grafana.app/v2`) e provisionamento automatizado de dashboards como código (GitOps).
+> **Referência Técnica:** Este documento estabelece o fluxo oficial de edição, exportação e provisionamento automatizado de dashboards como código (*GitOps*) utilizando o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`).
 
 ---
 
 ## 1. Introdução
 
-No Grafana, a edição visual de painéis pela interface web é ágil, mas sujeita à perda de alterações caso os containers sejam recriados ou atualizados. Por outro lado, manter dashboards como código (*Dashboard-as-Code*) garante versionamento no Git, auditoria e recuperação instantânea.
+No Grafana, a edição visual de painéis pela interface web é ágil e intuitiva, mas sujeita à perda de alterações caso os containers sejam recriados ou atualizados. Por outro lado, manter os dashboards como arquivos JSON versionados no Git (*Dashboard-as-Code*) garante rastreabilidade, auditoria e recuperação instantânea.
 
-Este repositório adota um fluxo de trabalho estruturado que une a flexibilidade da edição visual na UI com a segurança do provisionamento automatizado como código.
+A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Truth)** onde todos os dashboards são armazenados exclusivamente na pasta canônica de provisioning `grafana/provisioning/dashboards/`.
 
 ---
 
 ## 2. Objetivo
 
-1. **Evitar Perda de Customizações:** Garantir que qualquer dashboard criado ou editado na UI seja versionado e persistido no Git.
-2. **Explicar a Conversão do Grafana 13:** Fornecer o script e as regras de transformação para o novo schema de recursos v2 do Grafana 13.
-3. **Prevenir Regressões Visuais:** Documentar as chamadas de API corretas que preservam a hierarquia de `TabsLayout` e `RowsLayout`.
+1. **Eliminar Duplicação de Arquivos:** Manter apenas uma pasta oficial de dashboards no repositório (`grafana/provisioning/dashboards/`).
+2. **Preservar a Hierarquia de Tabs e Rows do Grafana 13:** Documentar o uso obrigatório da API nativa v2 (`dashboard.grafana.app/v2`) para que as abas (`TabsLayout`) nunca sejam desfeitas.
+3. **Padronizar o Fluxo GitOps:** Fornecer os comandos simples para exportar alterações da UI diretamente para o arquivo versionado no Git.
 
 ---
 
-## 3. Estrutura de Diretórios (Backup vs. Provisioning)
+## 3. Estrutura Canônica de Diretórios
 
-Os arquivos JSON dos dashboards residem em duas pastas complementares com papéis distintos:
+Todos os arquivos JSON de dashboards residem sob a árvore de provisioning do Grafana:
 
 ```text
 lgtm-stack/
-├── grafana-dashboards-backup/          ← Cópias exportadas da UI do Grafana (sem envelope)
-│   ├── Hosts/
-│   │   ├── linux-hosts.json
-│   │   └── windows-hosts.json
-│   ├── Hosts + Database/
-│   │   ├── linux-mysql-hosts.json
-│   │   ├── linux-pgsql-hosts.json
-│   │   └── windows-mssql-hosts.json
-│   └── DNS/
-│       └── mgc-internal-dns-solution.json
-│
-└── grafana/provisioning/dashboards/    ← Formato de Provisioning (carregado automaticamente)
+└── grafana/provisioning/dashboards/    ← Fonte Única da Verdade dos Dashboards
     ├── Hosts/
-    │   ├── linux-hosts.json
-    │   └── windows-hosts.json
+    │   ├── linux-hosts.json            (Linux Hosts - UID: linux-hosts)
+    │   └── windows-hosts.json          (Windows Hosts - UID: windows-hosts)
     ├── Hosts + Database/
-    │   ├── linux-mysql-hosts.json
-    │   ├── linux-pgsql-hosts.json
-    │   └── windows-hosts-mssql.json
-    └── DNS/
-        └── mgc-internal-dns-solution.json
+    │   ├── linux-mysql-hosts.json      (Linux + MySQL - UID: linux-mysql-hosts)
+    │   ├── linux-pgsql-hosts.json      (Linux + PostgreSQL - UID: linux-pgsql-hosts)
+    │   └── windows-hosts-mssql.json    (Windows + SQL Server - UID: windows-hosts-mssql)
+    ├── DNS/
+    │   └── mgc-internal-dns-solution.json (MGC Internal DNS - UID: adth4vt)
+    ├── LGTM/
+    │   └── lgtm-stack.json             (LGTM Self-Monitoring - UID: lgtm-stack)
+    └── dashboards.yaml                 (Configuração de Hot-Reload a cada 10s)
 ```
-
-> ⚠️ **Regra de Ouro:** Nunca edite manualmente os arquivos dentro de `grafana/provisioning/dashboards/`. O fluxo correto é editar no Grafana, salvar o backup e converter para o formato de provisioning.
 
 ---
 
-## 4. Fluxo de Trabalho (Workflow)
+## 4. Fluxo de Trabalho GitOps (Workflow)
 
 ```text
-  [1. Edição visual no Grafana UI]
-                 │
-                 ▼
-  [2. Exportar JSON do Dashboard (Share → Export)]
-                 │
-                 ▼
-  [3. Salvar em grafana-dashboards-backup/<Pasta>/]
-                 │
-                 ▼
-  [4. Converter para o Envelope Kubernetes v2]
-                 │
-                 ▼
-  [5. Salvar em grafana/provisioning/dashboards/<Pasta>/]
-                 │
-                 ▼
-  [6. Git Commit + Push (Grafana hot-recarrega em até 10s)]
+  [1. Edição e Ajuste Visual na UI do Grafana]
+                       │
+                       ▼
+  [2. Exportar Diretamente via API v2 Nativa para o Arquivo de Provisioning]
+  (curl -u admin:senha "http://localhost:3000/apis/dashboard.grafana.app/v2/...")
+                       │
+                       ▼
+  [3. Salvar o JSON em grafana/provisioning/dashboards/<Pasta>/<nome>.json]
+                       │
+                       ▼
+  [4. Git Commit + Push (O Grafana hot-recarrega as mudanças em até 10s)]
 ```
 
 ---
 
-## 5. Conversão: Export da UI → Formato de Provisioning (Grafana 13)
+## 5. Como Exportar e Persistir Alterações da UI
 
-### 5.1 A Diferença entre os Formatos
-* **Formato Exportado pela UI (Backup em `grafana-dashboards-backup/`):** JSON simples sem o envelope de metadados e sem o campo `uid` para evitar conflitos de importação manual.
-* **Formato de Provisioning (em `grafana/provisioning/dashboards/`):** JSON envolvido com o schema de recursos Kubernetes `dashboard.grafana.app/v2`, com `metadata.name` e `spec.uid` canônicos obrigatórios.
+Com o Grafana 13, não é necessário fazer conversões manuais de JSON. Basta realizar uma chamada `GET` na API nativa v2 para obter o arquivo pronto no formato de provisioning:
 
-### 5.2 Script de Conversão Automática (Python)
-Execute o script abaixo para transformar o backup no arquivo de provisioning:
-
-```python
-#!/usr/bin/env python3
-"""
-Converte um dashboard exportado da UI do Grafana 13 para o formato de provisioning.
-
-Uso:
-    python3 convert-dashboard.py <backup.json> <output-provisioning.json> <uid>
-"""
-import json, sys
-
-def convert(backup_path, output_path, uid):
-    with open(backup_path, 'r', encoding='utf-8') as f:
-        content = json.load(f)
-
-    # Injeta o UID canônico dentro do spec
-    content['uid'] = uid
-
-    # Cria o envelope de recurso v2
-    provisioning = {
-        "apiVersion": "dashboard.grafana.app/v2",
-        "kind": "Dashboard",
-        "metadata": {
-            "name": uid
-        },
-        "spec": content
-    }
-
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(provisioning, f, indent=2, ensure_ascii=False)
-
-    print(f"✅ Gerado com sucesso: {output_path}")
-
-if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Uso: convert-dashboard.py <backup.json> <output.json> <uid>")
-        sys.exit(1)
-    convert(sys.argv[1], sys.argv[2], sys.argv[3])
+```bash
+# Exemplo para salvar o dashboard MGC Internal DNS (UID: adth4vt):
+curl -s -u admin:changeme \
+  "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/adth4vt" \
+  | jq . > grafana/provisioning/dashboards/DNS/mgc-internal-dns-solution.json
 ```
 
 ---
 
-## 6. UIDs Canônicos dos Dashboards
+## 6. Como Incluir um Novo Dashboard Manualmente (Guia Passo a Passo)
+
+Para adicionar um novo dashboard à stack de forma que ele seja carregado automaticamente pelo Grafana e versionado no Git, siga o procedimento abaixo:
+
+### Passo 1: Definir a Pasta e Nome do Arquivo
+Crie o arquivo JSON dentro de `grafana/provisioning/dashboards/<Categoria>/<nome-do-dashboard>.json`.
+* A pasta onde o arquivo for colocado virará automaticamente uma pasta organizada no menu do Grafana (graças ao parâmetro `foldersFromFilesStructure: true` no `dashboards.yaml`).
+* **Exemplos de Pastas:** `Hosts/`, `DNS/`, `Hosts + Database/`, `Applications/`.
+
+```bash
+# Exemplo: criar uma nova pasta para microsserviços
+mkdir -p grafana/provisioning/dashboards/Applications
+```
+
+### Passo 2: Estruturar o JSON com o Envelope Kubernetes v2
+Todo novo dashboard **deve obrigatoriamente** conter o envelope de recurso nativo do Grafana 13 (`dashboard.grafana.app/v2`):
+
+```json
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "meu-novo-dashboard"
+  },
+  "spec": {
+    "uid": "meu-novo-dashboard",
+    "title": "Meu Novo Dashboard",
+    "schemaVersion": 41,
+    "timezone": "browser",
+    "editable": true,
+    "tags": ["meu-servico", "producao"],
+    "layout": {
+      "kind": "RowsLayout",
+      "spec": {
+        "rows": []
+      }
+    },
+    "elements": {}
+  }
+}
+```
+
+> ⚠️ **Regras Críticas de Identidade:**
+> 1. `metadata.name` e `spec.uid` **devem ter exatamente o mesmo valor** (ex: `meu-novo-dashboard`).
+> 2. O `uid` deve ser único em toda a instância do Grafana (use apenas letras minúsculas e hifens).
+> 3. Nunca altere o `uid` após colocar o dashboard em produção.
+
+### Passo 3: Registrar o UID na Tabela de Governança
+Adicione o novo dashboard na tabela de UIDs Canônicos (Seção 7 deste documento) para evitar colisões e manter o catálogo atualizado.
+
+### Passo 4: Validação do Hot-Reload Automático (Sem Reiniciar)
+O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segundos**.
+
+1. Salve o arquivo JSON na pasta.
+2. Acompanhe os logs do Grafana para confirmar a detecção e importação:
+   ```bash
+   docker compose logs -f grafana | grep -i "dashboard"
+   ```
+3. Abra a interface web do Grafana (`http://localhost:3000/dashboards`) e confirme que o dashboard apareceu na pasta correspondente.
+
+---
+
+## 7. UIDs Canônicos dos Dashboards
 
 > ⚠️ **Nunca altere os UIDs** de dashboards já existentes. A alteração de UID quebra favoritos, links cruzados e alertas configurados.
 
@@ -137,12 +147,12 @@ if __name__ == "__main__":
 | **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` |
 | **Linux + PostgreSQL Hosts** | `linux-pgsql-hosts` | `Hosts + Database/` |
 | **Windows + MSSQL Hosts** | `windows-hosts-mssql` | `Hosts + Database/` |
-| **MGC Internal DNS Solution** | `adth4vt` | `DNS/` |
+| **MGC Internal DNS** | `adth4vt` | `DNS/` |
 | **LGTM Stack Self-Monitoring** | `lgtm-stack` | `LGTM/` |
 
 ---
 
-## 7. Como o Provisioning Funciona (Hot-Reload)
+## 8. Como o Provisioning Funciona (Hot-Reload)
 
 O arquivo `grafana/provisioning/dashboards/dashboards.yaml` controla o carregamento automático dos painéis:
 * **`foldersFromFilesStructure: true`:** As subpastas (`Hosts/`, `DNS/`, `Hosts + Database/`) são criadas automaticamente como pastas organizadas no Grafana.
@@ -150,57 +160,48 @@ O arquivo `grafana/provisioning/dashboards/dashboards.yaml` controla o carregame
 
 ---
 
-## 8. Padrão de Design para Painéis de Inventário e Versão
+## 9. Padrões Obrigatórios de Design dos Painéis
 
-Para métricas informativas de metadados (como `*_build_info`, `*_os_info` ou `*_version`) que retornam o valor numérico constante `1` e carregam os dados em labels de texto, adota-se o seguinte padrão oficial de design no Grafana:
-
-### 8.1 Configuração Canônica do Painel Stat:
-* **Tipo de Painel:** `Stat`
-* **Formato da Legenda:** `{{instance}} > {{label_do_dado}}` (ex: `{{instance}} > {{version}}` ou `{{instance}} > {{server_version}}`).
-* **Modo de Texto (`textMode`):** `name` (renderiza o texto da legenda formatado).
-* **Tamanho Fixo da Fonte (`text.valueSize`):** **`16`** (16px) — *evita distorções de escala automática e garante alinhamento simétrico entre as colunas*.
+### 9.1 Padrão para Métricas de Inventário e Versão (Metadados em Labels):
+Para métricas como `*_build_info`, `*_os_info` ou `*_version` (onde o valor numérico é constante `1` e o dado está no label):
+* **Tipo:** `Stat`
+* **Formato da Legenda:** `{{instance}} > {{label_do_dado}}` (ex: `{{instance}} > {{version}}`).
+* **Modo de Texto (`textMode`):** `name`.
+* **Tamanho Fixo da Fonte (`text.valueSize`):** **`16`** (16px) — *mantém alinhamento simétrico sem distorção*.
 * **Alinhamento (`justifyMode`):** `center`.
-* **Cor de Fundo (`colorMode`):** `none` (fundo neutro limpo).
+* **Cor de Fundo (`colorMode`):** `none`.
 
-### 8.2 Exemplo de Renderização Visual:
-```text
-┌───────────────────────────────┬───────────────────────────────┬───────────────────────────────┐
-│     dns-ne1-1 > 1.14.6        │      dns-ne1-2 > 1.14.6       │      dns-ne1-3 > 1.14.6       │
-└───────────────────────────────┴───────────────────────────────┴───────────────────────────────┘
-```
+### 9.2 Padrão de Layout para Gráficos de Séries Temporais (Timeseries):
+* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Gráficos do tipo `Time series` devem ocupar a **largura total (1 coluna / 24 colunas de grid)** para proporcionar resolução horizontal máxima na análise de tendências temporais e picos.
 
-### 8.3 Padrão de Layout para Gráficos de Séries Temporais (Timeseries):
-* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Gráficos do tipo `Time series` devem ser configurados sempre ocupando a **largura total (1 coluna / 24 colunas de grid)**.
-* **Motivo:** Gráficos de linha empilhados em 2 ou 3 colunas espremem o eixo horizontal de tempo e dificultam a visualização de picos, anomalias e correlação de tendências. A largura total proporciona máxima resolução horizontal de diagnóstico.
-
-### 8.4 Padrão de Layout para Abas de Cards Stat (Health e Inventory):
+### 9.3 Padrão de Layout para Abas de Cards Stat (Health e Inventory):
 * **Configuração Canônica do Grid:**
   * **Largura Mínima de Coluna (`columnWidthMode`):** `Narrow`
   * **Altura da Linha (`rowHeightMode`):** `Short`
   * **Máximo de Colunas (`maxColumnCount`):** `2`
-* **Motivo:** Mantém os cards de sinais vitais e inventário compactos, simétricos e organizados em uma grade de 2 colunas, evitando rolagem vertical desnecessária e permitindo que toda a visão caiba no topo da tela.
+* **Motivo:** Mantém os cards compactos, simétricos e organizados em uma grade de 2 colunas, evitando rolagem vertical desnecessária.
 
-### 8.5 Padrão para Abas com Tipos Heterogêneos / Misturados (Stat + Timeseries):
-* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Quando uma aba combina diferentes tipos de visualização (ex: cards `Stat` de alarmes e gráficos `Time series` de diagnóstico na mesma aba).
-* **Motivo:** Impede o desalinhamento estético de renderizar um card Stat ao lado de um gráfico de linha espremido, garantindo que cada elemento tenha sua largura completa preservada.
+### 9.4 Padrão para Abas com Tipos Heterogêneos / Misturados (Stat + Timeseries):
+* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Quando uma aba combina cards `Stat` e gráficos `Time series` na mesma aba (ex: Diagnostics).
+* **Motivo:** Impede o desalinhamento estético de renderizar um card Stat ao lado de um gráfico de linha comprimido.
 
 ---
 
-## 9. Diagnóstico de Erros Comuns
+## 10. Diagnóstico de Erros Comuns
 
-### 9.1 Erro: Tabs virando linhas simples (TabsLayout destruído via API)
+### 10.1 Erro: Tabs virando linhas simples (TabsLayout destruído via API)
 * **Causa:** Utilizar o endpoint legado da API v1 (`POST /api/dashboards/db`) para salvar ou atualizar dashboards no Grafana 13. Esse endpoint antigo achata todas as tabs internas em linhas simples (*flat rows*).
 * **Solução:** Utilize sempre o endpoint nativo de recursos v2 do Grafana 13:
   * **Leitura:** `GET /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`
   * **Escrita:** `PUT /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`
 
-### 9.2 Dashboard Duplicado na UI
+### 10.2 Dashboard Duplicado na UI
 * **Causa:** O arquivo de provisioning possui `metadata.name` ou `uid` diferente do que foi salvo no banco SQLite do Grafana.
 * **Solução:** Exclua o dashboard duplicado pela UI e recarregue o Grafana para que o provisioning recrie com o UID canônico correto.
 
 ---
 
-## 10. Governança e Referências
+## 11. Governança e Referências
 
 * Para a taxonomia de abas e categorização de métricas, consulte [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md).
 * Para o padrão obrigatório de descrições e tooltips dos painéis, consulte [METRICS.md](METRICS.md).

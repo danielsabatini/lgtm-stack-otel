@@ -2,7 +2,17 @@
 
 > Tool layer (GitHub Copilot). Follows, in this order of precedence: [`AGENTS.md`](../AGENTS.md) (global multi-agent platform governance) and [`PROJECT.md`](../PROJECT.md) (this repository's rules, tool-agnostic). **Read both before making changes** — this file only contains what's specific to GitHub Copilot; everything else (architecture, commands, conventions) lives in `PROJECT.md` to avoid duplication (`AGENTS.md` §8.4 boundary test / §4 strict DRY).
 
-Check [`MEMORY.md`](../MEMORY.md) for cross-session execution state (pending work, active conventions) before starting non-trivial work.
+## Mandatory Startup Workflow
+
+Before starting any task or making changes, Copilot must read and load context in the following strict order of descending authority (`AGENTS.md` §2 and §8):
+
+1. **`AGENTS.md`** — Global platform laws, descending authority, strict DRY, and security rules.
+2. **`PROJECT.md`** — Repository technical rules, architecture conventions, commands, and Single Source of Truth.
+3. **`.github/copilot-instructions.md`** — Tool-specific configuration.
+4. **`MEMORY.md`** — Current durable state, active conventions, and cross-session memory.
+5. **`.journal/`** — Check recent daily entries under `.journal/YYYY/MM/DD/` when historical execution context is required.
+
+---
 
 ## Repository summary
 
