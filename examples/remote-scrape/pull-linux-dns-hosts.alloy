@@ -1,8 +1,10 @@
 // =============================================================================
-// PULL LEGADO — node_exporter dos Servidores de DNS Interno (MGC br-ne1)
+// PULL LEGADO — node_exporter dos Servidores de DNS Interno
 //
 // Coleta métricas do node_exporter (:9100) via scrape HTTP direto nos 3
 // servidores de DNS interno (172.18.1.2, 172.18.17.2 e 172.18.33.2).
+// Os labels de cloud_region, cloud_provider e cloud_availability_zone são
+// parametrizáveis para qualquer região ou infraestrutura.
 //
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
