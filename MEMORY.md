@@ -6,7 +6,7 @@
 
 - **Em andamento:** nenhum.
 - **Bloqueado:** nenhum.
-- **Convenções ativas:** ver `PROJECT.md` (regras técnicas) e `AGENTS.md` (governança da plataforma). `.agents/` (symlink somente-leitura para `ai-agent-platform/.agents`) é o repositório canônico de agentes/skills (`AGENTS.md` §9). `.opencode/` é uma pasta local real (workspace da ferramenta opencode, `AGENTS.md` §10) com `.opencode/agents` e `.opencode/skills` symlinkados internamente para `.agents/agents` e `.agents/skills`.
+- **Convenções ativas:** ver `PROJECT.md` (regras técnicas) e `AGENTS.md` (governança da plataforma). **Fluxo GitOps Obrigatório:** Toda alteração de configuração (.alloy, .yaml, dashboards .json, scripts) é aplicada e versionada primeiro no repositório local e depois sincronizada para os servidores remotos (rsync/SSH/API). `.agents/` (symlink somente-leitura para `ai-agent-platform/.agents`) é o repositório canônico de agentes/skills (`AGENTS.md` §9). `.opencode/` é uma pasta local real (workspace da ferramenta opencode, `AGENTS.md` §10) com `.opencode/agents` e `.opencode/skills` symlinkados internamente para `.agents/agents` e `.agents/skills`.
 - **Pendência de processo:** a partir desta sessão, toda tarefa que altere estado permanente do repositório deve gerar uma entrada em `.journal/` (`AGENTS.md` §14.5/§14.13) — o gap de 2026-08-13 a 2026-08-16 (upgrades de Grafana/Mimir/Loki/Alloy/Tempo, rollout de monitoramento DNS) não tem entradas correspondentes e não é reconstruível retroativamente.
 
 ## Entradas recentes
