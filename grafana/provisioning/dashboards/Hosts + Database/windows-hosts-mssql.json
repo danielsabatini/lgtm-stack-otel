@@ -109,7 +109,7 @@
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "none"
+                      "mode": "normal"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -131,50 +131,82 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
+                      "id": "byName",
+                      "options": "idle"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineStyle",
+                        "id": "custom.hideFrom",
                         "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": true
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
+                      "id": "byName",
+                      "options": "user"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-blue",
+                          "mode": "palette-classic"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "privileged",
+                      "scope": "series"
+                    },
+                    "properties": [
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 15
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-yellow",
+                          "mode": "palette-classic"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "interrupt",
+                      "scope": "series"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": true
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "dpc",
+                      "scope": "series"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": true
+                        }
                       }
                     ]
                   }
@@ -714,7 +746,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "none"
+                      "mode": "normal"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -736,50 +768,71 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
+                      "id": "byFrameRefID",
+                      "options": "C"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineStyle",
+                        "id": "custom.stacking",
                         "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
+                          "group": "A",
+                          "mode": "none"
                         }
                       },
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
+                        "id": "custom.lineStyle",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
+                      "id": "byName",
+                      "options": "total (C:)"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "free (C:)"
+                    },
+                    "properties": [
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 15
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "used (C:)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
                       }
                     ]
                   }
@@ -4109,50 +4162,17 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
+                      "id": "byFrameRefID",
+                      "options": "B"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
+                        "id": "custom.axisPlacement",
+                        "value": "right"
                       },
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 15
+                        "id": "unit",
+                        "value": "ops"
                       }
                     ]
                   }
@@ -4297,57 +4317,7 @@
                   },
                   "unit": "pages/sec"
                 },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 15
-                      }
-                    ]
-                  }
-                ]
+                "overrides": []
               },
               "options": {
                 "annotations": {
@@ -5255,7 +5225,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "none"
+                      "mode": "normal"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -5277,50 +5247,67 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
+                      "id": "byName",
+                      "options": "total"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineStyle",
+                        "id": "color",
                         "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       },
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
                       },
                       {
-                        "id": "color",
+                        "id": "custom.lineStyle",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
+                      "id": "byName",
+                      "options": "used"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "free"
+                    },
+                    "properties": [
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 15
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
                       }
                     ]
                   }
@@ -5626,50 +5613,83 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(total|limite|teto|quota|cores|limit|max).*"
+                      "id": "byName",
+                      "options": "total",
+                      "scope": "series"
                     },
                     "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
                       },
                       {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*(?i)(ocupado|usad|uso|aberto|rss|utiliz|load|active|reads|writes).*"
+                      "id": "byName",
+                      "options": "used"
                     },
                     "properties": [
                       {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "cached"
+                    },
+                    "properties": [
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 15
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "yellow",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "available"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
                       }
                     ]
                   }
