@@ -3922,7 +3922,7 @@
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": false,
+                  "centerGlow": true,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -5144,7 +5144,7 @@
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": false,
+                  "centerGlow": true,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -8111,7 +8111,7 @@
                 "barWidthFactor": 0.5,
                 "effects": {
                   "barGlow": false,
-                  "centerGlow": false,
+                  "centerGlow": true,
                   "gradient": false
                 },
                 "endpointMarker": "point",
