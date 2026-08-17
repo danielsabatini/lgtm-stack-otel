@@ -1220,6 +1220,307 @@
           }
         }
       },
+      "panel-110": {
+        "kind": "Panel",
+        "spec": {
+          "id": 110,
+          "title": "Cache Breakdown by Zone & Type",
+          "description": "Decomposição detalhada das entradas de cache por zona e tipo (Válidos vs Inexistentes/NXDOMAIN), permitindo identificar exatamente qual tabela de cache está próxima do limite.\n• O que observar: Nomes válidos possuem teto de 50 K; nomes inexistentes (NXDOMAIN) possuem teto de 5 K. Se o NXDOMAIN encostar na linha tracejada de 5 K, ocorrerão evicções.\n• Ação em caso de problema: Aumente o parâmetro 'denial' ou 'success' no bloco correspondente do '/etc/coredns/Corefile' e recarregue com 'sudo systemctl reload coredns'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"success\", zones=~\".*internal.*\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Interno | Válidos (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=~\".*internal.*\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Interno | NXDOMAIN (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"success\", zones=\".\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Internet (.) | Válidos (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=\".\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Internet (.) | NXDOMAIN (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 5000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Teto NXDOMAIN (5 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 50000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Teto Válidos (50 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "F",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "15s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite Teto NXDOMAIN.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-orange",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite Teto Válidos.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
       "panel-13": {
         "kind": "Panel",
         "spec": {
@@ -4592,7 +4893,7 @@
         "kind": "Panel",
         "spec": {
           "id": 46,
-          "title": "Cache Entries (Usado vs Capacidade Total)",
+          "title": "Cache Entries",
           "description": "Volume total acumulado de nomes armazenados em cache na memória do CoreDNS comparado à capacidade máxima combinada do servidor (110.000 entradas = 50 K válidos internos + 50 K válidos internet + 5 K NXDOMAIN internos + 5 K NXDOMAIN internet).\n• O que observar: Deve operar com ampla folga em relação ao teto de 110 K. Se a linha se aproximar do limite máximo, o CoreDNS começará a descartar registros antes do tempo.\n• Ação em caso de problema: Para ver qual zona ou tipo de cache está consumindo mais, consulte o painel 'Cache Breakdown by Zone & Type' na aba Diagnostics e aumente o cache no '/etc/coredns/Corefile'.",
           "links": [],
           "data": {
@@ -4738,11 +5039,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -4756,8 +5057,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -4779,8 +5080,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "green"
+                          "fixedColor": "green",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -7668,7 +7969,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "process_open_fds{instance=~\"$instance\", service_name=\"coredns\"}",
-                        "legendFormat": "{{instance}} | Abertos | Usado",
+                        "legendFormat": "{{instance}} | Abertos (Usado)",
                         "range": true
                       }
                     },
@@ -7689,7 +7990,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "process_max_fds{instance=~\"$instance\", service_name=\"coredns\"}",
-                        "legendFormat": "{{instance}} | Limite | Total",
+                        "legendFormat": "{{instance}} | Limite Máximo (Total)",
                         "range": true
                       }
                     },
@@ -8778,307 +9079,6 @@
                         "value": {
                           "fixedColor": "green",
                           "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-110": {
-        "kind": "Panel",
-        "spec": {
-          "id": 110,
-          "title": "Cache Breakdown by Zone & Type",
-          "description": "Decomposição detalhada das entradas de cache por zona e tipo (Válidos vs Inexistentes/NXDOMAIN), permitindo identificar exatamente qual tabela de cache está próxima do limite.\n• O que observar: Nomes válidos possuem teto de 50 K; nomes inexistentes (NXDOMAIN) possuem teto de 5 K. Se o NXDOMAIN encostar na linha tracejada de 5 K, ocorrerão evicções.\n• Ação em caso de problema: Aumente o parâmetro 'denial' ou 'success' no bloco correspondente do '/etc/coredns/Corefile' e recarregue com 'sudo systemctl reload coredns'.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"success\", zones=~\".*internal.*\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Interno | Válidos (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=~\".*internal.*\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Interno | NXDOMAIN (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "B",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"success\", zones=\".\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Internet (.) | Válidos (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "C",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=\".\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Internet (.) | NXDOMAIN (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "D",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 5000",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Limite Teto NXDOMAIN (5 K)",
-                        "range": true
-                      }
-                    },
-                    "refId": "E",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 50000",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Limite Teto Válidos (50 K)",
-                        "range": true
-                      }
-                    },
-                    "refId": "F",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "15s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.1.2",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "enableFacetedFilter": false,
-                  "overflow": "ellipsis",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "short",
-                  "decimals": 2,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "smooth",
-                    "lineWidth": 2,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "never",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite Teto NXDOMAIN.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-orange"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite Teto Válidos.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
                         }
                       }
                     ]
