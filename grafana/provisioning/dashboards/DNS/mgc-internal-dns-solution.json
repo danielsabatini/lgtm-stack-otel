@@ -522,7 +522,7 @@
         "spec": {
           "id": 104,
           "title": "Process Memory (RSS)",
-          "description": "Quantidade real de memória RAM física consumida exclusivamente pelo processo do CoreDNS em cada servidor.\n• O que observar: Deve ficar estável entre 50 MB e 150 MB. Se a linha subir continuamente sem nunca parar, indica vazamento de memória (memory leak).\n• Ação em caso de problema: Verifique se o cache não está configurado com tamanho excessivo ou se há plugins com falha e reinicie o serviço com 'sudo systemctl restart coredns'.",
+          "description": "Quantidade real de memória RAM física consumida exclusivamente pelo processo do CoreDNS comparada à memória física total disponível no servidor (Total − Usado).\n• O que observar: Deve operar com folga em relação ao teto total de RAM (~960 MiB). Se a linha de RSS subir continuamente sem parar, indica vazamento de memória (memory leak).\n• Ação em caso de problema: Verifique se o cache não está configurado com tamanho excessivo ou se há plugins com falha e reinicie o serviço com 'sudo systemctl restart coredns'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -541,11 +541,34 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "process_resident_memory_bytes{instance=~\"$instance\", service_name=\"coredns\"}",
-                        "legendFormat": "{{instance}} | RSS",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | RSS (Usado)",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Memória Total do Host (Teto)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -635,7 +658,57 @@
                     }
                   }
                 },
-                "overrides": []
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Memória Total.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*RSS \\(Usado\\).*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -1392,11 +1465,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -1410,8 +1483,210 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-111": {
+        "kind": "Panel",
+        "spec": {
+          "id": 111,
+          "title": "Cache - Denial Entries (NXDOMAIN)",
+          "description": "Volume de nomes inexistentes (NXDOMAIN) guardados em cache para evitar consultas repetidas à toa, comparado ao teto de 5.000 entradas.\n• O que observar: Se a linha encostar no teto tracejado de 5 K, o CoreDNS começará a descartar registros antes do tempo (veja o painel Cache Evictions).\n• Ação em caso de problema: Se o cache de negativas estiver saturado, aumente o parâmetro 'denial' no '/etc/coredns/Corefile' (ex: 'denial 10000').",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=~\".*internal.*\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Interno | NXDOMAIN (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=\".\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Internet (.) | NXDOMAIN (Usado)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 5000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Teto NXDOMAIN (5 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "15s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite Teto NXDOMAIN.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -8980,208 +9255,6 @@
                         "value": {
                           "fixedColor": "green",
                           "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-111": {
-        "kind": "Panel",
-        "spec": {
-          "id": 111,
-          "title": "Cache - Denial Entries (NXDOMAIN)",
-          "description": "Volume de nomes inexistentes (NXDOMAIN) guardados em cache para evitar consultas repetidas à toa, comparado ao teto de 5.000 entradas.\n• O que observar: Se a linha encostar no teto tracejado de 5 K, o CoreDNS começará a descartar registros antes do tempo (veja o painel Cache Evictions).\n• Ação em caso de problema: Se o cache de negativas estiver saturado, aumente o parâmetro 'denial' no '/etc/coredns/Corefile' (ex: 'denial 10000').",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=~\".*internal.*\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Interno | NXDOMAIN (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\", zones=\".\"}",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Internet (.) | NXDOMAIN (Usado)",
-                        "range": true
-                      }
-                    },
-                    "refId": "B",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 5000",
-                        "instant": false,
-                        "legendFormat": "{{instance}} | Limite Teto NXDOMAIN (5 K)",
-                        "range": true
-                      }
-                    },
-                    "refId": "C",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "15s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.1.2",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "enableFacetedFilter": false,
-                  "overflow": "ellipsis",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "desc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "short",
-                  "decimals": 2,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "smooth",
-                    "lineWidth": 2,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "never",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite Teto NXDOMAIN.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash",
-                          "dash": [
-                            10,
-                            10
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 2
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-orange"
                         }
                       }
                     ]
