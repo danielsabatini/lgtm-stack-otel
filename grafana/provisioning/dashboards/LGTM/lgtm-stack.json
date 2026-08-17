@@ -5775,7 +5775,7 @@
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             }
           },
-          "regex": "",
+          "regex": "^(alloy-agent|alloy-gateway|grafana|loki|mimir|tempo)$",
           "regexApplyTo": "value",
           "sort": "alphabeticalAsc",
           "definition": "label_values(container_cpu_usage_seconds_total,container)",
