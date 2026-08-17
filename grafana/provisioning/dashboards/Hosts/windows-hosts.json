@@ -817,7 +817,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -839,70 +839,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total (C:)"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
                       {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available (C:)"
-                    },
-                    "properties": [
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "used (C:)"
+                      "id": "byRegexp",
+                      "options": ".*used.*|.*avail.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "green"
                         }
                       }
                     ]
@@ -2252,7 +2238,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -2274,68 +2260,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total",
-                      "scope": "series"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
+                        "id": "custom.lineStyle",
                         "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
                       },
                       {
-                        "id": "custom.stacking",
+                        "id": "color",
                         "value": {
-                          "group": "A",
-                          "mode": "none"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*used.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "free",
-                      "scope": "series"
-                    },
-                    "properties": [
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "used"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "orange"
                         }
                       }
                     ]
@@ -3268,75 +3242,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total",
-                      "scope": "series"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
                       {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available"
-                    },
-                    "properties": [
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "used"
+                      "id": "byRegexp",
+                      "options": ".*used.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "cached"
-                    },
-                    "properties": [
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "purple"
                         }
                       }
                     ]

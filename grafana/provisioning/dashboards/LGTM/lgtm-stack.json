@@ -1040,7 +1040,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -1062,104 +1062,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byFrameRefID",
-                      "options": "A"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
                       },
                       {
-                        "id": "custom.lineStyle",
+                        "id": "color",
                         "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*avail.*|.*used.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available"
-                    },
-                    "properties": [
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "free (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "green"
                         }
                       }
                     ]
@@ -1289,7 +1241,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -1310,52 +1262,57 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "free (/)"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total (/)"
+                      "id": "byRegexp",
+                      "options": ".*free.*|.*used.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
-                        "value": 0
+                        "value": 15
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
                       }
                     ]
                   }
@@ -3178,7 +3135,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -3199,59 +3156,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byFrameRefID",
-                      "options": "A"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
                       {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total"
-                    },
-                    "properties": [
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "free"
+                      "id": "byRegexp",
+                      "options": ".*used.*|.*free.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "orange"
                         }
                       }
                     ]
@@ -4746,57 +4700,50 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "cores",
-                      "scope": "series"
+                      "id": "byRegexp",
+                      "options": ".*cores.*|.*limit.*"
                     },
                     "properties": [
                       {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "load (5m)"
+                      "id": "byRegexp",
+                      "options": ".*load.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "load (1m)"
-                    },
-                    "properties": [
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
+                        "id": "custom.fillOpacity",
+                        "value": 15
                       }
                     ]
                   }
@@ -5102,81 +5049,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total",
-                      "scope": "series"
+                      "id": "byRegexp",
+                      "options": ".*total.*"
                     },
                     "properties": [
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
                       {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "used",
-                      "scope": "series"
+                      "id": "byRegexp",
+                      "options": ".*used.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "cache",
-                      "scope": "series"
-                    },
-                    "properties": [
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "free",
-                      "scope": "series"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "purple"
                         }
                       }
                     ]
