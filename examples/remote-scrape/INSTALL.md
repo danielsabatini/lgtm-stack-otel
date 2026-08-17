@@ -101,19 +101,23 @@ A pasta `examples/remote-scrape/` fornece templates parametrizados prontos para 
 
 ## 6. Configuração Específica para a Solução DNS Interno (CoreDNS + etcd + Linux)
 
-Para monitorar o cluster de DNS interno de alta disponibilidade (*CoreDNS + etcd + Sistema Operacional*), este repositório disponibiliza **3 arquivos dedicados pré-configurados** com os alvos do cluster na região `br-ne1`:
+Para monitorar um cluster de DNS interno de alta disponibilidade (*CoreDNS + etcd + Sistema Operacional*), este repositório disponibiliza **3 arquivos de configuração pré-definidos**, prontos para uso e parametrizáveis para qualquer região, provedor de nuvem ou infraestrutura local:
 
 * **`pull-linux-dns-hosts.alloy`:** Métricas do Sistema Operacional (Node Exporter `:9100`).
 * **`pull-coredns-dns-hosts.alloy`:** Métricas de resolução, cache e forward do CoreDNS (`:9153`).
 * **`pull-etcd-dns-hosts.alloy`:** Métricas de liderança Raft, storage e disco do etcd (`:2379`).
 
-### 6.1 Mapeamento dos Servidores DNS
+### 6.1 Mapeamento de Exemplo dos Servidores DNS
 
-| Servidor / Instância | Endereço IP | Zona (AZ) | Portas Raspadas |
+Os arquivos vêm preenchidos com a seguinte topologia de referência multizona (ajuste os IPs, região `cloud_region` e zonas `cloud_availability_zone` conforme a sua topologia):
+
+| Servidor / Instância | Endereço IP (Exemplo) | Zona (AZ) | Portas Raspadas |
 |---|---|:---:|---|
 | **`dns-ne1-1`** | `172.18.1.2` | `a` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
 | **`dns-ne1-2`** | `172.18.17.2` | `b` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
 | **`dns-ne1-3`** | `172.18.33.2` | `c` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
+
+> 🌐 **Agnóstico de Região e Nuvem:** O label `cloud_region` pode ser ajustado para qualquer região geográfica (ex: `br-ne1`, `br-se1`, `us-east-1`, `local`), e `cloud_provider` para qualquer provedor (`mgc`, `aws`, `gcp`, `azure`, `on-premises`).
 
 ### 6.2 Ativação Rápida do Monitoramento DNS
 

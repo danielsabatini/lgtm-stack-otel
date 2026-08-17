@@ -1,8 +1,10 @@
 // =============================================================================
-// PULL LEGADO — etcd dos Servidores de DNS Interno (MGC br-ne1)
+// PULL LEGADO — etcd dos Servidores de DNS Interno
 //
 // Coleta métricas do etcd via scrape HTTP direto (:2379) nos 3 servidores
 // do cluster de DNS interno (172.18.1.2, 172.18.17.2 e 172.18.33.2).
+// Os labels de cloud_region, cloud_provider e cloud_availability_zone são
+// parametrizáveis para qualquer região ou infraestrutura.
 //
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
