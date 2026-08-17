@@ -5,6 +5,22 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.15] - 2026-08-16
+### Adicionado
+- **Solução Completa MGC Internal DNS** (`grafana/provisioning/dashboards/DNS/mgc-internal-dns.json` - UID: `adth4vt`): monitoramento em 3 camadas interdependentes (*Linux, CoreDNS e etcd*) com SLIs de latência interna (<16ms) e forward (<250ms), Upstream Health, Process RSS, Cache Evictions e Cluster Role (Leader/Follower).
+- **Diagramas Mermaid Vetoriais** (`docs/diagrams/`): geração local e automatizada de diagramas em SVG e PNG de alta resolução para topologia de rede (`docs/ARCHITECTURE.md`) e fluxo de avaliação de alertas (`docs/ALERTS.md`) via `@mermaid-architecture` e `mermaid-render-diagram`.
+- **Separação Arquitetural de Cache**: visualização macro no pilar *Capacity* (consumo acumulado vs. teto físico de 110 K) e visualização micro cirúrgica no pilar *Diagnostics* dividida em 2 gráficos dedicados (*Válidos* com escala de 50 K e *NXDOMAIN* com escala de 5 K).
+- **Padronização Visual Unificada de Capacidade**: fundo branco limpo, linhas de uso suaves e tetos máximos/limites em linhas tracejadas vermelhas no topo em todos os 7 dashboards da stack.
+
+### Alterado
+- **Dashboard Linux Hosts** (`grafana/provisioning/dashboards/Hosts/linux-hosts.json`): convertido para seleção única de host (`single-select`) com legendas limpas sem prefixo redundante de instância e cards de inventário centralizados (`textMode: "value"`).
+- **Efeito Center Glow**: habilitado em todos os gráficos do tipo Gauge em todos os dashboards da stack.
+- **Gerador de Carga DNS** (`artifacts/load-test/dns-load-test.sh`): otimizado com tráfego realista corporativo (60% etcd, 20% saída legítima, 5% NXDOMAIN) e expansão do pool de domínios.
+
+### Corrigido
+- **Eliminação de Falsos Alarmes**: painéis `Query Rate` e `Upstream Health` configurados com mapeamento neutro cinza (`sem tráfego` / `#6E7B8B`) na ausência de requisições, eliminando cards vermelhos quando o ambiente está ocioso.
+- **Unificação GitOps de Dashboards**: remoção definitiva da pasta obsoleta `grafana-dashboards-backup/` e de recursos clonados no Grafana 13, estabelecendo `grafana/provisioning/dashboards/` como fonte única da verdade.
+
 ## [0.0.14] - 2026-08-13
 ### Adicionado
 - **`docs/OBSERVABILITY-METHODOLOGY.md`**: nova referência única conceitual e
