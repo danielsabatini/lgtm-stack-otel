@@ -176,7 +176,7 @@ MGC Internal DNS (adth4vt)
 │   ├── Health: Status UP/DOWN, DNS Error Rate (%), Query Rate (req/s), Upstream Health (%), Latência Interna p99 e Latência Forward p99.
 │   ├── Capacity: Cache Entries (Total em Cache vs Capacidade Combinada de 110 K), File Descriptors (alocados vs limite) e Memória RSS do processo.
 │   ├── Activity: Total de Requisições, Requisições por Zona (local/recursiva), Respostas por Rcode (NOERROR, NXDOMAIN, SERVFAIL) e Throughput de Cache (Hits vs Misses).
-│   ├── Diagnostics: Panics, Reload Failures, Rejeições de Concorrência Upstream, Erros por Zona, Latência p99 por Zona, Cache Breakdown por Zona e Tipo (Interno vs Internet / Válidos vs NXDOMAIN), Taxa de Hit do Cache (%) e Evicções de Cache (/s).
+│   ├── Diagnostics: Panics, Reload Failures, Rejeições de Concorrência Upstream, Erros por Zona, Latência p99 por Zona, Cache - Valid Entries (Success - teto 50 K), Cache - Denial Entries (NXDOMAIN - teto 5 K), Taxa de Hit do Cache (%) e Evicções de Cache (/s).
 │   └── Inventory: Uptime, Plugins Habilitados, Versão do Binário, Revisão Git, Versão do compilador Go e Teto Máximo de FDs.
 │
 └── 3. Linha etcd (Camada de Armazenamento e Consenso do Cluster DNS)
