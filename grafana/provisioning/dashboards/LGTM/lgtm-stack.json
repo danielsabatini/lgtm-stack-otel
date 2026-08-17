@@ -4147,10 +4147,10 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Fluxo unificado de logs de saída padrão e erros gerados pelos contêineres Docker da stack com busca e filtros interativos.",
           "id": 403,
           "links": [],
-          "title": "Logs (stdout)",
+          "title": "Container Logs (stdout / stderr)",
           "vizConfig": {
             "group": "logs",
             "kind": "VizConfig",
@@ -4166,10 +4166,10 @@
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
-                "showCommonLabels": false,
-                "showControls": false,
-                "showFieldSelector": false,
-                "showLabels": false,
+                "showCommonLabels": true,
+                "showControls": true,
+                "showFieldSelector": true,
+                "showLabels": true,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
@@ -5130,6 +5130,262 @@
             "version": "13.0.1"
           }
         }
+      },
+      "panel-404": {
+        "kind": "Panel",
+        "spec": {
+          "id": 404,
+          "title": "Log Volume by Severity",
+          "description": "Volume e distribuição temporal de logs emitidos pelos contêineres classificados por severidade (Error, Warn, Info, Debug).",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "loki"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (level) (count_over_time({instance=\"lgtm-stack-container\", container=~\"$container\"}[$__rate_interval]))",
+                        "instant": false,
+                        "legendFormat": "{{level}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "sum",
+                    "lastNotNull"
+                  ],
+                  "displayMode": "table",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "bars",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "normal"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*(?i)(error|err|fatal|panic).*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*(?i)(warn|warning).*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "yellow"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*(?i)(info|notice).*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*(?i)(debug|trace).*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-405": {
+        "kind": "Panel",
+        "spec": {
+          "id": 405,
+          "title": "Container Errors & Exceptions",
+          "description": "Exibição filtrada contendo exclusivamente mensagens de erro, alertas e exceções para triagem imediata de incidentes.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "loki"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "{instance=\"lgtm-stack-container\", container=~\"$container\"} |~ \"(?i)(error|err|exception|fatal|panic|failed)\"",
+                        "instant": false,
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "detailsMode": "sidebar",
+                "enableInfiniteScrolling": false,
+                "enableLogDetails": true,
+                "fontSize": "small",
+                "prettifyLogMessage": true,
+                "showCommonLabels": true,
+                "showControls": true,
+                "showFieldSelector": true,
+                "showLabels": true,
+                "showLevel": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "syntaxHighlighting": true,
+                "timestampResolution": "ms",
+                "unwrappedColumns": false,
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -5670,12 +5926,30 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
+                                    "name": "panel-404"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-405"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
                                     "name": "panel-403"
                                   }
                                 }
                               }
                             ],
-                            "maxColumnCount": 3,
+                            "maxColumnCount": 1,
                             "rowHeightMode": "standard"
                           }
                         },
