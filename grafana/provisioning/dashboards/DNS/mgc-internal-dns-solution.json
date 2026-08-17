@@ -812,9 +812,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -825,10 +825,6 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "text": {
-                  "titleSize": 14,
-                  "valueSize": 28
-                },
                 "textMode": "value_and_name",
                 "wideLayout": true
               },
@@ -5339,9 +5335,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5352,10 +5348,6 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "text": {
-                  "titleSize": 14,
-                  "valueSize": 28
-                },
                 "textMode": "value_and_name",
                 "wideLayout": true
               },
@@ -8225,9 +8217,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -8238,10 +8230,6 @@
                   "values": false
                 },
                 "showPercentChange": false,
-                "text": {
-                  "titleSize": 14,
-                  "valueSize": 28
-                },
                 "textMode": "value_and_name",
                 "wideLayout": true
               },
@@ -9289,9 +9277,9 @@
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
-                            "maxColumnCount": 3,
-                            "columnWidthMode": "narrow",
-                            "rowHeightMode": "short",
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
