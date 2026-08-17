@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adth4vt"
+    "name": "mgc-internal-dns-solution"
   },
   "spec": {
     "annotations": [
@@ -420,7 +420,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "(sum by(to) (rate(coredns_proxy_request_duration_seconds_count{instance=~\"$instance\", service_name=\"coredns\", rcode!~\"SERVFAIL|REFUSED\"}[$__rate_interval])) or (sum by(to) (rate(coredns_proxy_request_duration_seconds_count{instance=~\"$instance\", service_name=\"coredns\"}[$__rate_interval])) * 0)) / clamp_min(sum by(to) (rate(coredns_proxy_request_duration_seconds_count{instance=~\"$instance\", service_name=\"coredns\"}[$__rate_interval])), 1e-9)",
+                        "expr": "sum by(to) (rate(coredns_proxy_request_duration_seconds_count{instance=~\"$instance\", service_name=\"coredns\", rcode!~\"SERVFAIL|REFUSED\"}[$__rate_interval])) / sum by(to) (rate(coredns_proxy_request_duration_seconds_count{instance=~\"$instance\", service_name=\"coredns\"}[$__rate_interval]))",
                         "instant": true,
                         "legendFormat": "{{to}}",
                         "range": false
@@ -1320,11 +1320,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -1338,8 +1338,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -1361,8 +1361,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "blue"
+                          "fixedColor": "blue",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -9031,7 +9031,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "red"
+                        "color": "#6E7B8B"
                       },
                       {
                         "value": 0.001,
@@ -9041,7 +9041,43 @@
                   },
                   "color": {
                     "mode": "thresholds"
-                  }
+                  },
+                  "mappings": [
+                    {
+                      "type": "range",
+                      "options": {
+                        "from": 0,
+                        "to": 0.0001,
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 0
+                        }
+                      }
+                    },
+                    {
+                      "type": "special",
+                      "options": {
+                        "match": "null",
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 1
+                        }
+                      }
+                    },
+                    {
+                      "type": "special",
+                      "options": {
+                        "match": "nan",
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 2
+                        }
+                      }
+                    }
+                  ]
                 },
                 "overrides": []
               }
@@ -10313,6 +10349,6 @@
         }
       }
     ],
-    "uid": "adth4vt"
+    "uid": "mgc-internal-dns-solution"
   }
 }
