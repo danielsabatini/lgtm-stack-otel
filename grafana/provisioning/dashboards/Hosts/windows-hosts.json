@@ -1784,15 +1784,19 @@
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
-                "showControls": false,
-                "showFieldSelector": false,
+                "showControls": true,
+                "showFieldSelector": true,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true
+                "wrapLogMessage": true,
+                "allowDownload": true,
+                "displayedFields": [],
+                "showCommonLabels": false,
+                "showLabels": false
               }
             },
             "version": "13.0.1"
@@ -1853,15 +1857,19 @@
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
-                "showControls": false,
-                "showFieldSelector": false,
+                "showControls": true,
+                "showFieldSelector": true,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true
+                "wrapLogMessage": true,
+                "allowDownload": true,
+                "displayedFields": [],
+                "showCommonLabels": false,
+                "showLabels": false
               }
             },
             "version": "13.0.1"
@@ -1922,15 +1930,19 @@
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
-                "showControls": false,
-                "showFieldSelector": false,
+                "showControls": true,
+                "showFieldSelector": true,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true
+                "wrapLogMessage": true,
+                "allowDownload": true,
+                "displayedFields": [],
+                "showCommonLabels": false,
+                "showLabels": false
               }
             },
             "version": "13.0.1"
@@ -1991,15 +2003,19 @@
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
-                "showControls": false,
-                "showFieldSelector": false,
+                "showControls": true,
+                "showFieldSelector": true,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true
+                "wrapLogMessage": true,
+                "allowDownload": true,
+                "displayedFields": [],
+                "showCommonLabels": false,
+                "showLabels": false
               }
             },
             "version": "13.0.1"
