@@ -148,7 +148,7 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 | Dashboard | UID Canônico | Pasta no Provisioning | Escopo | Componentes / Tags |
 |---|---|---|---|---|
-| **MGC Internal DNS** | `adth4vt` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
+| **MGC Internal DNS** | `mgc-internal-dns-solution` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
 | **Linux Hosts** | `linux-hosts` | `Hosts/` | Single-Node | `linux`, `node-exporter`, `infrastructure` |
 | **Windows Hosts** | `windows-hosts` | `Hosts/` | Single-Node | `windows`, `windows-exporter`, `infrastructure` |
 | **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `mysql`, `database` |
@@ -158,12 +158,12 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 ---
 
-## 8. Arquitetura da Solução MGC Internal DNS (`adth4vt`)
+## 8. Arquitetura da Solução MGC Internal DNS (`mgc-internal-dns-solution`)
 
 O dashboard **MGC Internal DNS** monitora a infraestrutura de resolução de nomes interna em 3 camadas interdependentes, organizadas em linhas colapsáveis (*Rows*) e abas metodológicas (*Tabs*):
 
 ```text
-MGC Internal DNS (adth4vt)
+MGC Internal DNS (mgc-internal-dns-solution)
 ├── 1. Linha Linux (Sistema Operacional dos Servidores DNS)
 │   ├── Health: Sinais vitais de CPU, Memória, Disco e Rede em percentual normalizado.
 │   ├── Capacity: Composição e limites de CPU Load, Memória RAM, Swap, FS Root e Inodes.
