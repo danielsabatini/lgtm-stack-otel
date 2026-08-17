@@ -4383,9 +4383,9 @@
                       "spec": {
                         "editorMode": "builder",
                         "expr": "up{instance=~\"$instance\", service_name=\"coredns\"}",
+                        "instant": true,
                         "legendFormat": "{{instance}}",
-                        "range": true,
-                        "instant": true
+                        "range": false
                       }
                     },
                     "refId": "A",
