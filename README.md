@@ -70,9 +70,12 @@ Para monitorar instâncias remotas, consulte o guia de instalação corresponden
 | **Linux + PostgreSQL Nativo** | Push (Agente Local) | [examples/push/linux-pgsql/INSTALL.md](examples/push/linux-pgsql/INSTALL.md) |
 | **Windows Server** | Push (Agente Local) | [examples/push/windows/INSTALL.md](examples/push/windows/INSTALL.md) |
 | **Windows + SQL Server (MSSQL)** | Push (Agente Local) | [examples/push/windows-mssql/INSTALL.md](examples/push/windows-mssql/INSTALL.md) |
-| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#85-ambientes-linux--dbaas-mysql](examples/pull/INSTALL.md#85-ambientes-linux--dbaas-mysql) |
-| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#84-ambientes-linux--dbaas-postgresql](examples/pull/INSTALL.md#84-ambientes-linux--dbaas-postgresql) |
-| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#6-configuração-específica-para-a-solução-dns-interno-coredns--etcd--linux](examples/pull/INSTALL.md#6-configuração-específica-para-a-solução-dns-interno-coredns--etcd--linux) |
+| **Linux Host Geral (Node Exporter)** | Pull Remoto (Gateway) | [examples/pull/linux/INSTALL.md](examples/pull/linux/INSTALL.md) |
+| **Windows Server (Windows Exporter)** | Pull Remoto (Gateway) | [examples/pull/windows/INSTALL.md](examples/pull/windows/INSTALL.md) |
+| **Windows + SQL Server (MSSQL)** | Pull Remoto (Gateway) | [examples/pull/windows-mssql/INSTALL.md](examples/pull/windows-mssql/INSTALL.md) |
+| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-mysql/INSTALL.md](examples/pull/linux-dbaas-mysql/INSTALL.md) |
+| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-pgsql/INSTALL.md](examples/pull/linux-dbaas-pgsql/INSTALL.md) |
+| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/dns/INSTALL.md](examples/pull/dns/INSTALL.md) |
 | **Guia Geral de Coleta Pull (Scraping)** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md](examples/pull/INSTALL.md) |
 
 > 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
