@@ -70,7 +70,7 @@ do_up() {
       -L "${p_node}:127.0.0.1:${R_NODE}" \
       -L "${p_coredns}:127.0.0.1:${R_COREDNS}" \
       -L "${p_etcd}:127.0.0.1:${R_ETCD}" \
-      "${SSH_USER}@${ip}"
+      "${SSH_USER}@${ip}" </dev/null >/dev/null 2>&1
     then
       echo "  $name  OK    ${p_node} / ${p_coredns} / ${p_etcd}"
     else

@@ -1,0 +1,40 @@
+flowchart TB
+    %% Estilos e Classes
+    classDef srcBox fill:#e6fcf5,stroke:#0ca678,stroke-width:2px,color:#087f5b;
+    classDef ruleBox fill:#fff3bf,stroke:#f59f00,stroke-width:2px,color:#d9480f;
+    classDef evalBox fill:#d0ebff,stroke:#1971c2,stroke-width:2px,color:#1864ab;
+    classDef p1Box fill:#ffe3e3,stroke:#fa5252,stroke-width:2px,color:#c92a2a;
+    classDef p2Box fill:#fff9db,stroke:#fab005,stroke-width:2px,color:#e67700;
+    classDef actBox fill:#f3d9fa,stroke:#ae3ec9,stroke-width:2px,color:#862e9c;
+
+    subgraph TELEMETRY ["📡 1. Fontes de Telemetria Contínua"]
+        MIMIR[("📈 Métricas (Mimir)<br/>Taxa de erros, latência p99, saturação")]:::srcBox
+        LOKI[("📜 Logs (Loki)<br/>Exceções críticas, panics, falhas de auth")]:::srcBox
+    end
+
+    subgraph EVALUATION ["⚙️ 2. Motor de Avaliação de Regras (Grafana Alerting / Mimir Ruler)"]
+        RULES["🎯 Regras Baseadas em Sintomas & SLOs<br/>• Multi-Window Multi-Burn-Rate (Queima de Erro)<br/>• Detecção de indisponibilidade e violação de SLA"]:::ruleBox
+    end
+
+    subgraph ROUTING ["🔀 3. Políticas de Roteamento & Silenciamento"]
+        POLICY["📋 Políticas de Notificação<br/>• Agrupamento por cluster/serviço<br/>• Supressão de flapping e janelas de manutenção"]:::evalBox
+    end
+
+    subgraph SEVERITY ["🚨 4. Classificação por Severidade"]
+        P1["🚨 Severidade P1 (Crítico)<br/>• Burn Rate: 14.4x em 1h (Consumo de 5% do Error Budget)<br/>• Indisponibilidade direta de usuário / perda de quorum"]:::p1Box
+        P2["⚠️ Severidade P2 (Atenção)<br/>• Burn Rate: 6.0x em 6h (Degradação persistente)<br/>• Esgotamento de capacidade em médio prazo"]:::p2Box
+    end
+
+    subgraph ACTIONS ["📲 5. Canais de Ação & Resposta"]
+        ONCALL["🚨 Resposta Imediata 24x7<br/>• PagerDuty / Opsgenie / Telegram<br/>• Aciona engenheiro de plantão com alarme sonoro"]:::actBox
+        TICKET["📝 Resposta em Horário Comercial<br/>• Slack / Microsoft Teams / Jira Tickets<br/>• Registra tarefa para análise preventiva"]:::actBox
+    end
+
+    MIMIR --> RULES
+    LOKI --> RULES
+    RULES -->|"Disparo de Alerta"| POLICY
+    POLICY -->|"Severidade = Critical"| P1
+    POLICY -->|"Severidade = Warning"| P2
+
+    P1 -->|"Disparo Imediato"| ONCALL
+    P2 -->|"Notificação Assíncrona"| TICKET
