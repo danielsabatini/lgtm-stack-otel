@@ -1,6 +1,6 @@
 # Gerenciamento e Provisionamento de Dashboards
 
-> **Referência Técnica:** Este documento estabelece o fluxo oficial de edição, exportação e provisionamento automatizado de dashboards como código (*GitOps*) utilizando o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`).
+> **Referência Técnica:** Este documento estabelece o fluxo oficial de edição, exportação e provisionamento automatizado de dashboards como código (*GitOps*) utilizando o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`), detalhando as convenções de design, taxonomia de abas e a arquitetura completa da solução **MGC Internal DNS**.
 
 ---
 
@@ -17,6 +17,7 @@ A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Trut
 1. **Eliminar Duplicação de Arquivos:** Manter apenas uma pasta oficial de dashboards no repositório (`grafana/provisioning/dashboards/`).
 2. **Preservar a Hierarquia de Tabs e Rows do Grafana 13:** Documentar o uso obrigatório da API nativa v2 (`dashboard.grafana.app/v2`) para que as abas (`TabsLayout`) nunca sejam desfeitas.
 3. **Padronizar o Fluxo GitOps:** Fornecer os comandos simples para exportar alterações da UI diretamente para o arquivo versionado no Git.
+4. **Documentar a Arquitetura da Solução DNS:** Especificar a decomposição em 3 camadas (*Linux, CoreDNS e etcd*) e os pilares de observabilidade do cluster DNS.
 
 ---
 
@@ -28,14 +29,14 @@ Todos os arquivos JSON de dashboards residem sob a árvore de provisioning do Gr
 lgtm-stack/
 └── grafana/provisioning/dashboards/    ← Fonte Única da Verdade dos Dashboards
     ├── Hosts/
-    │   ├── linux-hosts.json            (Linux Hosts - UID: linux-hosts)
-    │   └── windows-hosts.json          (Windows Hosts - UID: windows-hosts)
+    │   ├── linux-hosts.json            (Linux Hosts - UID: linux-hosts | Single-Node)
+    │   └── windows-hosts.json          (Windows Hosts - UID: windows-hosts | Single-Node)
     ├── Hosts + Database/
     │   ├── linux-mysql-hosts.json      (Linux + MySQL - UID: linux-mysql-hosts)
     │   ├── linux-pgsql-hosts.json      (Linux + PostgreSQL - UID: linux-pgsql-hosts)
     │   └── windows-hosts-mssql.json    (Windows + SQL Server - UID: windows-hosts-mssql)
     ├── DNS/
-    │   └── mgc-internal-dns-solution.json (MGC Internal DNS - UID: adth4vt)
+    │   └── mgc-internal-dns-solution.json (MGC Internal DNS - UID: adth4vt | Multi-Node Cluster)
     ├── LGTM/
     │   └── lgtm-stack.json             (LGTM Self-Monitoring - UID: lgtm-stack)
     └── dashboards.yaml                 (Configuração de Hot-Reload a cada 10s)
@@ -70,6 +71,11 @@ Com o Grafana 13, não é necessário fazer conversões manuais de JSON. Basta r
 curl -s -u admin:changeme \
   "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/adth4vt" \
   | jq . > grafana/provisioning/dashboards/DNS/mgc-internal-dns-solution.json
+
+# Exemplo para salvar o dashboard Linux Hosts (UID: linux-hosts):
+curl -s -u admin:changeme \
+  "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/linux-hosts" \
+  | jq . > grafana/provisioning/dashboards/Hosts/linux-hosts.json
 ```
 
 ---
@@ -140,50 +146,77 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 > ⚠️ **Nunca altere os UIDs** de dashboards já existentes. A alteração de UID quebra favoritos, links cruzados e alertas configurados.
 
-| Dashboard | UID Canônico | Pasta no Provisioning |
-|---|---|---|
-| **Linux Hosts** | `linux-hosts` | `Hosts/` |
-| **Windows Hosts** | `windows-hosts` | `Hosts/` |
-| **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` |
-| **Linux + PostgreSQL Hosts** | `linux-pgsql-hosts` | `Hosts + Database/` |
-| **Windows + MSSQL Hosts** | `windows-hosts-mssql` | `Hosts + Database/` |
-| **MGC Internal DNS** | `adth4vt` | `DNS/` |
-| **LGTM Stack Self-Monitoring** | `lgtm-stack` | `LGTM/` |
+| Dashboard | UID Canônico | Pasta no Provisioning | Escopo | Componentes / Tags |
+|---|---|---|---|---|
+| **MGC Internal DNS** | `adth4vt` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
+| **Linux Hosts** | `linux-hosts` | `Hosts/` | Single-Node | `linux`, `node-exporter`, `infrastructure` |
+| **Windows Hosts** | `windows-hosts` | `Hosts/` | Single-Node | `windows`, `windows-exporter`, `infrastructure` |
+| **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `mysql`, `database` |
+| **Linux + PostgreSQL Hosts** | `linux-pgsql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `postgres`, `database` |
+| **Windows + MSSQL Hosts** | `windows-hosts-mssql` | `Hosts + Database/` | Multi-Node | `windows`, `mssql`, `database` |
+| **LGTM Stack Self-Monitoring** | `lgtm-stack` | `LGTM/` | Stack Local | `lgtm`, `mimir`, `loki`, `tempo`, `alloy` |
 
 ---
 
-## 8. Como o Provisioning Funciona (Hot-Reload)
+## 8. Arquitetura da Solução MGC Internal DNS (`adth4vt`)
 
-O arquivo `grafana/provisioning/dashboards/dashboards.yaml` controla o carregamento automático dos painéis:
-* **`foldersFromFilesStructure: true`:** As subpastas (`Hosts/`, `DNS/`, `Hosts + Database/`) são criadas automaticamente como pastas organizadas no Grafana.
-* **`updateIntervalSeconds: 10`:** O Grafana detecta modificações nos arquivos de provisioning a cada 10 segundos e aplica o *hot-reload* automaticamente sem necessidade de reiniciar o container.
+O dashboard **MGC Internal DNS** monitora a infraestrutura de resolução de nomes interna em 3 camadas interdependentes, organizadas em linhas colapsáveis (*Rows*) e abas metodológicas (*Tabs*):
+
+```text
+MGC Internal DNS (adth4vt)
+├── 1. Linha Linux (Sistema Operacional dos Servidores DNS)
+│   ├── Health: Sinais vitais de CPU, Memória, Disco e Rede em percentual normalizado.
+│   ├── Capacity: Composição e limites de CPU Load, Memória RAM, Swap, FS Root e Inodes.
+│   ├── Activity: Volume temporal de Throughput e IOPS de Disco e Tráfego de Rede.
+│   ├── Diagnostics: Análise de causa raiz com Modos de CPU, PSI (CPU/Mem/IO), Latência de Disco e Erros/Drops de Rede.
+│   ├── Inventory: Uptime, Total de Cores, RAM Total, Swap Total, FS Total e Versão do OS.
+│   └── Logs: Coleta estruturada de Security (SSH), System (systemd/kernel/cron), Application e Platform.
+│
+├── 2. Linha CoreDNS (Camada de Resolução DNS)
+│   ├── Health: Status UP/DOWN, DNS Error Rate (%), Query Rate (req/s), Upstream Health (%), Latência Interna p99 e Latência Forward p99.
+│   ├── Capacity: Entradas ativas no Cache, File Descriptors (alocados vs limite) e Memória RSS do processo.
+│   ├── Activity: Total de Requisições, Requisições por Zona (local/recursiva), Respostas por Rcode (NOERROR, NXDOMAIN, SERVFAIL) e Throughput de Cache (Hits vs Misses).
+│   ├── Diagnostics: Panics, Reload Failures, Rejeições de Concorrência Upstream, Erros por Zona, Latência p99 por Zona, Taxa de Hit do Cache (%) e Evicções de Cache (/s).
+│   └── Inventory: Uptime, Plugins Habilitados, Versão do Binário, Revisão Git, Versão do compilador Go e Teto Máximo de FDs.
+│
+└── 3. Linha etcd (Camada de Armazenamento e Consenso do Cluster DNS)
+    ├── Health: Status UP/DOWN do membro, Cluster Role (Leader/Follower), Cluster Quorum e Taxa de Falhas em Propostas Raft.
+    ├── Capacity: Tamanho da base de dados bbolt comparada com a cota (quota) e Total de Chaves/Registros DNS mantidos.
+    ├── Activity: Volume de Propostas Raft (Committed vs Failed) e Histórico de Trocas de Liderança (/s).
+    ├── Diagnostics: Latência de Disco WAL Fsync p99 (causa raiz de perda de quorum), Backend Commit p99 e RTT de Rede entre Pares (Peer RTT p99).
+    └── Inventory: Uptime do membro, Cota de Backend configurada, Versão do etcd e Versão do Cluster.
+```
 
 ---
 
 ## 9. Padrões Obrigatórios de Design dos Painéis
 
-### 9.1 Padrão para Métricas de Inventário e Versão (Metadados em Labels):
-Para métricas como `*_build_info`, `*_os_info` ou `*_version` (onde o valor numérico é constante `1` e o dado está no label):
-* **Tipo:** `Stat`
-* **Formato da Legenda:** `{{instance}} > {{label_do_dado}}` (ex: `{{instance}} > {{version}}`).
-* **Modo de Texto (`textMode`):** `name`.
-* **Tamanho Fixo da Fonte (`text.valueSize`):** **`16`** (16px) — *mantém alinhamento simétrico sem distorção*.
-* **Alinhamento (`justifyMode`):** `center`.
-* **Cor de Fundo (`colorMode`):** `none`.
+### 9.1 Padrão de Legendas e Renderização de Metadados:
+
+* **Dashboards Multi-Node (ex: MGC Internal DNS `adth4vt`):**
+  * **Métricas com Múltiplas Instâncias:** Utilizam o separador pipe ` | ` na legenda: `{{instance}} | {{version}}`, `{{instance}} | {{job}}` ou `{{instance}} | {{device}}`.
+  * **Painéis Stat de Metadados:** Configurados com `textMode: "name"`, `justifyMode: "center"`, cor de fundo `colorMode: "none"` e tamanho fixo `text.valueSize: 16`.
+
+* **Dashboards Single-Node (ex: Linux Hosts `linux-hosts`):**
+  * **Cards Stat Numéricos (Uptime, Cores, Memória, Swap, Disco):** Configurados com `textMode: "value"`, `justifyMode: "center"`, `colorMode: "none"` e `legendFormat: ""`. O valor é renderizado limpo e centralizado no centro do card.
+  * **Cards Stat de Texto (OS / Versão):** Configurados com `textMode: "name"`, `justifyMode: "center"`, `text.valueSize: 16` e `legendFormat: "{{pretty_name}}"`.
 
 ### 9.2 Padrão de Layout para Gráficos de Séries Temporais (Timeseries):
-* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Gráficos do tipo `Time series` devem ocupar a **largura total (1 coluna / 24 colunas de grid)** para proporcionar resolução horizontal máxima na análise de tendências temporais e picos.
+* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Gráficos do tipo `Time series` devem ocupar a **largura total (1 coluna / 24 colunas de grid)** para proporcionar resolução horizontal máxima na análise de tendências temporais, sazonalidade e picos de tráfego.
 
 ### 9.3 Padrão de Layout para Abas de Cards Stat (Health e Inventory):
 * **Configuração Canônica do Grid:**
-  * **Largura Mínima de Coluna (`columnWidthMode`):** `Narrow`
-  * **Altura da Linha (`rowHeightMode`):** `Short`
-  * **Máximo de Colunas (`maxColumnCount`):** `2`
-* **Motivo:** Mantém os cards compactos, simétricos e organizados em uma grade de 2 colunas, evitando rolagem vertical desnecessária.
+  * **Multi-Node:** `columnWidthMode: "Narrow"`, `rowHeightMode: "Short"`, `maxColumnCount: 2` (grade simétrica de 2 colunas).
+  * **Single-Node:** `columnWidthMode: "Narrow"`, `rowHeightMode: "Short"`, `maxColumnCount: 4` ou `3` (distribuição horizontal compacta).
 
 ### 9.4 Padrão para Abas com Tipos Heterogêneos / Misturados (Stat + Timeseries):
-* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Quando uma aba combina cards `Stat` e gráficos `Time series` na mesma aba (ex: Diagnostics).
-* **Motivo:** Impede o desalinhamento estético de renderizar um card Stat ao lado de um gráfico de linha comprimido.
+* **1 Coluna Obrigatória (`maxColumnCount: 1`):** Quando uma aba combina cards `Stat` e gráficos `Time series` na mesma aba (ex: Diagnostics). Impede que gráficos de linha fiquem comprimidos ao lado de cards de resumo.
+
+### 9.5 Padrão de Descrições em 3 Blocos (Tooltips):
+Todo painel deve seguir estritamente o padrão em 3 blocos definido em [METRICS.md](METRICS.md):
+1. **O que é:** Definição simples e contextualizada em linguagem acessível.
+2. **• O que observar:** Padrão esperado, limites normais e thresholds de alerta.
+3. **• Ação em caso de problema:** Comandos objetivos de terminal (`journalctl`, `systemctl`, `dig`, `etcdctl`) para diagnóstico e resolução rápida.
 
 ---
 
@@ -205,6 +238,7 @@ Para métricas como `*_build_info`, `*_os_info` ou `*_version` (onde o valor num
 
 * Para a taxonomia de abas e categorização de métricas, consulte [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md).
 * Para o padrão obrigatório de descrições e tooltips dos painéis, consulte [METRICS.md](METRICS.md).
+* Para fronteiras de rede e topologia de coleta do Alloy Gateway, consulte [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 🔙 Voltar: [README Principal](../README.md)
