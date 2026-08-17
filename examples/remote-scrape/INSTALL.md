@@ -1,181 +1,251 @@
 # Guia de Instalação — Coleta Remota (Pull Scrape)
 
-Este guia mostra como configurar a coleta de métricas em servidores onde não é possível instalar o Alloy Agent localmente. Nesse cenário, o **Alloy Gateway** assumirá o papel de fazer o *scrape* ativo (modelo Pull), buscando os dados diretamente nos *exporters* remotos.
+> **Referência Técnica:** Este guia orienta a configuração de coleta ativa de métricas (*Scrape / Modo Pull*) realizada pelo **Alloy Gateway** em servidores remotos, instâncias de banco de dados (DBaaS) e clusters de infraestrutura onde não é possível ou desejável instalar o Alloy Agent local.
 
 ---
 
-## Como funciona a arquitetura
+## 1. Introdução
+
+Em determinados cenários corporativos, a instalação de um agente de observabilidade diretamente no sistema operacional do servidor de destino não é permitida ou viável — como em instâncias de bancos de dados gerenciados (*DBaaS*), servidores legados com políticas estritas de segurança, appliances de rede ou nós dedicados de infraestrutura.
+
+Nesses ambientes, a LGTM Stack utiliza a capacidade de **Scraping Remoto (Modo Pull)** do **Alloy Gateway**: o Gateway realiza requisições periódicas (`HTTP GET /metrics`) nos *exporters* remotos (Node Exporter, CoreDNS, etcd, mysqld_exporter, postgres_exporter, windows_exporter), aplica regras estritas de *Explicit Whitelisting* para descartar métricas irrelevantes e persiste os dados com alta eficiência no Mimir.
+
+---
+
+## 2. Objetivo
+
+1. **Monitorar Hosts sem Agente Local:** Coletar métricas de sistemas operacionais e bancos de dados através de seus endpoints padrão de exportação.
+2. **Eliminar Ruído na Ingestão:** Aplicar regras de *relabeling* na entrada do Gateway para persistir estritamente as séries consumidas pelos dashboards.
+3. **Padronizar a Ativação de Serviços:** Fornecer templates declarativos e comandos objetivos para inclusão de novos servidores e reinício do container do Gateway.
+4. **Viabilizar o Monitoramento da Solução DNS:** Documentar a ativação dos pipelines dedicados para o cluster de DNS interno (*CoreDNS + etcd + Linux*).
+
+---
+
+## 3. Topologia e Como Funciona
 
 ```mermaid
-graph LR
-    subgraph "Servidor Remoto (Legacy)"
-        E[Exporter]
+flowchart LR
+    subgraph REMOTE ["🖥️ Servidores Remotos / DBaaS / Cluster DNS"]
+        E1["📦 node_exporter<br/>(:9100)"]
+        E2["🌐 CoreDNS<br/>(:9153)"]
+        E3["🗄️ etcd<br/>(:2379)"]
+        E4["🗃️ DB Exporters<br/>(MySQL / Postgres)"]
     end
-    subgraph "Servidor LGTM"
-        G[Alloy Gateway] --> M[(Mimir)]
-    end
-    G -- "HTTP GET /metrics" --> E
-```
 
-O Alloy Gateway atua como intermediário: ele faz a coleta das métricas, aplica regras rígidas de *relabeling* para descartar todo o ruído (whitelist) e, então, encaminha apenas os dados essenciais e validados para o Mimir.
+    subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
+        GW["🚪 Alloy Gateway<br/>• Scrape Ativo (HTTP GET /metrics)<br/>• Relabel & Lean Whitelist (Keep)<br/>• Injeção de Labels (instance, env, az)"]
+        MIMIR[("📈 Grafana Mimir<br/>Armazenamento TSDB")]
+        GRAFANA["📊 Grafana UI<br/>Dashboards Provisionados"]
+    end
+
+    GW -->|"1. HTTP Scrape a cada 30s"| E1
+    GW -->|"1. HTTP Scrape a cada 30s"| E2
+    GW -->|"1. HTTP Scrape a cada 30s"| E3
+    GW -->|"1. HTTP Scrape a cada 30s"| E4
+
+    GW -->|"2. Remote Write Filtrado"| MIMIR
+    GRAFANA -.->|"3. Leitura e Alertas"| MIMIR
+```
 
 ---
 
-## Passo Zero: Teste de Conectividade
+## 4. Pré-requisitos e Teste de Conectividade de Rede
 
-**Atenção:** Antes de começar a configuração, é fundamental garantir que o servidor da Stack LGTM consiga acessar o *endpoint* de métricas do servidor remoto.
+Antes de configurar os pipelines no Gateway, certifique-se de que o servidor da LGTM Stack possui alcançabilidade de rede até a porta do *exporter* no servidor remoto (através de VPC, VPN ou túnel seguro).
 
-Para evitar horas de *troubleshooting* com falhas de rede que parecem problemas de infraestrutura, faça um teste rápido usando `curl` ou `wget` a partir do servidor LGTM:
+Execute um teste de conexão a partir do host da Stack LGTM:
 
 ```bash
-# Teste de conexão via cURL
+# Teste via cURL (deve retornar HTTP/1.1 200 OK)
 curl -s -I http://<IP_ADDRESS>:<PORTA>/metrics
 
-# Teste de conexão via Wget
-wget -q -S -O /dev/null http://<IP_ADDRESS>:<PORTA>/metrics
+# Teste rápido de porta via Netcat (nc)
+nc -zv <IP_ADDRESS> <PORTA>
 ```
 
-Se a resposta retornar um código HTTP `200 OK`, a comunicação está perfeita. Caso o comando falhe (por exemplo, com erro de *Connection Refused* ou *Timeout*), verifique as regras de firewall, security groups da sua cloud ou confira se o serviço do *exporter* está rodando corretamente no servidor de origem.
+> ⚠️ Se o comando falhar com *Connection Refused* ou *Timeout*, revise as regras de firewall (`ufw`/`iptables`) no host remoto e as regras de Security Group da sua nuvem.
 
 ---
 
-## 1. Configurando o Gateway (Servidor LGTM)
+## 5. Configuração no Alloy Gateway (Servidor LGTM)
 
-1. Selecione o *template* que melhor corresponde ao que você quer monitorar:
-   * `pull-linux-hosts.alloy` — Linux (apenas métricas de Sistema Operacional)
-   * `pull-windows-hosts.alloy` — Windows (apenas métricas de Sistema Operacional)
-   * `pull-windows-mssql-hosts.alloy` — Windows Server com Microsoft SQL Server
-   * `pull-linux-dbaas-pgsql-hosts.alloy` — Linux com banco de dados PostgreSQL
-   * `pull-linux-dbaas-mysql-hosts.alloy` — Linux com banco de dados MySQL
+### 5.1 Catálogo de Templates Genéricos Disponíveis
 
-2. Copie o arquivo escolhido para a pasta de configurações do Gateway:
+A pasta `examples/remote-scrape/` fornece templates parametrizados prontos para uso:
+
+| Template | Carga de Trabalho Monitorada | Porta Padrão |
+|---|---|---|
+| **`pull-linux-hosts.alloy`** | Linux (Node Exporter - Métricas de SO) | `:9100` |
+| **`pull-windows-hosts.alloy`** | Windows Server (Windows Exporter) | `:9182` |
+| **`pull-windows-mssql-hosts.alloy`** | Windows Server + Microsoft SQL Server | `:9182` |
+| **`pull-linux-dbaas-pgsql-hosts.alloy`** | Linux + Banco de Dados PostgreSQL | `:8080` ou `:9187` |
+| **`pull-linux-dbaas-mysql-hosts.alloy`** | Linux + Banco de Dados MySQL / MariaDB | `:8080` ou `:9104` |
+| **`pull-coredns-hosts.alloy`** | Servidor DNS CoreDNS | `:9153` |
+| **`pull-etcd-hosts.alloy`** | Banco Chave-Valor etcd | `:2379` |
+
+### 5.2 Passo a Passo de Ativação
+
+1. Copie o template desejado para a pasta de configurações ativas do Gateway:
    ```bash
    cp examples/remote-scrape/<nome-do-template>.alloy alloy-gateway/conf.d/
    ```
 
-   *Dica de infra: Se o servidor LGTM tiver regras de rede muito restritas que impeçam o clone do repositório Git diretamente da internet, você pode copiar o arquivo `.alloy` a partir da sua própria máquina usando o `scp` (cópia segura via SSH):*
+2. Edite o arquivo copiado dentro de `alloy-gateway/conf.d/` e adicione seus servidores no bloco `targets`:
+   * Substitua `[IP_ADDRESS]` pelo endereço IP ou DNS do servidor remoto.
+   * Substitua `[INSTANCE_NAME]` pelo nome único da máquina (ex: `srv-db-01`).
+   * Ajuste os labels de nuvem (`environment`, `cloud_provider`, `cloud_region`, `cloud_availability_zone`).
+
+3. Reinicie o Alloy Gateway conforme a [Seção 7](#7-como-reiniciar-e-recarregar-o-alloy-gateway) deste guia.
+
+---
+
+## 6. Configuração Específica para a Solução DNS Interno (CoreDNS + etcd + Linux)
+
+Para monitorar o cluster de DNS interno de alta disponibilidade (*CoreDNS + etcd + Sistema Operacional*), este repositório disponibiliza **3 arquivos dedicados pré-configurados** com os alvos do cluster na região `br-ne1`:
+
+* **`pull-linux-dns-hosts.alloy`:** Métricas do Sistema Operacional (Node Exporter `:9100`).
+* **`pull-coredns-dns-hosts.alloy`:** Métricas de resolução, cache e forward do CoreDNS (`:9153`).
+* **`pull-etcd-dns-hosts.alloy`:** Métricas de liderança Raft, storage e disco do etcd (`:2379`).
+
+### 6.1 Mapeamento dos Servidores DNS
+
+| Servidor / Instância | Endereço IP | Zona (AZ) | Portas Raspadas |
+|---|---|:---:|---|
+| **`dns-ne1-1`** | `172.18.1.2` | `a` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
+| **`dns-ne1-2`** | `172.18.17.2` | `b` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
+| **`dns-ne1-3`** | `172.18.33.2` | `c` | `9100` (OS), `9153` (CoreDNS), `2379` (etcd) |
+
+### 6.2 Ativação Rápida do Monitoramento DNS
+
+Para ativar a coleta dos 3 servidores de uma só vez no Alloy Gateway:
+
+```bash
+# 1. Copiar os 3 arquivos de DNS para a pasta conf.d do Gateway
+cp examples/remote-scrape/pull-linux-dns-hosts.alloy alloy-gateway/conf.d/
+cp examples/remote-scrape/pull-coredns-dns-hosts.alloy alloy-gateway/conf.d/
+cp examples/remote-scrape/pull-etcd-dns-hosts.alloy alloy-gateway/conf.d/
+
+# 2. Reiniciar o Alloy Gateway para carregar os novos pipelines
+docker compose restart alloy-gateway
+```
+
+---
+
+## 7. Como Reiniciar e Recarregar o Alloy Gateway
+
+Sempre que adicionar, modificar ou remover arquivos `.alloy` em `alloy-gateway/conf.d/`, aplique os comandos abaixo no servidor central da LGTM Stack:
+
+### 7.1 Reiniciar o Container via Docker Compose
+
+```bash
+# Reiniciar o serviço do Alloy Gateway
+docker compose restart alloy-gateway
+```
+
+### 7.2 Validar os Logs de Inicialização
+
+Acompanhe os logs para garantir que todos os componentes e alvos foram carregados sem erros de sintaxe:
+
+```bash
+# Visualizar logs em tempo real
+docker compose logs -f alloy-gateway
+```
+
+> ✅ Procure pela mensagem `{^_^} Alloy is running` e `now listening for http traffic` nos logs para confirmar o sucesso.
+
+### 7.3 Acessar a Interface Web do Gateway
+
+Abra o navegador em `http://<IP_DO_SERVIDOR_LGTM>:12345` para visualizar o grafo de componentes ativos e conferir o status de cada alvo de *scrape* em tempo real.
+
+---
+
+## 8. Configuração dos Exporters nos Servidores Remotos
+
+### 8.1 Ambientes Linux (node_exporter)
+1. Instale o [node_exporter](https://github.com/prometheus/node_exporter).
+2. Execute o serviço expondo a porta `:9100` para a rede do Gateway:
    ```bash
-   scp examples/remote-scrape/<nome-do-template>.alloy <usuario>@<IP_LGTM_SERVER>:/caminho/absoluto/lgtm-stack/alloy-gateway/conf.d/
+   sudo systemctl enable --now node_exporter
    ```
 
-3. Agora, edite o arquivo que foi copiado em `alloy-gateway/conf.d/` para adicionar as informações do seu servidor no bloco `targets`:
-   - Substitua o marcador `[IP_ADDRESS]` pelo endereço IP ou DNS válido do host.
-   - Substitua o marcador `[INSTANCE_NAME]` por um nome descritivo (ex: `srv-app-01`) para identificar fácil essa máquina nos painéis.
-   - **Nota sobre labels de infraestrutura:** Os campos `environment`, `cloud_provider`, `cloud_region` e `cloud_availability_zone` vêm preenchidos com valores padrão para produção no **Magalu Cloud (MGC)** na região `br-se1` zona `a`. Altere esses valores caso seu servidor esteja em um ambiente ou provedor diferente.
-
-4. Pronto! O Alloy Gateway vai recarregar a configuração sozinho de forma dinâmica.
-
----
-
-## 2. Configurando os Exporters (Servidor Remoto)
-
-Para que as métricas se encaixem direitinho nos painéis da stack LGTM, inicie os coletores de acordo com as especificações a seguir.
-
-### Ambientes Windows (Apenas Host)
+### 8.2 Ambientes Windows Server (windows_exporter)
 1. Instale o [windows_exporter](https://github.com/prometheus-community/windows_exporter).
-2. Configure o arquivo `config.yml` ativando apenas estes coletores:
-```yaml
-collectors:
-  enabled: cpu,logical_disk,memory,net,os,system,pagefile
-```
+2. No arquivo `config.yml`, ative os coletores suportados pela stack:
+   ```yaml
+   collectors:
+     enabled: cpu,logical_disk,memory,net,os,system,pagefile
+   ```
 3. Inicie o serviço:
-```powershell
-.\windows_exporter.exe --config.file=config.yml
-```
+   ```powershell
+   .\windows_exporter.exe --config.file=config.yml
+   ```
 
-### Ambientes Windows Server + SQL Server (MSSQL)
-1. Ajuste o arquivo `config.yml` habilitando também o coletor do mssql:
-```yaml
-collectors:
-  enabled: cpu,logical_disk,memory,net,os,system,mssql,pagefile
-```
-2. Inicie o serviço:
-```powershell
-.\windows_exporter.exe --config.file=config.yml
-```
+### 8.3 Ambientes Windows Server + SQL Server (MSSQL)
+1. No arquivo `config.yml`, adicione o coletor `mssql`:
+   ```yaml
+   collectors:
+     enabled: cpu,logical_disk,memory,net,os,system,mssql,pagefile
+   ```
+2. Inicie o serviço expondo a porta `:9182`.
 
-### Ambientes Linux (node_exporter)
-1. Instale o [node_exporter](https://github.com/prometheus/node_exporter).
-2. Execute o binário utilizando os parâmetros padrão da ferramenta:
-```bash
-./node_exporter
-```
+### 8.4 Ambientes Linux + DBaaS PostgreSQL
+Para instâncias PostgreSQL monitoradas via proxy reverso ou exporters dedicados:
+* **Node Exporter (SO):** `http://<IP_ADDRESS>:8080/node/metrics` (ou porta `9100`).
+* **Postgres Exporter (DB):** `http://<IP_ADDRESS>:8080/postgres/metrics` (ou porta `9187`).
 
-### Ambientes Linux + DBaaS PostgreSQL
-Para servidores com PostgreSQL monitorados pelo template `pull-linux-dbaas-pgsql-hosts.alloy`, garanta que as rotas de métricas estejam expostas corretamente (é muito comum elas estarem atrás de um proxy reverso na porta `8080`):
-- **Sistema Operacional (Node Exporter):** `http://<IP_ADDRESS>:8080/node/metrics`
-- **Banco de Dados (Postgres Exporter):** `http://<IP_ADDRESS>:8080/postgres/metrics`
-
-*Nota: Se o seu ambiente utilizar as portas de comunidade padrão (ex: `9100` para node_exporter e `9187` para postgres_exporter rodando em `/metrics`), basta alterar as linhas de `__address__` e `__metrics_path__` diretamente dentro do arquivo `.alloy`.*
-
-### Ambientes Linux + DBaaS MySQL
-Para instâncias MySQL monitoradas pelo template `pull-linux-dbaas-mysql-hosts.alloy`, as rotas também devem estar configuradas para exposição:
-- **Sistema Operacional (Node Exporter):** `http://<IP_ADDRESS>:8080/node/metrics`
-- **Banco de Dados (MySQL Exporter):** `http://<IP_ADDRESS>:8080/mysql/metrics`
-
-*Nota: O template é voltado para o motor InnoDB (padrão MySQL 8.0+). Essas métricas foram parametrizadas usando a estratégia de Explicit Whitelisting para entregar o mesmo nível de qualidade e baixo consumo de armazenamento do template PostgreSQL.*
+### 8.5 Ambientes Linux + DBaaS MySQL
+* **Node Exporter (SO):** `http://<IP_ADDRESS>:8080/node/metrics` (ou porta `9100`).
+* **MySQL Exporter (DB):** `http://<IP_ADDRESS>:8080/mysql/metrics` (ou porta `9104`).
 
 ---
 
-## 3. Validando a Configuração
+## 9. Validação e Testes de Ingestão
 
-Terminou de configurar as duas pontas? Faça um teste rápido para ver se as métricas já estão chegando no banco de dados.
+Após reiniciar o Gateway, valide se as métricas estão sendo gravadas no Mimir:
 
-1. **Consulta (Query Ingestion):** Execute uma busca via API no Mimir para confirmar o recebimento dos dados base:
+1. **Consulta de Vivacidade (Status UP):**
    ```bash
+   # Executar consulta no Mimir via container do Grafana
    docker exec grafana curl -sG "http://mimir:9009/prometheus/api/v1/query" \
      --data-urlencode 'query=up{instance="<INSTANCE_NAME>"}'
    ```
-   > A imagem do Grafana não tem `jq` instalado — o comando retorna o JSON
-   > bruto. Procure por `"result":[...]` não vazio para confirmar que os
-   > dados chegaram.
+   > Confirme o retorno de `"result":[{"metric":{...},"value":[...,"1"]}]`.
+
+2. **Verificação nos Dashboards do Grafana:**
+   * Acesse `http://localhost:3000` e abra o dashboard correspondente:
+     * `Hosts > Linux Hosts` ou `Windows Hosts`
+     * `Hosts + Database > Linux + MySQL Hosts` ou `Linux + PostgreSQL Hosts`
+     * `DNS > MGC Internal DNS`
 
 ---
 
-## 3.1 Dashboard MySQL — Filtrando por Database
+## 10. Testes de Carga e Simulação de Stress
 
-Ao acessar o dashboard **Linux + MySQL Hosts**, você verá dois filtros de busca no topo da página:
+Para validar o comportamento dos dashboards e alertas sob estresse de hardware e banco de dados:
 
-- **Instance:** Lista preenchida de forma automática com todas as instâncias descobertas (usando a função `label_values(mysql_up, instance)`).
-- **Database:** Uma lista construída manualmente de bancos disponíveis.
+* **Simulação de Carga em PostgreSQL:**
+  ```bash
+  psql -h <IP_ADDRESS> -U postgres -f artifacts/load-test/postgres-load-test.sql
+  ```
+* **Simulação de Carga em MySQL:**
+  ```bash
+  mysql -h <IP_ADDRESS> -u root -p < artifacts/load-test/mysql-load-test.sql
+  ```
+* **Simulação de Carga em DNS (CoreDNS + etcd):**
+  ```bash
+  bash artifacts/load-test/dns-load-test.sh
+  ```
 
-### Como gerenciar o filtro de Bancos de Dados
-
-O `mysqld_exporter` infelizmente não envia o nome do banco de dados (label `database`) atrelado a todas as métricas do sistema. Por esse motivo, o filtro *Database* do painel precisou ser configurado de forma declarativa (ou seja, é uma lista que você precisa atualizar na mão).
-
-Os valores padrão já configurados são:
-```text
-information_schema, mysql, performance_schema, lgtm
-```
-
-Para **adicionar novos bancos ou remover os antigos**, basta fazer isso pela interface do Grafana:
-1. Abra o dashboard **Linux + MySQL Hosts** e acesse a Engrenagem no menu superior (⚙️ **Settings**) → **Variables**.
-2. Clique na variável `database`.
-3. Edite o campo **Options** adicionando ou removendo os nomes separados por vírgula.
-4. Salve clicando no botão verde **Save dashboard**.
+👉 Para detalhes de locks, throughput e tuning, consulte [artifacts/load-test/LOAD-TEST.md](../../artifacts/load-test/LOAD-TEST.md).
 
 ---
 
-## 4. Testes de Carga (Stress Testing)
+## 11. Governança e Referências
 
-Quer testar se o monitoramento consegue medir corretamente um pico de uso de CPU e banco de dados em tempo real? Simule atividades pesadas rodando os comandos abaixo:
-
-### Simulando carga no PostgreSQL
-```bash
-psql -h <IP_ADDRESS> -U postgres -f postgres-load-test.sql
-```
-
-### Simulando carga no MySQL
-```bash
-mysql -h <IP_ADDRESS> -u root -p < mysql-load-test.sql
-```
-
-Para entender melhor sobre diagnósticos de lentidão, locks e troubleshooting baseando-se nos painéis:
-👉 **[Guia de Testes de Carga (LOAD-TEST.md)](../../artifacts/load-test/LOAD-TEST.md)**
+* Para dimensionamento de memória e retenção, consulte [docs/SIZING.md](../../docs/SIZING.md).
+* Para políticas de allowlisting e métricas, consulte [docs/METRICS.md](../../docs/METRICS.md).
+* Para gerenciamento de dashboards GitOps, consulte [docs/DASHBOARDS.md](../../docs/DASHBOARDS.md).
+* Para topologia de rede e segurança, consulte [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
 
 ---
-
-## 5. Dimensionamento e Retenção (Capacity Planning)
-
-Para ver as fórmulas de volume de dados armazenados, impacto das métricas de whitelist e recursos sugeridos de hardware:
-👉 **[Documentação de Sizing (SIZING.md)](../../SIZING.md)**
+🔙 Voltar: [README Principal](../../README.md)
