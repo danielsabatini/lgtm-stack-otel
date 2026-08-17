@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "mgc-internal-dns-solution"
+    "name": "adth4vt"
   },
   "spec": {
     "annotations": [
@@ -9026,6 +9026,52 @@
                   "unit": "reqps",
                   "decimals": 1,
                   "min": 0,
+                  "mappings": [
+                    {
+                      "type": "range",
+                      "options": {
+                        "from": 0,
+                        "to": 0.0001,
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 0
+                        }
+                      }
+                    },
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 1
+                        }
+                      }
+                    },
+                    {
+                      "type": "special",
+                      "options": {
+                        "match": "null",
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 2
+                        }
+                      }
+                    },
+                    {
+                      "type": "special",
+                      "options": {
+                        "match": "nan",
+                        "result": {
+                          "text": "sem tráfego",
+                          "color": "#6E7B8B",
+                          "index": 3
+                        }
+                      }
+                    }
+                  ],
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -9041,43 +9087,7 @@
                   },
                   "color": {
                     "mode": "thresholds"
-                  },
-                  "mappings": [
-                    {
-                      "type": "range",
-                      "options": {
-                        "from": 0,
-                        "to": 0.0001,
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 0
-                        }
-                      }
-                    },
-                    {
-                      "type": "special",
-                      "options": {
-                        "match": "null",
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 1
-                        }
-                      }
-                    },
-                    {
-                      "type": "special",
-                      "options": {
-                        "match": "nan",
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 2
-                        }
-                      }
-                    }
-                  ]
+                  }
                 },
                 "overrides": []
               }
@@ -10349,6 +10359,6 @@
         }
       }
     ],
-    "uid": "mgc-internal-dns-solution"
+    "uid": "adth4vt"
   }
 }
