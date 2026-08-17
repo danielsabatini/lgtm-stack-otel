@@ -23,7 +23,7 @@ de configuração e este guia:
 
 ```bash
 git clone <url-do-repositorio> lgtm-stack
-cd lgtm-stack/examples/linux
+cd lgtm-stack/examples/push/linux
 ```
 
 > Para atualizar os arquivos no futuro, basta executar `git pull` dentro

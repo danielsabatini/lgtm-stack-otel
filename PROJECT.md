@@ -103,7 +103,7 @@ Hosts são identificados apenas pelo label `instance` (nunca `nodename`, para ev
 
 **Dashboards** (`grafana/provisioning/dashboards/` — Fonte Única da Verdade): todos os dashboards são armazenados exclusivamente sob o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`). Fluxo GitOps: edite na UI do Grafana → exporte diretamente via API nativa v2 (`GET /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`) → salve no arquivo correspondente em `grafana/provisioning/dashboards/<Pasta>/<nome>.json` → commit. Nunca use o endpoint legado `/api/dashboards/db` (que destrói `TabsLayout` achatando em linhas simples). UIDs de dashboards em produção nunca devem mudar. `grafana/provisioning/dashboards/dashboards.yaml` faz hot-reload a cada 10s. Detalhes completos e padrões de design em `docs/DASHBOARDS.md`.
 
-**`examples/`**: templates de instalação para servidores remotos monitorados (Linux, Windows, Windows+MSSQL, e coleta pull DBaaS MySQL/PostgreSQL) — cada subpasta tem seu próprio `INSTALL.md` e `config.alloy` para ser clonado no host alvo, não na stack central.
+**`examples/`**: modelos de monitoramento divididos em duas categorias: `examples/push/` (templates de agentes locais com seu próprio `INSTALL.md` e `config.alloy` para serem instalados dentro do host alvo) e `examples/pull/` (templates de scraping remoto para serem carregados no `alloy-gateway/conf.d/` da stack central).
 
 ## Convenções de versão e upgrade
 
