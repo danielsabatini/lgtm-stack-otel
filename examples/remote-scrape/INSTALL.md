@@ -103,13 +103,13 @@ A pasta `examples/remote-scrape/` fornece templates parametrizados prontos para 
 
 Para monitorar um cluster de DNS interno de alta disponibilidade (*CoreDNS + etcd + Sistema Operacional*), este repositório disponibiliza **3 arquivos de configuração pré-definidos**, prontos para uso e parametrizáveis para qualquer região, provedor de nuvem ou infraestrutura local:
 
-* **`pull-linux-dns-hosts.alloy`:** Métricas do Sistema Operacional (Node Exporter `:9100`).
-* **`pull-coredns-dns-hosts.alloy`:** Métricas de resolução, cache e forward do CoreDNS (`:9153`).
-* **`pull-etcd-dns-hosts.alloy`:** Métricas de liderança Raft, storage e disco do etcd (`:2379`).
+* **`pull-linux-dns-hosts.alloy`:** Métricas do Sistema Operacional dos servidores DNS (Node Exporter `:9100`).
+* **`pull-coredns-hosts.alloy`:** Métricas de resolução, cache e forward do CoreDNS (`:9153`).
+* **`pull-etcd-hosts.alloy`:** Métricas de liderança Raft, storage e disco do etcd (`:2379`).
 
 ### 6.1 Mapeamento de Exemplo dos Servidores DNS
 
-Os arquivos vêm preenchidos com a seguinte topologia de referência multizona (ajuste os IPs, região `cloud_region` e zonas `cloud_availability_zone` conforme a sua topologia):
+Os arquivos vêm parametrizados com slots para 3 instâncias de referência multizona (ajuste os IPs `[IP_ADDRESS]`, nomes `[INSTANCE_NAME]`, região `[REGION]` e zonas `[ZONE]` conforme a sua topologia):
 
 | Servidor / Instância | Endereço IP (Exemplo) | Zona (AZ) | Portas Raspadas |
 |---|---|:---:|---|
@@ -121,13 +121,13 @@ Os arquivos vêm preenchidos com a seguinte topologia de referência multizona (
 
 ### 6.2 Ativação Rápida do Monitoramento DNS
 
-Para ativar a coleta dos 3 servidores de uma só vez no Alloy Gateway:
+Para ativar a coleta dos servidores de DNS no Alloy Gateway:
 
 ```bash
-# 1. Copiar os 3 arquivos de DNS para a pasta conf.d do Gateway
+# 1. Copiar os arquivos de DNS para a pasta conf.d do Gateway
 cp examples/remote-scrape/pull-linux-dns-hosts.alloy alloy-gateway/conf.d/
-cp examples/remote-scrape/pull-coredns-dns-hosts.alloy alloy-gateway/conf.d/
-cp examples/remote-scrape/pull-etcd-dns-hosts.alloy alloy-gateway/conf.d/
+cp examples/remote-scrape/pull-coredns-hosts.alloy alloy-gateway/conf.d/
+cp examples/remote-scrape/pull-etcd-hosts.alloy alloy-gateway/conf.d/
 
 # 2. Reiniciar o Alloy Gateway para carregar os novos pipelines
 docker compose restart alloy-gateway
