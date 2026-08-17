@@ -4592,8 +4592,8 @@
         "kind": "Panel",
         "spec": {
           "id": 46,
-          "title": "Cache Entries",
-          "description": "Quantidade de nomes guardados na memória do CoreDNS, divididos entre Nomes Válidos (com IP) e Nomes Inexistentes (NXDOMAIN para evitar consultas repetidas à toa).\n• O que observar: Deve estabilizar em um patamar estável (limite padrão de 10.000 nomes). Crescimento contínuo sem parar ou valor zerado indica problema de configuração de TTL.\n• Ação em caso de problema: Se o cache estiver sempre lotado descartando dados úteis (veja o painel Cache Evictions), aumente o limite no '/etc/coredns/Corefile' (ex: 'cache 30 { success 50000 denial 25000 }') e recarregue com 'sudo systemctl reload coredns'.",
+          "title": "Cache Entries (Usado vs Limite Total)",
+          "description": "Volume de registros mantidos em cache na memória do CoreDNS comparado aos limites máximos configurados no Corefile (50.000 para nomes válidos e 5.000 para NXDOMAIN).\n• O que observar: O cache de nomes válidos deve operar com folga em relação ao teto de 50 K. Se o cache de NXDOMAIN atingir o teto de 5 K, o CoreDNS passará a descartar registros úteis antes do tempo (veja o painel Cache Evictions).\n• Ação em caso de problema: Se o cache estiver saturando o limite, aumente o tamanho no '/etc/coredns/Corefile' (ex: 'cache 300 { success 100000 denial 25000 }') e recarregue com 'sudo systemctl reload coredns'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4612,7 +4612,8 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"success\"}",
-                        "legendFormat": "{{instance}} | {{zones}} | Válidos",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | {{zones}} | Válidos (Usado)",
                         "range": true
                       }
                     },
@@ -4633,11 +4634,56 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\", type=\"denial\"}",
-                        "legendFormat": "{{instance}} | {{zones}} | Inexistentes | NXDOMAIN",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | {{zones}} | NXDOMAIN (Usado)",
                         "range": true
                       }
                     },
                     "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 5000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Teto NXDOMAIN (5 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (coredns_cache_entries{instance=~\"$instance\", service_name=\"coredns\"})) * 0 + 50000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Teto Válidos (50 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
                     "hidden": false
                   }
                 }
@@ -4726,7 +4772,74 @@
                     }
                   }
                 },
-                "overrides": []
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite Teto NXDOMAIN.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "dark-orange"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite Teto Válidos.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }
