@@ -405,7 +405,7 @@
         "spec": {
           "id": 103,
           "title": "Upstream Health",
-          "description": "Taxa de sucesso e disponibilidade dos servidores DNS externos da Internet (Cloudflare 1.1.1.1 e Google 8.8.8.8).\n• O que observar: Deve ficar em 100.0% (Verde). Se cair para menos de 99%, as consultas para sites e APIs externas da internet estão falhando.\n• Ação em caso de problema: Teste a saída para a internet no servidor com 'ping 1.1.1.1'. Se a internet estiver instável, substitua temporariamente os IPs no arquivo '/etc/coredns/Corefile'.",
+          "description": "Taxa de sucesso e disponibilidade dos servidores DNS recursivos da nuvem (201.23.30.140 e 201.23.30.141).\n• O que observar: Deve ficar em 100.0% (Verde). Se cair para menos de 99%, as consultas para sites e APIs externas da internet estão falhando.\n• Ação em caso de problema: Teste a saída para a internet no servidor com 'ping 201.23.30.140'. Se houver instabilidade, confira a saturação de concorrência na aba Diagnostics.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4384,7 +4384,8 @@
                         "editorMode": "builder",
                         "expr": "up{instance=~\"$instance\", service_name=\"coredns\"}",
                         "legendFormat": "{{instance}}",
-                        "range": true
+                        "range": true,
+                        "instant": true
                       }
                     },
                     "refId": "A",
@@ -7564,7 +7565,11 @@
                         "color": "green"
                       },
                       {
-                        "value": 0.0001,
+                        "value": 0.005,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 0.01,
                         "color": "red"
                       }
                     ]
