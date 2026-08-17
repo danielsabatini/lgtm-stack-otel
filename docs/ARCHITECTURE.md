@@ -22,27 +22,66 @@ A LGTM Stack elimina esse risco através do desacoplamento em dois papéis funda
 
 ## 3. Topologia Geral (Padrão Gateway-Agent)
 
-A divisão de responsabilidades entre coleta no host e recepção na rede é estruturada da seguinte forma:
+A divisão de responsabilidades entre coleta no host e recepção na rede é estruturada através do desacoplamento de privilégios e isolamento de segurança:
 
-```text
- 🛡️ HOST / KERNEL (Modo Privilegiado)              🕸️ REDE / APLICAÇÕES (Modo Seguro)
- ─────────────────────────────────────              ───────────────────────────────────
+![Topologia Geral da LGTM Stack](diagrams/lgtm-architecture-topology.png)
 
-  [Alloy Agent] ──────(Push HTTP Interno)────────▶  [Alloy Gateway] ◀──(OTLP Logs/Metrics/Traces)
-  - Roda como Root / Privileged                     - Roda sem privilégios (Unprivileged)
-  - Lê CPU, Memória, Disco (/procfs, /sys)          - Escuta portas 4317, 4318, 9998, 9999
-  - Lê Journald e Docker Socket                     - Faz fanout e roteamento para os backends
-        │                                                   │
-        ▽ (Isolado da Rede Externa)                         ▽
-       N/A                                      ┌───────────o───────────┐
-                                                │                       │
-                                             [Loki]  [Mimir]  [Tempo]   │
-                                                │       │        │      │
-                                                └───────o────────┘      │
-                                                        ▽               │
-                                                    [Grafana] ◀─────────┘
-                                                 (Porta 3000 - Leitura)
+<details>
+<summary>📐 Exibir código-fonte Mermaid do diagrama</summary>
+
+```mermaid
+flowchart TB
+    %% Estilos e Classes
+    classDef hostBox fill:#f8f9fa,stroke:#495057,stroke-width:2px,color:#212529;
+    classDef privBox fill:#fff3bf,stroke:#f59f00,stroke-width:2px,color:#d9480f;
+    classDef gtwBox fill:#d0ebff,stroke:#1971c2,stroke-width:2px,color:#1864ab;
+    classDef tsdbBox fill:#e6fcf5,stroke:#0ca678,stroke-width:2px,color:#087f5b;
+    classDef uiBox fill:#f3d9fa,stroke:#ae3ec9,stroke-width:2px,color:#862e9c;
+    classDef extBox fill:#f1f3f5,stroke:#868e96,stroke-dasharray: 4 4,color:#495057;
+
+    subgraph EXT ["🌐 Aplicações & Servidores Remotos (Rede / VPC)"]
+        APP1["🖥️ Hosts Remotos<br/>(Alloy Agent / Node Exporter)"]:::extBox
+        APP2["📦 Aplicações Microservices<br/>(OTLP Traces / Metrics)"]:::extBox
+        APP3["📜 Emissores de Logs<br/>(Loki Push / Fluentd)"]:::extBox
+    end
+
+    subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
+        subgraph PRIV ["🛡️ Camada Host / Kernel (Modo Privilegiado)"]
+            AGENT["⚡ Alloy Agent (Host Local)<br/>• privileged: true<br/>• Lê /proc, /sys, /rootfs<br/>• Coleta Journald e Docker Socket"]:::privBox
+        end
+
+        subgraph UNPRIV ["🕸️ Camada de Ingestão de Rede (Modo Seguro / Desprivilegiado)"]
+            GATEWAY["🚪 Alloy Gateway<br/>• privileged: false (Unprivileged)<br/>• Portas: 4317 (gRPC), 4318 (HTTP), 9998 (Loki), 9999 (Mimir)<br/>• Autenticação, Relabel e Fan-out de Telemetria"]:::gtwBox
+        end
+
+        subgraph BACKENDS ["🗄️ Bancos de Dados TSDB (Rede Interna Docker 'lgtm' - Sem Exposição Pública)"]
+            LOKI[("📜 Grafana Loki<br/>Armazenamento de Logs")]:::tsdbBox
+            MIMIR[("📈 Grafana Mimir<br/>Armazenamento de Métricas")]:::tsdbBox
+            TEMPO[("🔍 Grafana Tempo<br/>Armazenamento de Traces")]:::tsdbBox
+        end
+
+        subgraph FRONTEND ["📊 Camada de Visualização & Acesso"]
+            GRAFANA["🖥️ Grafana UI<br/>• Porta 3000 (Leitura / Painéis)<br/>• Consultas unificadas PromQL, LogQL, TraceQL"]:::uiBox
+        end
+    end
+
+    %% Conexões e Fluxos
+    AGENT -->|"Push HTTP Interno<br/>(Sem porta exposta)"| GATEWAY
+    APP1 -->|"Prometheus Remote Write<br/>(Porta 9999)"| GATEWAY
+    APP2 -->|"OTLP gRPC / HTTP<br/>(Portas 4317 / 4318)"| GATEWAY
+    APP3 -->|"Loki Push API<br/>(Porta 9998)"| GATEWAY
+
+    GATEWAY -->|"Gravação de Logs"| LOKI
+    GATEWAY -->|"Gravação de Métricas"| MIMIR
+    GATEWAY -->|"Gravação de Traces"| TEMPO
+
+    GRAFANA -.->|"Datasource Proxy (LogQL)"| LOKI
+    GRAFANA -.->|"Datasource Proxy (PromQL)"| MIMIR
+    GRAFANA -.->|"Datasource Proxy (TraceQL)"| TEMPO
+
+    USER["👨‍💻 Engenheiros & Operadores"]:::extBox -->|"HTTPS / Porta 3000<br/>(Visualização de Dashboards)"| GRAFANA
 ```
+</details>
 
 ---
 
