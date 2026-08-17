@@ -26,17 +26,25 @@ prometheus.scrape "pull_etcd" {
       "instance"                = "[INSTANCE_NAME]",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
-      "cloud_region"            = "br-se1",
-      "cloud_availability_zone" = "a",
+      "cloud_region"            = "[REGION]",
+      "cloud_availability_zone" = "[ZONE]",
     },
-    // {
-    //   "__address__"             = "[IP_ADDRESS]:2379",
-    //   "instance"                = "[INSTANCE_NAME]",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "[IP_ADDRESS]:2379",
+      "instance"                = "[INSTANCE_NAME]",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "[REGION]",
+      "cloud_availability_zone" = "[ZONE]",
+    },
+    {
+      "__address__"             = "[IP_ADDRESS]:2379",
+      "instance"                = "[INSTANCE_NAME]",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "[REGION]",
+      "cloud_availability_zone" = "[ZONE]",
+    },
   ]
 
   metrics_path    = "/metrics"
