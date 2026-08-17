@@ -75,13 +75,14 @@ A pasta `examples/remote-scrape/` fornece templates parametrizados prontos para 
 
 | Template | Carga de Trabalho Monitorada | Porta Padrão |
 |---|---|---|
-| **`pull-linux-hosts.alloy`** | Linux (Node Exporter - Métricas de SO) | `:9100` |
+| **`pull-linux-hosts.alloy`** | Linux Host Geral (Node Exporter - Métricas de SO) | `:9100` |
+| **`pull-linux-dns-hosts.alloy`** | Linux dos Servidores DNS (Node Exporter) | `:9100` |
 | **`pull-windows-hosts.alloy`** | Windows Server (Windows Exporter) | `:9182` |
 | **`pull-windows-mssql-hosts.alloy`** | Windows Server + Microsoft SQL Server | `:9182` |
 | **`pull-linux-dbaas-pgsql-hosts.alloy`** | Linux + Banco de Dados PostgreSQL | `:8080` ou `:9187` |
 | **`pull-linux-dbaas-mysql-hosts.alloy`** | Linux + Banco de Dados MySQL / MariaDB | `:8080` ou `:9104` |
-| **`pull-coredns-hosts.alloy`** | Servidor DNS CoreDNS | `:9153` |
-| **`pull-etcd-hosts.alloy`** | Banco Chave-Valor etcd | `:2379` |
+| **`pull-coredns-hosts.alloy`** | Servidores DNS CoreDNS (Resolução, Cache e Forward) | `:9153` |
+| **`pull-etcd-hosts.alloy`** | Cluster Chave-Valor etcd (Consenso Raft e Storage) | `:2379` |
 
 ### 5.2 Passo a Passo de Ativação
 
@@ -200,6 +201,10 @@ Para instâncias PostgreSQL monitoradas via proxy reverso ou exporters dedicados
 ### 8.5 Ambientes Linux + DBaaS MySQL
 * **Node Exporter (SO):** `http://<IP_ADDRESS>:8080/node/metrics` (ou porta `9100`).
 * **MySQL Exporter (DB):** `http://<IP_ADDRESS>:8080/mysql/metrics` (ou porta `9104`).
+
+### 8.6 Ambientes CoreDNS e etcd (Cluster DNS)
+* **CoreDNS (Plugin Prometheus):** Exposto nativamente na porta `:9153` (`http://<IP_ADDRESS>:9153/metrics`).
+* **etcd (Métricas do Client):** Exposto na porta de cliente `:2379` (`http://<IP_ADDRESS>:2379/metrics`).
 
 ---
 
