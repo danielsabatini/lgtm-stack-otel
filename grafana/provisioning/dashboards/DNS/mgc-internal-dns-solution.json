@@ -812,9 +812,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -827,7 +827,7 @@
                 "showPercentChange": false,
                 "text": {
                   "titleSize": 14,
-                  "valueSize": 28
+                  "valueSize": 36
                 },
                 "textMode": "value_and_name",
                 "wideLayout": true
@@ -5256,7 +5256,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5268,11 +5268,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true,
-                "text": {
-                  "titleSize": 14,
-                  "valueSize": 28
-                }
+                "wideLayout": true
               },
               "fieldConfig": {
                 "defaults": {
@@ -5343,9 +5339,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5358,7 +5354,7 @@
                 "showPercentChange": false,
                 "text": {
                   "titleSize": 14,
-                  "valueSize": 28
+                  "valueSize": 36
                 },
                 "textMode": "value_and_name",
                 "wideLayout": true
@@ -8229,9 +8225,9 @@
             "version": "13.1.2",
             "spec": {
               "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "center",
+                "justifyMode": "auto",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -8244,7 +8240,7 @@
                 "showPercentChange": false,
                 "text": {
                   "titleSize": 14,
-                  "valueSize": 28
+                  "valueSize": 36
                 },
                 "textMode": "value_and_name",
                 "wideLayout": true
@@ -9293,9 +9289,9 @@
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
-                            "maxColumnCount": 3,
-                            "columnWidthMode": "narrow",
-                            "rowHeightMode": "short",
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
                             "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
