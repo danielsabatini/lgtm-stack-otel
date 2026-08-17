@@ -8,35 +8,35 @@
 //
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
-//   Adicione um bloco por servidor na lista targets abaixo.
-//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
-//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
-//
-//   Se o mesmo host também roda etcd (backend da solução de DNS interno) e/ou
-//   o node_exporter, use o mesmo [INSTANCE_NAME] nos arquivos
-//   pull-etcd-hosts.alloy / pull-linux-hosts.alloy correspondentes — os
-//   dashboards de DNS interno filtram host + etcd + CoreDNS por um único
-//   $instance, simulando os três serviços rodando juntos no mesmo host.
+//   Os alvos abaixo já estão configurados para os servidores de DNS interno (MGC br-ne1).
 // =============================================================================
 
 prometheus.scrape "pull_coredns" {
   targets = [
     {
-      "__address__"             = "[IP_ADDRESS]:9153",
-      "instance"                = "[INSTANCE_NAME]",
+      "__address__"             = "172.18.1.2:9153",
+      "instance"                = "dns-ne1-1",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
-      "cloud_region"            = "br-se1",
+      "cloud_region"            = "br-ne1",
       "cloud_availability_zone" = "a",
     },
-    // {
-    //   "__address__"             = "[IP_ADDRESS]:9153",
-    //   "instance"                = "[INSTANCE_NAME]",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "172.18.17.2:9153",
+      "instance"                = "dns-ne1-2",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "b",
+    },
+    {
+      "__address__"             = "172.18.33.2:9153",
+      "instance"                = "dns-ne1-3",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "c",
+    },
   ]
 
   metrics_path    = "/metrics"
@@ -49,11 +49,7 @@ prometheus.scrape "pull_coredns" {
 
 // Transformer (relabel): mantém apenas as métricas usadas pelo dashboard
 // CoreDNS (core plugin + cache + reload + forward/proxy — ver
-// coredns.io/plugins/metrics e coredns.io/plugins/forward). O bloco raiz '.'
-// faz forward para upstreams recursivos externos (1.1.1.1, 8.8.8.8), gerando
-// métricas de encaminhamento e cache de conexões (coredns_forward_* e
-// coredns_proxy_*). Adiciona também o label service_name para identificação no
-// Grafana/Mimir.
+// coredns.io/plugins/metrics e coredns.io/plugins/forward).
 prometheus.relabel "pull_coredns_transformer" {
   forward_to = [prometheus.remote_write.pull_coredns_gateway.receiver]
 
@@ -67,21 +63,13 @@ prometheus.relabel "pull_coredns_transformer" {
       "coredns_plugin_enabled|" +
       "process_start_time_seconds|" +
 
-      // Capacidade do PROCESSO CoreDNS — open vs max é o único par
-      // total-vs-usado que o CoreDNS expõe sobre si mesmo (max é o rlimit
-      // do processo, não do host). Esgotar file descriptor faz o servidor
-      // parar de aceitar conexões. Recursos do HOST (CPU, memória, disco)
-      // não entram aqui: já são cobertos pelo node_exporter no dashboard
-      // Linux, sob o mesmo instance.
+      // Capacidade do PROCESSO CoreDNS
       "process_open_fds|" +
       "process_max_fds|" +
       "process_resident_memory_bytes|" +
       "coredns_panics_total|" +
 
-      // Falha ao recarregar o Corefile. Caso traiçoeiro: o reload falha, o
-      // processo NÃO cai e o serviço segue respondendo — porém com a config
-      // antiga, enquanto se acredita que a nova está valendo. Sem esta série
-      // não há como detectar essa divergência.
+      // Recarga e tráfego DNS
       "coredns_reload_failed_total|" +
       "coredns_dns_requests_total|" +
       "coredns_dns_responses_total|" +
@@ -90,15 +78,6 @@ prometheus.relabel "pull_coredns_transformer" {
       "coredns_dns_request_duration_seconds_sum|" +
 
       // Cache plugin — https://coredns.io/plugins/cache/
-      // Confirmado via /metrics em produção (CoreDNS 1.14.6): esta versão
-      // NÃO expõe coredns_cache_hits_total — só coredns_cache_entries,
-      // coredns_cache_requests_total e coredns_cache_misses_total (esta
-      // última com HELP marcado deprecated, mas ainda é a única série real
-      // de misses). "hits_total" abaixo fica na regex por compatibilidade
-      // com versões futuras/diferentes do CoreDNS, mas hoje não casa com
-      // nenhuma série. coredns_cache_misses_total foi adicionada para
-      // permitir calcular a taxa de acerto real do cache:
-      // hit_rate = 1 - (coredns_cache_misses_total / coredns_cache_requests_total).
       "coredns_cache_entries|" +
       "coredns_cache_evictions_total|" +
       "coredns_cache_hits_total|" +
@@ -106,7 +85,6 @@ prometheus.relabel "pull_coredns_transformer" {
       "coredns_cache_requests_total|" +
 
       // Forward & Proxy plugin — https://coredns.io/plugins/forward/
-      // Métricas de encaminhamento externo no bloco raiz '.' (upstreams 1.1.1.1 e 8.8.8.8)
       "coredns_forward_healthcheck_broken_total|" +
       "coredns_forward_max_concurrent_rejects_total|" +
       "coredns_forward_requests_total|" +
