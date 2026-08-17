@@ -48,8 +48,23 @@ prometheus.relabel "container_local_transformer" {
 
 
   // ---------------------------------------------------------------------------
-  // LABEL CLEANUP
+  // LABEL CLEANUP & FILTERING
   // ---------------------------------------------------------------------------
+
+  // Manter apenas containers com nome definido (descarta root slices e cgroups do host)
+  rule {
+    source_labels = ["name"]
+    regex         = ".+"
+    action        = "keep"
+  }
+
+  // Para métricas de CPU de container, manter apenas o agregado total (cpu="total")
+  // evitando que múltiplos cores colidam em séries idênticas após o labeldrop de 'cpu'
+  rule {
+    source_labels = ["__name__", "cpu"]
+    regex         = "container_cpu_usage_seconds_total;total|container_cpu_cfs_.*;.*|container_memory_.*;.*|container_network_.*;.*|container_oom_.*;.*"
+    action        = "keep"
+  }
 
   // Drop OCI / Docker / cAdvisor metadata
   rule {

@@ -40,3 +40,4 @@ ingester:
 
 limits:
   compactor_blocks_retention_period: ${MIMIR_RETENTION}
+  out_of_order_time_window: 10m
