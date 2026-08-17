@@ -1,91 +1,127 @@
-# LGTM Stack
+# LGTM Stack — Observabilidade Desacoplada e Lean
 
-Stack de observabilidade com Grafana, Alloy, Loki, Mimir e Tempo.
-
-## O que este repositório entrega
-
-- `compose.yaml`: stack principal.
-- `alloy-agent/`: coleta local de métricas e logs.
-- `alloy-gateway/`: entrada OTLP e fanout para Loki, Mimir e Tempo.
-- `grafana/provisioning/`: datasources e dashboards provisionados.
-- `examples/`: templates de agentes e cenários legados.
-- `artifacts/load-test/`: scripts SQL para teste de carga e validação de métricas.
-
-## Documentação oficial do repositório (Governança)
-
-> [!IMPORTANT]
-> **Regra de Governança (Single Source of Truth):** Cada arquivo `.md` neste repositório é a **única referência da verdade** sobre o seu respectivo tema. É terminantemente proibido duplicar informações técnicas (como sizing, comandos de backup ou configurações de rede) entre arquivos. Sempre referencie o documento original através de links.
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): topologia, papéis de cada componente e fronteiras de rede.
-- [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md): setup físico, disco e volumes.
-- [docs/SIZING.md](docs/SIZING.md): dimensionamento, projeção de custos e limites de hardware.
-- [docs/BACKUP.md](docs/BACKUP.md): backup, snapshot e disaster recovery.
-- [docs/UPGRADE.md](docs/UPGRADE.md): processo de upgrade e validações.
-- [docs/METRICS.md](docs/METRICS.md): política de métricas, labels e retenção no Mimir.
-- [docs/LOGS.md](docs/LOGS.md): política de logs, labels e retenção no Loki.
-- [docs/TRACES.md](docs/TRACES.md): ingestão OTLP e política de traces no Tempo.
-- [docs/DASHBOARDS.md](docs/DASHBOARDS.md): templates de dashboard para diferentes tipos de host.
-- [docs/OBSERVABILITY-METHODOLOGY.md](docs/OBSERVABILITY-METHODOLOGY.md): metodologia de observabilidade, taxonomia de pilares (Health, Capacity, Activity, Diagnostics, Inventory, Logs, Traces), correlação de sinais (M/L/T), SLIs/SLOs e playbook de incidentes.
-- [CHANGELOG.md](CHANGELOG.md): histórico de versões e mudanças.
-- [CONTRIBUTING.md](CONTRIBUTING.md): guia de contribuição e governança técnica.
-- [ROADMAP.md](ROADMAP.md): visão de futuro e próximas funcionalidades.
-
-## Início rápido
-
-> [!IMPORTANT]
-> Certifique-se de ter o **Docker** e o **Docker Compose (V2)** instalados antes de prosseguir. Para guias de instalação e requisitos, consulte [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
-
-Para laboratório ou desenvolvimento local:
-
-```bash
-git clone <seu-repo> lgtm-stack
-cd lgtm-stack
-cp .env.example .env
-docker compose up -d
-```
-
-Para ambiente produtivo com disco dedicado, siga [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
-
-## Endpoints e Topologia de Rede
-
-Para verificar quais portas a stack expõe nativamente, a responsabilidade de cada componente e como o isolamento de rede foi desenhado (ex: o motivo do Loki, Mimir e Tempo não exporem portas no host), consulte o documento oficial de topologia:
-
-👉 **[docs/ARCHITECTURE.md (Fronteiras de Rede)](docs/ARCHITECTURE.md)**
-
-
-## Instalação em servidores remotos
-
-Para monitorar um servidor remoto, clone este repositório no servidor alvo
-e siga o guia de instalação da plataforma correspondente:
-
-```bash
-git clone <url-do-repositorio> lgtm-stack
-cd lgtm-stack/examples/<plataforma>
-# siga o INSTALL.md
-```
-
-| Plataforma | Guia |
-|------------|------|
-| Linux (Debian/Ubuntu) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
-| Windows | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
-| Windows + SQL Server | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
-| Coleta via Pull: Linux + MySQL | [examples/remote-scrape/INSTALL.md#linux--dbaas-mysql) |
-| Coleta via Pull: Linux + PostgreSQL | [examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql) |
-| Coleta via Pull: Outras plataformas | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
-
-> **Traces (Beyla eBPF):** disponível como seção opcional dentro do guia Linux —
-> consulte [examples/linux/INSTALL.md, seção "Traces (Beyla eBPF) — Opcional"](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
-> Não aplicável a Windows, DBaaS gerenciado ou coleta via Pull — detalhes em [docs/TRACES.md](docs/TRACES.md).
-
-> Para atualizar as configurações em servidores já instalados: `git pull` no
-> diretório clonado e reinicie o serviço Alloy.
+> **Referência Central:** Arquitetura de referência completa para observabilidade corporativa utilizando **Grafana, Grafana Alloy, Grafana Loki, Grafana Mimir e Grafana Tempo (LGTMP)**, focada em segurança por isolamento de privilégios e eficiência de custos (*Lean Observability*).
 
 ---
 
-## Termo de Responsabilidade e Suporte MGC
+## 1. Introdução
 
-**Não Homologação:** Esta solução (*LGTM Stack*) é uma arquitetura de referência baseada em projetos *Open Source* de terceiros (Grafana, Alloy, Loki, Mimir, Tempo) rodando no espaço do usuário (via Docker). Ela **não é** um produto gerenciado (PaaS) ou homologado nativamente pela Magalu Cloud para ambientes de produção de alta criticidade.
+Em ambientes tradicionais de monitoramento, a infraestrutura de telemetria frequentemente sofre com dois problemas graves: vulnerabilidades de segurança (coletores com privilégios de `root` expostos diretamente à rede externa) e custos proibitivos de armazenamento causados pela coleta indiscriminada de métricas que nunca são consultadas.
 
-**Limites do Suporte MGC:** O suporte oficial da Magalu Cloud se limita exclusivamente à infraestrutura subjacente: disponibilidade das instâncias (MGC Compute), conectividade de rede (VPC/Internet) e o funcionamento das APIs de infraestrutura (como Block Storage ou Object Storage). O suporte da MGC **não cobre** a depuração de problemas relacionados ao processo dos containers da stack (ex: travamentos por OOM Kill, lentidão em queries, alto consumo de CPU pelo Grafana Alloy, ou erros de permissão interna). Esses são considerados problemas de nível de aplicação, de responsabilidade do cliente.
+A **LGTM Stack** resolve esses desafios através do desacoplamento arquitetural entre **Alloy Agent** (coleta local privilegiada sem portas de rede) e **Alloy Gateway** (ingestão segura desprivilegiada), combinada com uma política estrita de *Explicit Allowlisting (Lean Metrics)* que reduz a cardinalidade e o consumo de disco em mais de **80% a 90%** em relação ao padrão de mercado.
 
-**Responsabilidade do Cliente:** Ao optar por esta arquitetura, o cliente assume o papel de administrador e mantenedor da solução. O cliente tem total responsabilidade pelo monitoramento da saúde dos containers, pelo dimensionamento correto da infraestrutura (sizing), pelas rotinas de backup, gerenciamento de credenciais (arquivo `.env`) e pelos impactos de performance e estabilidade gerados pelo volume de telemetria ingerido.
+---
+
+## 2. Objetivo
+
+1. **Unificar os 3 Sinais da Observabilidade:** Centralizar Métricas (Mimir), Logs (Loki) e Traces Distribuídos (Tempo) em uma interface única no Grafana 13.
+2. **Garantir Segurança por Design:** Isolar totalmente os bancos de dados TSDBs da rede pública, expondo apenas o Alloy Gateway para recepção desprivilegiada e o Grafana para leitura autenticada.
+3. **Fornecer Soluções Prontas para Produção:** Entregar dashboards provisionados como código (*GitOps*), documentação metodológica padronizada e templates de agentes para Linux, Windows, bancos de dados (MySQL, PostgreSQL, MSSQL) e infraestrutura de DNS interno (*CoreDNS + etcd*).
+
+---
+
+## 3. Estrutura e Entregáveis do Repositório
+
+O repositório é organizado de forma modular e determinística:
+
+* **`compose.yaml`:** Declaração principal dos serviços da stack central (Loki, Mimir, Tempo, Grafana, Alloy Gateway e Alloy Agent local).
+* **`alloy-agent/conf.d/`:** Pipelines HCL para coleta local de métricas de host (CPU, Memória, Disco, Rede, Inodes), containers Docker e logs do systemd journal.
+* **`alloy-gateway/conf.d/`:** Ponto único de ingestão de rede com suporte a OTLP (4317/4318), Prometheus `remote_write` (9999) e Loki Push (9998).
+* **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
+* **`examples/`:** Templates de instalação para hosts remotos (Linux, Windows, DBaaS MySQL, DBaaS PostgreSQL e Windows MSSQL).
+* **`artifacts/`:** Scripts de teste de carga (DNS, MySQL, PostgreSQL), automação de túneis e planilhas de referência.
+* **`docs/`:** Documentação oficial, técnica e operacional da stack.
+
+---
+
+## 4. Início Rápido (Ambiente Local / Laboratório)
+
+> ⚠️ **Pré-requisito:** Certifique-se de ter o **Docker** e o **Docker Compose (V2)** instalados. Para requisitos de hardware e particionamento de disco dedicado (`/docker`), consulte [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
+
+Para subir a stack central em ambiente local ou de desenvolvimento:
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/danielsabatini/lgtm-stack.git
+cd lgtm-stack
+
+# 2. Configurar as variáveis de ambiente
+cp .env.example .env
+
+# 3. Inicializar a stack completa
+docker compose up -d
+```
+
+Após a inicialização:
+* **Grafana UI:** Acesse `http://localhost:3000` (Usuário: `admin` / Senha definida no `.env`, padrão: `changeme`).
+* **Alloy Gateway UI:** Acesse `http://localhost:12345` para diagnóstico de componentes e pipelines.
+
+---
+
+## 5. Coleta em Servidores Remotos (Agentes & Pull Scrapes)
+
+Para monitorar instâncias remotas, consulte o guia de instalação correspondente ao sistema operacional ou banco de dados:
+
+| Plataforma / Carga de Trabalho | Modo de Coleta | Guia Passo a Passo |
+|---|---|---|
+| **Linux (Debian / Ubuntu / Rocky)** | Push (Alloy Agent) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
+| **Windows Server** | Push (Alloy Agent) | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
+| **Windows + SQL Server (MSSQL)** | Push (Alloy Agent) | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
+| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md#linux--dbaas-mysql](examples/remote-scrape/INSTALL.md#linux--dbaas-mysql) |
+| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql](examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql) |
+| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
+
+> 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/linux/INSTALL.md](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
+
+---
+
+## 6. Endpoints e Fronteiras de Rede
+
+A stack opera com isolamento estrito de portas. Nenhum banco de dados (TSDB) é exposto na rede pública:
+
+| Porta | Protocolo | Origem Recomendada | Descrição do Serviço |
+|---|---|---|---|
+| **`3000`** | TCP | Pública / VPN | Interface Web e leitura de Dashboards no **Grafana**. |
+| **`12345`** | TCP | VPN / Admin | Interface Web de diagnóstico do **Alloy Gateway**. |
+| **`4317`** | TCP | VPC / Rede Interna | Ingestão OTLP gRPC (Traces e Métricas de Aplicações). |
+| **`4318`** | TCP | VPC / Rede Interna | Ingestão OTLP HTTP (Traces e Métricas de Aplicações). |
+| **`9998`** | TCP | VPC / Rede Interna | Ingestão de Logs via Loki Push API. |
+| **`9999`** | TCP | VPC / Rede Interna | Ingestão de Métricas via Prometheus Remote Write. |
+
+> 📖 Para diagrama visual de rede e topologia de segurança, consulte [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## 7. Catálogo da Documentação Oficial (Governança)
+
+> 🔒 **Regra de Fonte Única da Verdade (`AGENTS.md` §11.1.6):** Cada documento abaixo é a referência normativa exclusiva sobre o seu respectivo tema. Informações técnicas não são duplicadas entre arquivos.
+
+### 7.1 Arquitetura, Infraestrutura e Operação
+* **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):** Topologia de rede, modelo Gateway-Agent e isolamento de segurança.
+* **[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md):** Pré-requisitos, particionamento de disco LVM (`/docker`) e volumes.
+* **[docs/SIZING.md](docs/SIZING.md):** Dimensionamento de hardware, cardinalidade real e projeção de retenção de disco.
+* **[docs/BACKUP.md](docs/BACKUP.md):** Procedimentos de backup, snapshot de volumes e Disaster Recovery (DR).
+* **[docs/UPGRADE.md](docs/UPGRADE.md):** Roteiro seguro de upgrade de componentes e compatibilidade de TSDBs.
+
+### 7.2 Sinais de Telemetria e Visualização
+* **[docs/OBSERVABILITY-METHODOLOGY.md](docs/OBSERVABILITY-METHODOLOGY.md):** Metodologia canônica dos 5 Pilares Numéricos (*Health, Capacity, Activity, Diagnostics, Inventory*), 4 Categorias de Logs, Traces OTLP, SLIs/SLOs e Playbook de Incidentes.
+* **[docs/METRICS.md](docs/METRICS.md):** Política de métricas Lean, allowlists e padrão de tooltips em 3 blocos.
+* **[docs/LOGS.md](docs/LOGS.md):** Política de logs estruturados no Loki, estágios de relabel e parsing.
+* **[docs/TRACES.md](docs/TRACES.md):** Rastreamento distribuído no Tempo, Beyla eBPF e tail-sampling.
+* **[docs/DASHBOARDS.md](docs/DASHBOARDS.md):** Provisionamento GitOps com schema nativo do Grafana 13 (`v2`), convenções visuais e arquitetura da solução DNS.
+* **[docs/ALERTS.md](docs/ALERTS.md):** Estratégia de regras de alerta por taxa de queima de SLO (*Multi-Window Multi-Burn-Rate*).
+
+### 7.3 Governança do Repositório
+* **[README.md](README.md):** Porta de entrada, visão geral e orientações iniciais.
+* **[CHANGELOG.md](CHANGELOG.md):** Histórico de releases e mudanças estruturadas por versão.
+* **[CONTRIBUTING.md](CONTRIBUTING.md):** Padrões de código, diretrizes de contribuição e convenções técnicas.
+* **[ROADMAP.md](ROADMAP.md):** Planejamento evolutivo e marcos futuros do projeto.
+* **[LICENSE](LICENSE):** Licença e termos de distribuição do projeto (MIT License).
+
+---
+
+## 8. Termo de Responsabilidade e Limites de Suporte
+
+* **Natureza da Solução:** Esta solução (*LGTM Stack*) é uma arquitetura de referência baseada em projetos *Open Source* de terceiros (Grafana Labs) executada no espaço do usuário via Docker. Ela **não é** um serviço gerenciado (PaaS) proprietário.
+* **Fronteira de Suporte em Cloud:** Em ambientes de nuvem (como Magalu Cloud), o suporte oficial do provedor limita-se exclusivamente à infraestrutura subjacente (disponibilidade das máquinas virtuais, conectividade de rede da VPC e integridade dos volumes de bloco). A depuração de processos internos dos containers, consultas PromQL/LogQL customizadas, ajustes de sizing e políticas de backup são de responsabilidade do administrador da stack.
+* **Responsabilidade Operacional:** O mantenedor da stack assume a gestão da capacidade de hardware, rotação de logs e aplicação periódica de atualizações de segurança recomendadas em [docs/UPGRADE.md](docs/UPGRADE.md).
