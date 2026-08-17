@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "mgc-internal-dns-solution"
+    "name": "adth4vt"
   },
   "spec": {
     "annotations": [
@@ -329,7 +329,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -341,7 +341,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -445,7 +445,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -457,7 +457,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -887,7 +887,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -899,7 +899,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -1012,7 +1012,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -1102,7 +1102,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -1114,7 +1114,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -3082,7 +3082,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -3095,7 +3095,7 @@
                 "showPercentChange": false,
                 "text": {},
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -3165,7 +3165,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -3177,7 +3177,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -3247,7 +3247,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -3259,7 +3259,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -3331,7 +3331,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -3343,7 +3343,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -3415,7 +3415,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -3427,7 +3427,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -4873,7 +4873,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -5536,7 +5536,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5548,7 +5548,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -5765,7 +5765,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5777,7 +5777,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -5850,7 +5850,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -5862,7 +5862,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -5975,7 +5975,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -7403,7 +7403,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "area",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -7415,7 +7415,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -7508,7 +7508,7 @@
               "options": {
                 "colorMode": "value",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "vertical",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -7900,7 +7900,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -7983,7 +7983,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -8053,7 +8053,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -8065,7 +8065,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -8367,7 +8367,7 @@
               "options": {
                 "colorMode": "none",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "vertical",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -8809,7 +8809,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -8821,7 +8821,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
@@ -9007,7 +9007,7 @@
               "options": {
                 "colorMode": "background",
                 "graphMode": "none",
-                "justifyMode": "auto",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
@@ -9019,7 +9019,7 @@
                 },
                 "showPercentChange": false,
                 "textMode": "value_and_name",
-                "wideLayout": true
+                "wideLayout": false
               },
               "fieldConfig": {
                 "defaults": {
