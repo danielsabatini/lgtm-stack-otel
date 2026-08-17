@@ -10,7 +10,7 @@
 // Pré-requisito: habilitar o coletor mssql no windows_exporter:
 //   --collectors.enabled=cpu,logical_disk,memory,net,os,system,mssql,pagefile
 //
-// Para coleta completa (Windows + MSSQL via Alloy agent), use examples/windows-mssql/config.alloy.
+// Para coleta completa (Windows + MSSQL via Alloy agent), use examples/push/windows-mssql/config.alloy.
 //
 // IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
 // Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.

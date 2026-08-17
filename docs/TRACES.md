@@ -33,7 +33,7 @@ As aplicações podem enviar traces apontando seus exporters OpenTelemetry diret
 Em servidores Linux onde não é viável alterar o código das aplicações para inserir SDKs do OpenTelemetry, a stack suporta a auto-instrumentação via **Grafana Beyla (`beyla.ebpf`)**:
 * **Zero Código:** Inspeciona chamadas HTTP, HTTPS e gRPC diretamente no nível do kernel Linux via eBPF.
 * **Métricas RED Automáticas:** Gera automaticamente métricas de taxa de requisições, erros e duração (`traces_spanmetrics_*`) no Mimir.
-* **Guia de Instalação:** Consulte o guia em [examples/linux/INSTALL.md](../examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
+* **Guia de Instalação:** Consulte o guia em [examples/push/linux/INSTALL.md](../examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
 
 ---
 

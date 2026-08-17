@@ -28,7 +28,8 @@ O repositório é organizado de forma modular e determinística:
 * **`alloy-agent/conf.d/`:** Pipelines HCL para coleta local de métricas de host (CPU, Memória, Disco, Rede, Inodes), containers Docker e logs do systemd journal.
 * **`alloy-gateway/conf.d/`:** Ponto único de ingestão de rede com suporte a OTLP (4317/4318), Prometheus `remote_write` (9999) e Loki Push (9998).
 * **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
-* **`examples/`:** Templates de instalação para hosts remotos (Linux, Windows, DBaaS MySQL, DBaaS PostgreSQL e Windows MSSQL).
+* **`examples/push/`:** Templates de instalação para agentes locais Alloy nos servidores monitorados (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
+* **`examples/pull/`:** Templates de scraping remoto (modo Pull) para serem carregados no Alloy Gateway central (Linux Host, Linux DNS, CoreDNS, etcd, DBaaS MySQL, DBaaS PostgreSQL, Windows).
 * **`artifacts/`:** Scripts de teste de carga (DNS, MySQL, PostgreSQL), automação de túneis e planilhas de referência.
 * **`docs/`:** Documentação oficial, técnica e operacional da stack.
 
@@ -58,20 +59,23 @@ Após a inicialização:
 
 ---
 
-## 5. Coleta em Servidores Remotos (Agentes & Pull Scrapes)
+## 5. Coleta em Servidores Remotos (Agentes Push & Scrapes Pull)
 
-Para monitorar instâncias remotas, consulte o guia de instalação correspondente ao sistema operacional ou banco de dados:
+Para monitorar instâncias remotas, consulte o guia de instalação correspondente ao modo de coleta:
 
 | Plataforma / Carga de Trabalho | Modo de Coleta | Guia Passo a Passo |
 |---|---|---|
-| **Linux (Debian / Ubuntu / Rocky)** | Push (Alloy Agent) | [examples/linux/INSTALL.md](examples/linux/INSTALL.md) |
-| **Windows Server** | Push (Alloy Agent) | [examples/windows/INSTALL.md](examples/windows/INSTALL.md) |
-| **Windows + SQL Server (MSSQL)** | Push (Alloy Agent) | [examples/windows-mssql/INSTALL.md](examples/windows-mssql/INSTALL.md) |
-| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md#linux--dbaas-mysql](examples/remote-scrape/INSTALL.md#linux--dbaas-mysql) |
-| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql](examples/remote-scrape/INSTALL.md#linux--dbaas-postgresql) |
-| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/remote-scrape/INSTALL.md](examples/remote-scrape/INSTALL.md) |
+| **Linux (Debian / Ubuntu / Rocky)** | Push (Agente Local) | [examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md) |
+| **Linux + MySQL Nativo** | Push (Agente Local) | [examples/push/linux-mysql/INSTALL.md](examples/push/linux-mysql/INSTALL.md) |
+| **Linux + PostgreSQL Nativo** | Push (Agente Local) | [examples/push/linux-pgsql/INSTALL.md](examples/push/linux-pgsql/INSTALL.md) |
+| **Windows Server** | Push (Agente Local) | [examples/push/windows/INSTALL.md](examples/push/windows/INSTALL.md) |
+| **Windows + SQL Server (MSSQL)** | Push (Agente Local) | [examples/push/windows-mssql/INSTALL.md](examples/push/windows-mssql/INSTALL.md) |
+| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#85-ambientes-linux--dbaas-mysql](examples/pull/INSTALL.md#85-ambientes-linux--dbaas-mysql) |
+| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#84-ambientes-linux--dbaas-postgresql](examples/pull/INSTALL.md#84-ambientes-linux--dbaas-postgresql) |
+| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md#6-configuração-específica-para-a-solução-dns-interno-coredns--etcd--linux](examples/pull/INSTALL.md#6-configuração-específica-para-a-solução-dns-interno-coredns--etcd--linux) |
+| **Guia Geral de Coleta Pull (Scraping)** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md](examples/pull/INSTALL.md) |
 
-> 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/linux/INSTALL.md](examples/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
+> 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
 
 ---
 

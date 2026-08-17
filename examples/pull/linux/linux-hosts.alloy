@@ -12,7 +12,7 @@
 // LIMITAÇÃO — Logs:
 //   O node_exporter padrão não expõe logs. Para coletar SSH, kernel, cron e
 //   systemd (equivalente a alloy-agent/conf.d/200-*.alloy … 275-*.alloy), instale
-//   o Alloy agent no servidor remoto seguindo examples/linux/INSTALL.md.
+//   o Alloy agent no servidor remoto seguindo examples/push/linux/INSTALL.md.
 //
 //   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
 //   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.

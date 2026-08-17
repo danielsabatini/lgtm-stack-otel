@@ -28,18 +28,19 @@ IDENTITY_LABELS = [
 # os 5 labels de identidade global em algum ponto do pipeline (via rule
 # target_label=... ou via targets=[{...}] no modelo pull).
 GATEWAY_FILES = [
-    "linux/config.alloy",
-    "linux-mysql/config.alloy",
-    "linux-pgsql/config.alloy",
-    "windows/config.alloy",
-    "windows-mssql/config.alloy",
-    "remote-scrape/pull-linux-hosts.alloy",
-    "remote-scrape/pull-windows-hosts.alloy",
-    "remote-scrape/pull-windows-mssql-hosts.alloy",
-    "remote-scrape/pull-linux-dbaas-mysql-hosts.alloy",
-    "remote-scrape/pull-linux-dbaas-pgsql-hosts.alloy",
-    "remote-scrape/pull-coredns-hosts.alloy",
-    "remote-scrape/pull-etcd-hosts.alloy",
+    "push/linux/config.alloy",
+    "push/linux-mysql/config.alloy",
+    "push/linux-pgsql/config.alloy",
+    "push/windows/config.alloy",
+    "push/windows-mssql/config.alloy",
+    "pull/linux/linux-hosts.alloy",
+    "pull/dns/linux-dns-hosts.alloy",
+    "pull/dns/coredns-hosts.alloy",
+    "pull/dns/etcd-hosts.alloy",
+    "pull/windows/windows-hosts.alloy",
+    "pull/windows-mssql/windows-mssql-hosts.alloy",
+    "pull/linux-dbaas-mysql/linux-dbaas-mysql-hosts.alloy",
+    "pull/linux-dbaas-pgsql/linux-dbaas-pgsql-hosts.alloy",
 ]
 
 # Grupos de arquivos cuja allowlist de métricas (mesmo prefixo) deve ser
@@ -49,25 +50,25 @@ METRIC_GROUPS = [
     {
         "name": "Linux host (node_*)",
         "prefix": "node_",
-        "files": ["linux/config.alloy", "remote-scrape/pull-linux-hosts.alloy"],
+        "files": ["push/linux/config.alloy", "pull/linux/linux-hosts.alloy", "pull/dns/linux-dns-hosts.alloy"],
     },
     {
         "name": "Windows host (windows_* exceto windows_mssql_*)",
         "prefix": "windows_",
         "exclude_prefix": "windows_mssql_",
         "files": [
-            "windows/config.alloy",
-            "windows-mssql/config.alloy",
-            "remote-scrape/pull-windows-hosts.alloy",
-            "remote-scrape/pull-windows-mssql-hosts.alloy",
+            "push/windows/config.alloy",
+            "push/windows-mssql/config.alloy",
+            "pull/windows/windows-hosts.alloy",
+            "pull/windows-mssql/windows-mssql-hosts.alloy",
         ],
     },
     {
         "name": "Windows MSSQL (windows_mssql_*)",
         "prefix": "windows_mssql_",
         "files": [
-            "windows-mssql/config.alloy",
-            "remote-scrape/pull-windows-mssql-hosts.alloy",
+            "push/windows-mssql/config.alloy",
+            "pull/windows-mssql/windows-mssql-hosts.alloy",
         ],
     },
 ]
