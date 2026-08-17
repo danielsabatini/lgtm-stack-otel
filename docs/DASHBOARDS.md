@@ -36,7 +36,7 @@ lgtm-stack/
     │   ├── linux-pgsql-hosts.json      (Linux + PostgreSQL - UID: linux-pgsql-hosts)
     │   └── windows-hosts-mssql.json    (Windows + SQL Server - UID: windows-hosts-mssql)
     ├── DNS/
-    │   └── mgc-internal-dns-solution.json (MGC Internal DNS - UID: adth4vt | Multi-Node Cluster)
+│   │   └── mgc-internal-dns.json       (MGC Internal DNS - UID: adth4vt | Multi-Node Cluster)
     ├── LGTM/
     │   └── lgtm-stack.json             (LGTM Self-Monitoring - UID: lgtm-stack)
     └── dashboards.yaml                 (Configuração de Hot-Reload a cada 10s)
@@ -70,7 +70,7 @@ Com o Grafana 13, não é necessário fazer conversões manuais de JSON. Basta r
 # Exemplo para salvar o dashboard MGC Internal DNS (UID: adth4vt):
 curl -s -u admin:changeme \
   "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/adth4vt" \
-  | jq . > grafana/provisioning/dashboards/DNS/mgc-internal-dns-solution.json
+  | jq . > grafana/provisioning/dashboards/DNS/mgc-internal-dns.json
 
 # Exemplo para salvar o dashboard Linux Hosts (UID: linux-hosts):
 curl -s -u admin:changeme \
@@ -148,7 +148,7 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 | Dashboard | UID Canônico | Pasta no Provisioning | Escopo | Componentes / Tags |
 |---|---|---|---|---|
-| **MGC Internal DNS** | `mgc-internal-dns-solution` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
+| **MGC Internal DNS** | `adth4vt` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
 | **Linux Hosts** | `linux-hosts` | `Hosts/` | Single-Node | `linux`, `node-exporter`, `infrastructure` |
 | **Windows Hosts** | `windows-hosts` | `Hosts/` | Single-Node | `windows`, `windows-exporter`, `infrastructure` |
 | **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `mysql`, `database` |
@@ -158,12 +158,12 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 ---
 
-## 8. Arquitetura da Solução MGC Internal DNS (`mgc-internal-dns-solution`)
+## 8. Arquitetura da Solução MGC Internal DNS (`adth4vt`)
 
 O dashboard **MGC Internal DNS** monitora a infraestrutura de resolução de nomes interna em 3 camadas interdependentes, organizadas em linhas colapsáveis (*Rows*) e abas metodológicas (*Tabs*):
 
 ```text
-MGC Internal DNS (mgc-internal-dns-solution)
+MGC Internal DNS (adth4vt)
 ├── 1. Linha Linux (Sistema Operacional dos Servidores DNS)
 │   ├── Health: Sinais vitais de CPU, Memória, Disco e Rede em percentual normalizado.
 │   ├── Capacity: Composição e limites de CPU Load, Memória RAM, Swap, FS Root e Inodes.
