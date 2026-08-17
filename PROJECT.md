@@ -117,6 +117,7 @@ Os três arquivos de config (`loki/loki.yaml`, `mimir/mimir.yaml`, `tempo/tempo.
 2. **Desacoplamento** — Alloy Agent coleta (privilegiado), Alloy Gateway ingere (sem privilégios).
 3. **Portabilidade** — use variáveis do Grafana (`$instance`, `$container`), não nomes de host fixos.
 4. **Sincronização de alertas** — thresholds visuais nos painéis só existem para métricas com alertas, com valores idênticos aos da regra de alerta.
+5. **Fluxo GitOps (Local First → Sync Remoto)** — Toda alteração de configuração, dashboards ou pipelines deve ser realizada e versionada primeiro no repositório local (Fonte Única da Verdade) e então sincronizada para os servidores remotos (via rsync/SSH/API). É proibido alterar arquivos diretamente em produção sem persistir no repositório.
 
 ## Idioma
 
