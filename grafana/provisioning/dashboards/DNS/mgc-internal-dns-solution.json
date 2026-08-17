@@ -1175,7 +1175,7 @@
         "spec": {
           "id": 109,
           "title": "Total Keys (DNS Records)",
-          "description": "Quantidade total de chaves (registros DNS de zonas internas) armazenadas no etcd em cada nó.\n• O que observar: Deve acompanhar a quantidade de registros DNS criados no ambiente (~1.200 chaves no teste de carga). Crescimento contínuo sem exclusão pode indicar chaves órfãs ou acúmulo de leases antigas.\n• Ação em caso de problema: Inspecione as chaves antigas com 'etcdctl get --prefix /dns' e remova registros obsoletos.",
+          "description": "Quantidade de registros DNS armazenados no banco etcd comparada ao limite operacional recomendado de 100.000 chaves para a cota de 2 GB (Total − Usado).\n• O que observar: Deve operar com ampla folga em relação ao teto de 100 K. Se a quantidade de chaves crescer continuamente sem exclusão, pode indicar acúmulo de registros órfãos ou leases expiradas.\n• Ação em caso de problema: Inspecione as chaves antigas com 'etcdctl get --prefix /dns' e execute a desfragmentação da base com 'etcdctl defrag'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1194,11 +1194,34 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "etcd_debugging_mvcc_keys_total{instance=~\"$instance\", service_name=\"etcd\"}",
+                        "instant": false,
                         "legendFormat": "{{instance}} | Chaves DNS Ativas (Usado)",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "(count by(instance) (etcd_debugging_mvcc_keys_total{instance=~\"$instance\", service_name=\"etcd\"})) * 0 + 100000",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Limite Recomendado (Teto: 100 K)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -1291,6 +1314,39 @@
                   {
                     "matcher": {
                       "id": "byRegexp",
+                      "options": ".*Limite Recomendado.*|.*Teto.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
                       "options": ".*Chaves DNS.*|.*Usado.*"
                     },
                     "properties": [
@@ -1301,6 +1357,13 @@
                       {
                         "id": "custom.fillOpacity",
                         "value": 15
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
                       }
                     ]
                   }
@@ -2216,11 +2279,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -2234,8 +2297,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -2257,8 +2320,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "green"
+                          "fixedColor": "green",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -2418,11 +2481,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -2436,8 +2499,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -2459,8 +2522,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "green"
+                          "fixedColor": "green",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -3911,11 +3974,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -3929,8 +3992,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -3952,8 +4015,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "orange"
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -6842,11 +6905,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -6860,8 +6923,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -9160,11 +9223,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -9178,8 +9241,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -9201,8 +9264,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "purple"
+                          "fixedColor": "purple",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -9224,8 +9287,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "orange"
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
