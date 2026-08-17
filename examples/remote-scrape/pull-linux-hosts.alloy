@@ -7,38 +7,35 @@
 //
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
-//   Adicione um bloco por servidor na lista targets abaixo.
-//
-// LIMITAÇÃO — Logs:
-//   O node_exporter padrão não expõe logs. Para coletar SSH, kernel, cron e
-//   systemd (equivalente a alloy-agent/conf.d/200-*.alloy … 275-*.alloy), instale
-//   o Alloy agent no servidor remoto seguindo examples/linux/INSTALL.md.
-//
-//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
-//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
+//   Os alvos abaixo já estão configurados para os servidores de DNS interno (MGC br-ne1).
 // =============================================================================
 
-// Collector (scrape): varre o node_exporter de cada servidor legado.
-// Os labels de identidade (instance, environment, etc.) são definidos por target
-// porque o gateway não possui as variáveis de ambiente do agent.
 prometheus.scrape "pull_linux_host" {
   targets = [
     {
-      "__address__"             = "[IP_ADDRESS]:9100",
-      "instance"                = "[INSTANCE_NAME]",
+      "__address__"             = "172.18.1.2:9100",
+      "instance"                = "dns-ne1-1",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
-      "cloud_region"            = "br-se1",
+      "cloud_region"            = "br-ne1",
       "cloud_availability_zone" = "a",
     },
-    // {
-    //   "__address__"             = "[IP_ADDRESS]:9100",
-    //   "instance"                = "[INSTANCE_NAME]",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "172.18.17.2:9100",
+      "instance"                = "dns-ne1-2",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "b",
+    },
+    {
+      "__address__"             = "172.18.33.2:9100",
+      "instance"                = "dns-ne1-3",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "c",
+    },
   ]
 
   job_name        = "linux-legacy"
@@ -106,7 +103,6 @@ prometheus.relabel "pull_linux_host_transformer" {
       "node_network_transmit_drop_total|" +
       "node_network_transmit_errs_total"
   }
-
 
   rule {
     source_labels = ["device"]
