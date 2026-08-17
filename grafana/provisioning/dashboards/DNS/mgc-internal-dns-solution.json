@@ -1194,7 +1194,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "etcd_debugging_mvcc_keys_total{instance=~\"$instance\", service_name=\"etcd\"}",
-                        "legendFormat": "{{instance}} | Chaves Ativas",
+                        "legendFormat": "{{instance}} | Chaves DNS Ativas (Usado)",
                         "range": true
                       }
                     },
@@ -1287,7 +1287,24 @@
                     }
                   }
                 },
-                "overrides": []
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Chaves DNS.*|.*Usado.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -2073,7 +2090,8 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_free_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Ocupado (/)",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Ocupado (/) (Usado)",
                         "range": true
                       }
                     },
@@ -2093,33 +2111,13 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_filesystem_avail_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Disponível (/)",
+                        "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Espaço Total (/) (Teto)",
                         "range": true
                       }
                     },
                     "refId": "B",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "node_filesystem_size_bytes{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Total (/)",
-                        "range": true
-                      }
-                    },
-                    "refId": "C",
                     "hidden": false
                   }
                 }
@@ -2201,7 +2199,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -2211,104 +2209,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byFrameRefID",
-                      "options": "A"
+                      "id": "byRegexp",
+                      "options": ".*Espaço Total.*|.*Teto.*"
                     },
                     "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
                       },
                       {
-                        "id": "custom.lineStyle",
+                        "id": "color",
                         "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Ocupado.*|.*Usado.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available"
-                    },
-                    "properties": [
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "free (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "available (/)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "green"
                         }
                       }
                     ]
@@ -2343,7 +2293,8 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"} - node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Inodes Usados (/)",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Inodes Ocupados (/) (Usado)",
                         "range": true
                       }
                     },
@@ -2363,33 +2314,13 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_filesystem_files_free{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Inodes Livres (/)",
+                        "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Inodes Total (/) (Teto)",
                         "range": true
                       }
                     },
                     "refId": "B",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "node_filesystem_files{instance=~\"$instance\", service_name=\"node-exporter\", mountpoint=\"/\"}",
-                        "legendFormat": "{{instance}} | Total Inodes (/)",
-                        "range": true
-                      }
-                    },
-                    "refId": "C",
                     "hidden": false
                   }
                 }
@@ -2470,7 +2401,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -2480,52 +2411,57 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "free (/)"
+                      "id": "byRegexp",
+                      "options": ".*Inodes Total.*|.*Teto.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "total (/)"
+                      "id": "byRegexp",
+                      "options": ".*Inodes Ocupados.*|.*Usado.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
-                        "value": 0
+                        "value": 15
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
                       }
                     ]
                   }
@@ -3846,7 +3782,8 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Usado",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Swap Ocupado (Usado)",
                         "range": true
                       }
                     },
@@ -3866,33 +3803,13 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_SwapFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Livre",
+                        "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | Swap Total (Teto)",
                         "range": true
                       }
                     },
                     "refId": "B",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "node_memory_SwapTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Swap Total",
-                        "range": true
-                      }
-                    },
-                    "refId": "C",
                     "hidden": false
                   }
                 }
@@ -3977,7 +3894,7 @@
                     "spanNulls": true,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -3987,59 +3904,56 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byFrameRefID",
-                      "options": "A"
+                      "id": "byRegexp",
+                      "options": ".*Swap Total.*|.*Teto.*"
                     },
                     "properties": [
                       {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
                       },
                       {
                         "id": "custom.fillOpacity",
                         "value": 0
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "total"
-                    },
-                    "properties": [
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "free"
+                      "id": "byRegexp",
+                      "options": ".*Swap Ocupado.*|.*Usado.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "orange"
                         }
                       }
                     ]
@@ -6304,11 +6218,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -6322,8 +6236,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -6921,56 +6835,33 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "cores"
+                      "id": "byRegexp",
+                      "options": ".*Cores.*|.*Limite.*"
                     },
                     "properties": [
                       {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "load (5m)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "load (1m)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
@@ -8320,11 +8211,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -8338,8 +8229,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -9119,6 +9010,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} - (node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"})",
+                        "instant": false,
                         "legendFormat": "{{instance}} | Em Uso (Used)",
                         "range": true
                       }
@@ -9140,6 +9032,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "node_memory_Cached_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_Buffers_bytes{instance=~\"$instance\", service_name=\"node-exporter\"} + node_memory_SReclaimable_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "instant": false,
                         "legendFormat": "{{instance}} | Cache & Buffers",
                         "range": true
                       }
@@ -9160,33 +9053,13 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "node_memory_MemFree_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | Livre (Free)",
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
+                        "instant": false,
+                        "legendFormat": "{{instance}} | RAM Total (Teto)",
                         "range": true
                       }
                     },
                     "refId": "C",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\", service_name=\"node-exporter\"}",
-                        "legendFormat": "{{instance}} | RAM Total",
-                        "range": true
-                      }
-                    },
-                    "refId": "D",
                     "hidden": false
                   }
                 }
@@ -9270,7 +9143,7 @@
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -9280,81 +9153,79 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "total"
+                      "id": "byRegexp",
+                      "options": ".*RAM Total.*|.*Teto.*"
                     },
                     "properties": [
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
                       {
                         "id": "custom.lineStyle",
                         "value": {
+                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ],
-                          "fill": "dash"
+                          ]
                         }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "dark-red"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "used"
+                      "id": "byRegexp",
+                      "options": ".*Em Uso.*"
                     },
                     "properties": [
                       {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 15
+                      },
+                      {
                         "id": "color",
                         "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "purple"
                         }
                       }
                     ]
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "cache"
+                      "id": "byRegexp",
+                      "options": ".*Cache.*"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "free"
-                    },
-                    "properties": [
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 10
+                      },
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "orange"
                         }
                       }
                     ]
