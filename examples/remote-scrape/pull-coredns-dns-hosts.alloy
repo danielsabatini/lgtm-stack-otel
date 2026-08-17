@@ -1,0 +1,103 @@
+// =============================================================================
+// PULL LEGADO — CoreDNS dos Servidores de DNS Interno (MGC br-ne1)
+//
+// Coleta métricas do plugin prometheus do CoreDNS via scrape HTTP direto (:9153)
+// nos 3 servidores de DNS interno (172.18.1.2, 172.18.17.2 e 172.18.33.2).
+//
+// Como usar:
+//   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
+// =============================================================================
+
+prometheus.scrape "pull_coredns" {
+  targets = [
+    {
+      "__address__"             = "172.18.1.2:9153",
+      "instance"                = "dns-ne1-1",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "a",
+    },
+    {
+      "__address__"             = "172.18.17.2:9153",
+      "instance"                = "dns-ne1-2",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "b",
+    },
+    {
+      "__address__"             = "172.18.33.2:9153",
+      "instance"                = "dns-ne1-3",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "c",
+    },
+  ]
+
+  metrics_path    = "/metrics"
+  job_name        = "coredns"
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+
+  forward_to = [prometheus.relabel.pull_coredns_transformer.receiver]
+}
+
+// Transformer (relabel): mantém apenas as métricas usadas pelo dashboard CoreDNS
+prometheus.relabel "pull_coredns_transformer" {
+  forward_to = [prometheus.remote_write.pull_coredns_gateway.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    action        = "keep"
+    regex         =
+      // Core plugin
+      "up|" +
+      "coredns_build_info|" +
+      "coredns_plugin_enabled|" +
+      "process_start_time_seconds|" +
+
+      // Capacidade do PROCESSO CoreDNS
+      "process_open_fds|" +
+      "process_max_fds|" +
+      "process_resident_memory_bytes|" +
+      "coredns_panics_total|" +
+
+      // Tráfego e Recarga
+      "coredns_reload_failed_total|" +
+      "coredns_dns_requests_total|" +
+      "coredns_dns_responses_total|" +
+      "coredns_dns_request_duration_seconds_bucket|" +
+      "coredns_dns_request_duration_seconds_count|" +
+      "coredns_dns_request_duration_seconds_sum|" +
+
+      // Cache plugin
+      "coredns_cache_entries|" +
+      "coredns_cache_evictions_total|" +
+      "coredns_cache_hits_total|" +
+      "coredns_cache_misses_total|" +
+      "coredns_cache_requests_total|" +
+
+      // Forward & Proxy plugin
+      "coredns_forward_healthcheck_broken_total|" +
+      "coredns_forward_max_concurrent_rejects_total|" +
+      "coredns_forward_requests_total|" +
+      "coredns_forward_responses_total|" +
+      "coredns_proxy_conn_cache_hits_total|" +
+      "coredns_proxy_conn_cache_misses_total|" +
+      "coredns_proxy_healthcheck_failures_total|" +
+      "coredns_proxy_request_duration_seconds_bucket|" +
+      "coredns_proxy_request_duration_seconds_count|" +
+      "coredns_proxy_request_duration_seconds_sum"
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "coredns"
+  }
+}
+
+prometheus.remote_write "pull_coredns_gateway" {
+  endpoint { url = "http://alloy-gateway:9999/api/v1/metrics/write" }
+}

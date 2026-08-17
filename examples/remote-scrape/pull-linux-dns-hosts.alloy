@@ -1,44 +1,39 @@
 // =============================================================================
-// PULL LEGADO — node_exporter remoto (sem Alloy agent)
+// PULL LEGADO — node_exporter dos Servidores de DNS Interno (MGC br-ne1)
 //
-// Coleta as mesmas métricas configuradas em alloy-agent/conf.d/001-metric-node-local.alloy,
-// mas via scrape HTTP direto no node_exporter (:9100) no lugar de push.
-// Indicado para servidores legados onde não é possível instalar o Alloy agent.
+// Coleta métricas do node_exporter (:9100) via scrape HTTP direto nos 3
+// servidores de DNS interno (172.18.1.2, 172.18.17.2 e 172.18.33.2).
 //
 // Como usar:
 //   Copie este arquivo para alloy-gateway/conf.d/ e reinicie o Alloy Gateway.
-//   Adicione um bloco por servidor na lista targets abaixo.
-//
-// LIMITAÇÃO — Logs:
-//   O node_exporter padrão não expõe logs. Para coletar SSH, kernel, cron e
-//   systemd (equivalente a alloy-agent/conf.d/200-*.alloy … 275-*.alloy), instale
-//   o Alloy agent no servidor remoto seguindo examples/linux/INSTALL.md.
-//
-//   IMPORTANTE: Substitua as variáveis [IP_ADDRESS] pelo IP/porta real do host e [INSTANCE_NAME] por um nome único para a instância.
-//   Os valores de environment, cloud_provider, cloud_region e cloud_availability_zone são padrões para produção no Magalu Cloud (br-se1 zona a) e devem ser alterados conforme a necessidade.
 // =============================================================================
 
-// Collector (scrape): varre o node_exporter de cada servidor legado.
-// Os labels de identidade (instance, environment, etc.) são definidos por target
-// porque o gateway não possui as variáveis de ambiente do agent.
 prometheus.scrape "pull_linux_host" {
   targets = [
     {
-      "__address__"             = "[IP_ADDRESS]:9100",
-      "instance"                = "[INSTANCE_NAME]",
+      "__address__"             = "172.18.1.2:9100",
+      "instance"                = "dns-ne1-1",
       "environment"             = "prd",
       "cloud_provider"          = "mgc",
-      "cloud_region"            = "br-se1",
+      "cloud_region"            = "br-ne1",
       "cloud_availability_zone" = "a",
     },
-    // {
-    //   "__address__"             = "[IP_ADDRESS]:9100",
-    //   "instance"                = "[INSTANCE_NAME]",
-    //   "environment"             = "prd",
-    //   "cloud_provider"          = "mgc",
-    //   "cloud_region"            = "br-se1",
-    //   "cloud_availability_zone" = "a",
-    // },
+    {
+      "__address__"             = "172.18.17.2:9100",
+      "instance"                = "dns-ne1-2",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "b",
+    },
+    {
+      "__address__"             = "172.18.33.2:9100",
+      "instance"                = "dns-ne1-3",
+      "environment"             = "prd",
+      "cloud_provider"          = "mgc",
+      "cloud_region"            = "br-ne1",
+      "cloud_availability_zone" = "c",
+    },
   ]
 
   job_name        = "linux-legacy"
@@ -48,8 +43,7 @@ prometheus.scrape "pull_linux_host" {
   forward_to = [prometheus.relabel.pull_linux_host_transformer.receiver]
 }
 
-// Transformer (relabel): mantém apenas as mesmas métricas coletadas pelo Alloy agent
-// e adiciona o label service_name para identificação no Grafana/Mimir.
+// Transformer (relabel): mantém apenas as métricas usadas pelo dashboard Linux
 prometheus.relabel "pull_linux_host_transformer" {
   forward_to = [prometheus.relabel.pull_linux_host_info.receiver]
 
@@ -107,7 +101,6 @@ prometheus.relabel "pull_linux_host_transformer" {
       "node_network_transmit_errs_total"
   }
 
-
   rule {
     source_labels = ["device"]
     regex         = "^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$"
@@ -120,11 +113,10 @@ prometheus.relabel "pull_linux_host_transformer" {
   }
 }
 
-// Host info extractor: renomeia labels da métrica node_uname_info para valores mais intuitivos
+// Host info extractor: normaliza metadados do sistema operacional
 prometheus.relabel "pull_linux_host_info" {
   forward_to = [prometheus.remote_write.pull_linux_host_gateway.receiver]
 
-  // Para node_uname_info: sysname → os (lowercase)
   rule {
     source_labels = ["__name__", "sysname"]
     regex         = "node_uname_info;(.*)"
@@ -138,7 +130,6 @@ prometheus.relabel "pull_linux_host_info" {
     action        = "lowercase"
   }
 
-  // Para node_uname_info: machine → architecture
   rule {
     source_labels = ["__name__", "machine"]
     regex         = "node_uname_info;(.*)"
@@ -146,7 +137,6 @@ prometheus.relabel "pull_linux_host_info" {
     replacement   = "$1"
   }
 
-  // Para node_uname_info: release → kernel_release
   rule {
     source_labels = ["__name__", "release"]
     regex         = "node_uname_info;(.*)"
@@ -154,7 +144,6 @@ prometheus.relabel "pull_linux_host_info" {
     replacement   = "$1"
   }
 
-  // Para node_os_info: name → os_product
   rule {
     source_labels = ["__name__", "name"]
     regex         = "node_os_info;(.*)"
@@ -162,7 +151,6 @@ prometheus.relabel "pull_linux_host_info" {
     replacement   = "$1"
   }
 
-  // Para node_os_info: version_id → os_version
   rule {
     source_labels = ["__name__", "version_id"]
     regex         = "node_os_info;(.*)"
