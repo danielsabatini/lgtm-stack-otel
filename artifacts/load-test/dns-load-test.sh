@@ -61,11 +61,13 @@ zone_path() {
 
 TYPES=(A AAAA CNAME TXT MX SRV)
 
-# Alvos do bloco "." (forward para 1.1.1.1 / 8.8.8.8)
+# Alvos do bloco "." (forward para os resolvers recursivos da nuvem MGC / upstream)
 EXT_DOMAINS=(google.com cloudflare.com github.com magalu.com debian.org
-             wikipedia.org amazon.com microsoft.com ubuntu.com grafana.com)
+             wikipedia.org amazon.com microsoft.com ubuntu.com grafana.com
+             magalucloud.com.br pypi.org docker.io npmjs.org)
 EXT_SUBS=(www.google.com api.github.com raw.githubusercontent.com
-          registry.npmjs.org deb.debian.org docs.grafana.com)
+          registry.npmjs.org deb.debian.org docs.grafana.com
+          registry-1.docker.io pypi.org archive.ubuntu.com api.magalucloud.com.br)
 EXT_TYPES=(A A A AAAA MX)
 
 mkdir -p "$STATE_DIR"
@@ -135,17 +137,11 @@ delete_record() {
 }
 
 # --- montagem do lote de consultas -------------------------------------------
-# Mistura pensada para que cada painel do dashboard receba sinal:
-#   50% acerto   -> Query Rate, latência, cache hit
-#   15% inexistente e 10% apagado -> NXDOMAIN e cache de negativas
-#   20% externo  -> exercita o bloco "." (forward)
+# Mistura calibrada para refletir o tráfego corporativo real e exercitar os painéis:
+#   60% acerto etcd -> Query Rate, latência interna (<15ms), cache hit (>85%)
+#   10% inexistente e 5% apagado -> NXDOMAIN interno e cache de negativas
+#   20% forward externo legítimo -> resolução recursiva de serviços e APIs da nuvem
 #    5% estático -> exercita o plugin file na zona cloud.internal
-#
-# ATENÇÃO: hoje o Corefile declara o plugin prometheus SÓ no bloco das zonas
-# ne1.*. Os 25% de tráfego dos dois últimos grupos são atendidos normalmente,
-# mas não geram nenhuma métrica — não aparecem em requests, responses, latência
-# nem erros. Enquanto isso não for corrigido, aumentar a carga de forward
-# aumenta o tráfego real sem mudar nada no dashboard.
 build_batch() {
   local total="$1" out="$2" i r
   : >"$out"
@@ -155,29 +151,25 @@ build_batch() {
 
   for ((i = 0; i < total; i++)); do
     r=$((RANDOM % 100))
-    if [ "$r" -lt 50 ] && [ "$pool_n" -gt 0 ]; then
+    if [ "$r" -lt 60 ] && [ "$pool_n" -gt 0 ]; then
       awk -v n=$((RANDOM % pool_n + 1)) 'NR==n{print $1" "$2}' "$POOL" >>"$out"
-    elif [ "$r" -lt 65 ]; then
-      # Distribui os inexistentes entre as três zonas. Fixar a zona aqui
-      # concentraria todo o NXDOMAIN numa delas e o painel de erros por zona
-      # mostraria um falso problema localizado.
+    elif [ "$r" -lt 70 ]; then
+      # Distribui os inexistentes entre as três zonas internas.
       echo "nao-existe-$RANDOM.${ZONES[$((RANDOM % ${#ZONES[@]}))]} A" >>"$out"
     elif [ "$r" -lt 75 ] && [ "$grave_n" -gt 0 ]; then
       awk -v n=$((RANDOM % grave_n + 1)) 'NR==n{print $1" "$2}' "$GRAVE" >>"$out"
     elif [ "$r" -lt 95 ]; then
-      # Forward externo. Mistura deliberada de três comportamentos que o
-      # upstream trata de forma diferente:
-      #   - domínios populares, quase sempre em cache do resolvedor upstream
-      #   - subdomínio aleatório de domínio real -> NXDOMAIN vindo de fora,
-      #     que é o caminho mais lento e o que revela latência de forward
-      #   - consulta AAAA e MX além de A, para não exercitar só um tipo
-      local e=$((RANDOM % 10))
-      if [ "$e" -lt 6 ]; then
+      # Forward externo: distribuição realista de tráfego de saída
+      #   - 70% domínios populares frequentes (exercita cache local + upstream)
+      #   - 25% subdomínios e APIs externas legítimas
+      #   - 5%  NXDOMAIN externo esporádico (sem bombardear os resolvers)
+      local e=$((RANDOM % 100))
+      if [ "$e" -lt 70 ]; then
         echo "${EXT_DOMAINS[$((RANDOM % ${#EXT_DOMAINS[@]}))]} ${EXT_TYPES[$((RANDOM % ${#EXT_TYPES[@]}))]}" >>"$out"
-      elif [ "$e" -lt 8 ]; then
-        echo "nx-$RANDOM.${EXT_DOMAINS[$((RANDOM % ${#EXT_DOMAINS[@]}))]} A" >>"$out"
-      else
+      elif [ "$e" -lt 95 ]; then
         echo "${EXT_SUBS[$((RANDOM % ${#EXT_SUBS[@]}))]} A" >>"$out"
+      else
+        echo "nx-$RANDOM.${EXT_DOMAINS[$((RANDOM % ${#EXT_DOMAINS[@]}))]} A" >>"$out"
       fi
     else
       local st=(ns-ne1-1.cloud.internal ns-ne1-2.cloud.internal ns-ne1-3.cloud.internal cloud.internal)

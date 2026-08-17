@@ -2,7 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adth4vt"
+    "name": "mgc-internal-dns-solution"
   },
   "spec": {
     "annotations": [
@@ -289,7 +289,7 @@
         "spec": {
           "id": 102,
           "title": "Forward Latency p99",
-          "description": "Tempo de resposta percebido por 99% das consultas de sites e serviços da Internet pública (ex: google.com, github.com ou APIs de terceiros).\n• O que observar: Deve operar abaixo de 100 ms (Verde) e no máximo 250 ms (Amarelo). Acima de 250 ms (Vermelho) indica que a conexão externa com a internet está lenta.\n• Ação em caso de problema: Verifique o uso de banda e lentidão na conexão WAN do servidor ('ping 1.1.1.1') ou teste outros servidores DNS no Corefile.",
+          "description": "Tempo de resposta percebido por 99% das consultas com sucesso de sites e serviços da Internet pública através dos resolvers recursivos da nuvem (201.23.30.140 e 201.23.30.141).\n• O que observar: Deve operar abaixo de 100 ms (Verde) e no máximo 250 ms (Amarelo). Acima de 250 ms (Vermelho) indica lentidão na saída WAN ou nos encaminhadores recursivos.\n• Ação em caso de problema: Teste a latência e perda de pacotes até os resolvers ('ping 201.23.30.140') e verifique a saturação de concorrência na aba Diagnostics.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -304,7 +304,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "histogram_quantile(0.99, sum by(instance, le) (rate(coredns_proxy_request_duration_seconds_bucket{instance=~\"$instance\", service_name=\"coredns\"}[$__rate_interval])))",
+                        "expr": "histogram_quantile(0.99, sum by(instance, le) (rate(coredns_proxy_request_duration_seconds_bucket{instance=~\"$instance\", service_name=\"coredns\", rcode=\"NOERROR\"}[$__rate_interval])))",
                         "instant": true,
                         "legendFormat": "{{instance}}",
                         "range": false
