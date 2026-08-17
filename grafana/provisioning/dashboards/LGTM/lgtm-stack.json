@@ -5731,7 +5731,7 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(container_last_seen{instance=\"lgtm-stack-container\"},container)",
+          "definition": "label_values(container_cpu_usage_seconds_total{container=~\".+\"}, container)",
           "hide": "dontHide",
           "includeAll": true,
           "label": "Container",
@@ -5746,7 +5746,7 @@
             "kind": "DataQuery",
             "spec": {
               "qryType": 1,
-              "query": "label_values(container_last_seen{instance=\"lgtm-stack-container\"},container)",
+              "query": "label_values(container_cpu_usage_seconds_total{container=~\".+\"}, container)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "version": "v0"
