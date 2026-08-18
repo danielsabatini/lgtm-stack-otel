@@ -334,9 +334,9 @@ EXIT;
 
 - [PostgreSQL: System Views](https://www.postgresql.org/docs/current/monitoring-stats.html)
 - [MySQL: Performance Schema](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html)
-- [DASHBOARDS.md](../docs/DASHBOARDS.md)
-- [INSTALL.md](../../examples/pull/INSTALL.md)
+- [DASHBOARDS.md](../../docs/DASHBOARDS.md)
+- [README.md](../../README.md)
 
 ---
 
-🔙 Voltar: [INSTALL.md](../../examples/pull/INSTALL.md)
+🔙 Voltar: [README.md](../../README.md)
