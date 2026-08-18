@@ -76,7 +76,6 @@ Para monitorar instâncias remotas, consulte o guia de instalação corresponden
 | **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-mysql/INSTALL.md](examples/pull/linux-dbaas-mysql/INSTALL.md) |
 | **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-pgsql/INSTALL.md](examples/pull/linux-dbaas-pgsql/INSTALL.md) |
 | **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/dns/INSTALL.md](examples/pull/dns/INSTALL.md) |
-| **Guia Geral de Coleta Pull (Scraping)** | Pull Remoto (Gateway) | [examples/pull/INSTALL.md](examples/pull/INSTALL.md) |
 
 > 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
 
