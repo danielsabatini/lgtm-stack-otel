@@ -239,19 +239,46 @@ WARN creating OTEL namespace in bpffs failed (is bpffs mounted?)
 ```
 
 O aviso é benigno — o Beyla continua instrumentando —, mas polui os logs.
-Crie o diretório uma vez e entregue-o ao usuário `alloy`:
+A solução é criar o diretório e entregá-lo ao usuário `alloy` **antes** de
+cada início do serviço, via `ExecStartPre` no mesmo drop-in systemd já
+criado na seção anterior. O prefixo `+` faz o systemd executar o comando
+como root, contornando as capabilities do serviço, sem alterar o contexto
+de execução do processo Alloy em si.
+
+Reabra o drop-in:
 
 ```bash
-sudo mkdir -p /sys/fs/bpf/otel
-sudo chown alloy:alloy /sys/fs/bpf/otel
+sudo systemctl edit alloy
+```
+
+Adicione as duas linhas `ExecStartPre` ao final do arquivo:
+
+```ini
+[Service]
+AmbientCapabilities=CAP_BPF CAP_SYS_PTRACE CAP_NET_RAW CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_PERFMON CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_SYS_PTRACE CAP_NET_RAW CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_PERFMON CAP_SYS_ADMIN
+ExecStartPre=+/usr/bin/mkdir -p /sys/fs/bpf/otel
+ExecStartPre=+/usr/bin/chown alloy:alloy /sys/fs/bpf/otel
+```
+
+Aplique:
+
+```bash
+sudo systemctl daemon-reload
 sudo systemctl restart alloy
 ```
 
-> **Nota:** `CAP_DAC_READ_SEARCH` concede leitura e travessia, não escrita —
-> por isso a capability sozinha não resolve. Prefira este `chown` pontual a
-> afrouxar o modo do `/sys/fs/bpf` inteiro. Como `bpffs` não sobrevive ao
-> reboot, reaplique via unit `tmpfiles.d` ou `ExecStartPre` se precisar de
-> persistência.
+> **Nota:** `CAP_DAC_READ_SEARCH` concede leitura e travessia, não escrita
+> — por isso a capability sozinha não resolve. Prefira este `chown` pontual
+> a afrouxar o modo do `/sys/fs/bpf` inteiro.
+>
+> **Por que `ExecStartPre` e não `tmpfiles.d`?** O `bpffs` é um filesystem
+> virtual que não sobrevive ao reboot — o diretório precisa ser recriado a
+> cada boot. `ExecStartPre` roda como parte do serviço `alloy`, com
+> ordenação implícita após o filesystem local estar pronto, e garante que
+> o diretório exista sempre que o Alloy for iniciar (incluindo restarts
+> manuais). `tmpfiles.d` dependeria de ordenação explícita contra a montagem
+> do `bpffs`, que nem sempre é uma unit systemd descobrível.
 
 ### Configurar os serviços a instrumentar
 
