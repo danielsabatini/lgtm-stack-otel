@@ -452,7 +452,26 @@ beyla.ebpf "app_instrument" {
   // silenciosamente (ver INSTALL.md, seção "Traces (Beyla eBPF) — Opcional").
   enforce_sys_caps = true
 
+  // Propagação de contexto distribuído injetada pelo kernel (eBPF), sem nenhuma
+  // linha de instrumentação no código da aplicação. É isto que costura serviços
+  // que chamam uns aos outros sob um ÚNICO traceID.
+  //
+  // Sem este bloco, cada serviço gera um trace isolado: você vê spans, mas não
+  // vê a cadeia. Se o host roda um serviço único, sem chamadas HTTP de saída
+  // para outro serviço instrumentado, pode omitir.
+  //
+  // "headers" injeta apenas o cabeçalho HTTP `traceparent` (W3C Trace Context).
+  // Suficiente para HTTP em texto claro e evita os programas de Linux Traffic
+  // Control (TC) exigidos pelos modos "tcp"/"all" — necessários apenas para
+  // HTTPS e capazes de conflitar com outros programas TC do host (ex: Cilium).
+  ebpf {
+    context_propagation = "headers"
+  }
+
   discovery {
+    // Um bloco `instrument` por serviço, sempre escopado por porta.
+    // NUNCA instrumente o host inteiro sem filtro: o volume de spans e a
+    // cardinalidade ficam impossíveis de prever.
     instrument {
       // TODO: ajuste a porta do seu serviço (ex: "8080", "80,443", "3000-3010")
       open_ports = "8080"
@@ -469,13 +488,30 @@ beyla.ebpf "app_instrument" {
         name = "always_on"
       }
     }
+
+    // Exemplo opcional: replique o bloco acima para cada serviço adicional
+    // deste host, de modo que cada um receba seu próprio service_name no Tempo.
+    /*
+    instrument {
+      open_ports = "8081"
+      name       = "middleware"
+
+      sampler {
+        // Ver justificativa no bloco anterior.
+        name = "always_on"
+      }
+    }
+    */
   }
 
   // Exemplo opcional: descomente e ajuste se o serviço expõe paths com segmentos
   // dinâmicos (IDs, UUIDs, slugs) para evitar explosão de cardinalidade em http.route.
+  // `patterns` fixa o conjunto conhecido; `unmatched = "heuristic"` e o teto por
+  // segmento permanecem como defesa para qualquer path fora da lista.
   /*
   routes {
     patterns                     = ["/api/v1/users/{id}", "/api/v1/orders/{id}"]
+    unmatched                    = "heuristic"
     max_path_segment_cardinality = 10
   }
   */

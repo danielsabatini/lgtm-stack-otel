@@ -151,7 +151,7 @@ O arquivo já está disponível no repositório clonado no passo 1.
 Copie-o para o diretório do Alloy:
 
 ```bash
-sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
+sudo cp ~/lgtm-stack/examples/push/linux/config.alloy /etc/alloy/config.alloy
 ```
 
 > **O que é coletado e quais são os Labels?**
@@ -164,7 +164,7 @@ sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
 > Pule esta seção se você não for coletar traces distribuídos (`beyla.ebpf`)
 > deste host. Métricas e logs funcionam normalmente sem este passo.
 
-O Alloy `v1.16.0` já inclui nativamente o componente `beyla.ebpf` — não é
+O Alloy `v1.18.0` já inclui nativamente o componente `beyla.ebpf` — não é
 necessário instalar um binário Beyla separado. Porém, auto-instrumentação
 eBPF exige requisitos de kernel e capabilities que o pacote systemd padrão
 do Alloy **não** concede por padrão (o serviço roda como usuário dedicado,
@@ -253,7 +253,7 @@ sudo systemctl restart alloy
 > reboot, reaplique via unit `tmpfiles.d` ou `ExecStartPre` se precisar de
 > persistência.
 
-### Configurar a porta do serviço a instrumentar
+### Configurar os serviços a instrumentar
 
 No arquivo `/etc/alloy/config.alloy` já copiado (passo 5), edite a seção
 `TRACES: Beyla eBPF (Opcional)`:
@@ -263,10 +263,54 @@ open_ports = "8080"  // troque pela porta real do seu serviço
 name       = "app"   // troque pelo nome lógico do serviço
 ```
 
+Se o host roda mais de um serviço, replique o bloco `instrument` — um por
+serviço, cada um escopado por porta e com seu próprio `name`:
+
+```hcl
+discovery {
+  instrument {
+    open_ports = "8080"
+    name       = "frontend"
+    sampler { name = "always_on" }
+  }
+
+  instrument {
+    open_ports = "8081"
+    name       = "middleware"
+    sampler { name = "always_on" }
+  }
+}
+```
+
+> **Sempre escope por porta.** Instrumentar o host inteiro sem filtro torna
+> o volume de spans e a cardinalidade impossíveis de prever.
+
+### Propagação de contexto entre serviços
+
+Se os serviços deste host chamam uns aos outros por HTTP, o bloco `ebpf`
+é o que costura essas chamadas sob um **único `traceID`**:
+
+```hcl
+ebpf {
+  context_propagation = "headers"
+}
+```
+
+Sem ele, cada serviço gera um trace isolado — você vê os spans, mas não vê
+a cadeia, e perde exatamente a informação que motiva tracing distribuído.
+O kernel injeta o cabeçalho W3C `traceparent` via eBPF, **sem nenhuma linha
+de instrumentação no código da aplicação**.
+
+> **Por que `headers` e não `tcp`/`all`?** `headers` injeta apenas o
+> cabeçalho HTTP, o que basta para HTTP em texto claro. Os modos `tcp` e
+> `all` são necessários apenas para HTTPS e exigem programas de Linux
+> Traffic Control (TC), que podem conflitar com outros programas TC do host
+> (ex: Cilium).
+
 Reaplique:
 
 ```bash
-sudo cp ~/lgtm-stack/examples/linux/config.alloy /etc/alloy/config.alloy
+sudo cp ~/lgtm-stack/examples/push/linux/config.alloy /etc/alloy/config.alloy
 sudo systemctl restart alloy
 ```
 
@@ -287,7 +331,11 @@ No Grafana:
    configurado) ou filtre pelo label `instance` do host.
 3. Confirme que o trace aparece com os atributos
    `instance`/`environment`/`cloud_provider`/`cloud_region`/`cloud_availability_zone`.
-4. Opcional: no datasource **Mimir**, busque
+4. Se você configurou propagação de contexto, abra um trace que atravesse
+   dois serviços e confirme na árvore o encadeamento `CLIENT → SERVER`
+   cruzando a fronteira de processo, com um único `traceID`. Se aparecerem
+   traces separados por serviço, a propagação não está ativa.
+5. Opcional: no datasource **Mimir**, busque
    `traces_spanmetrics_calls_total{service="app"}` — deve popular
    automaticamente a partir do primeiro trace recebido pelo Tempo (gerado
    pelo `metrics_generator` do Tempo, sem configuração adicional).
@@ -370,7 +418,7 @@ Quando houver atualizações nos arquivos de configuração do repositório:
 ```bash
 cd ~/lgtm-stack
 git pull
-sudo cp examples/linux/config.alloy /etc/alloy/config.alloy
+sudo cp examples/push/linux/config.alloy /etc/alloy/config.alloy
 sudo systemctl restart alloy
 ```
 
