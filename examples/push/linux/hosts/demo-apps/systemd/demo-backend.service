@@ -1,0 +1,25 @@
+[Unit]
+Description=Demo tier (backend) para validacao de traces distribuidos via Beyla eBPF
+Documentation=https://grafana.com/docs/alloy/latest/reference/components/beyla/beyla.ebpf/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+Environment=TIER_NAME=backend
+Environment=TIER_PORT=8082
+Environment=TIER_NEXT=
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /opt/demo-apps/tier.py
+Restart=always
+RestartSec=2s
+
+# Endurecimento minimo: o servico e apenas um alvo de teste.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
