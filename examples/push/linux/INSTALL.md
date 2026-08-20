@@ -227,6 +227,32 @@ sudo systemctl daemon-reload
 sudo systemctl restart alloy
 ```
 
+### Liberar o diretório do Beyla no bpffs
+
+O Alloy roda como usuário `alloy`, mas `/sys/fs/bpf` é montado com modo
+`700` e dono `root`. O Beyla tenta criar ali seu diretório de trabalho e
+falha, logando a cada início:
+
+```
+WARN creating OTEL namespace in bpffs failed (is bpffs mounted?)
+     err="creating bpffs otel path: mkdir /sys/fs/bpf/otel: permission denied"
+```
+
+O aviso é benigno — o Beyla continua instrumentando —, mas polui os logs.
+Crie o diretório uma vez e entregue-o ao usuário `alloy`:
+
+```bash
+sudo mkdir -p /sys/fs/bpf/otel
+sudo chown alloy:alloy /sys/fs/bpf/otel
+sudo systemctl restart alloy
+```
+
+> **Nota:** `CAP_DAC_READ_SEARCH` concede leitura e travessia, não escrita —
+> por isso a capability sozinha não resolve. Prefira este `chown` pontual a
+> afrouxar o modo do `/sys/fs/bpf` inteiro. Como `bpffs` não sobrevive ao
+> reboot, reaplique via unit `tmpfiles.d` ou `ExecStartPre` se precisar de
+> persistência.
+
 ### Configurar a porta do serviço a instrumentar
 
 No arquivo `/etc/alloy/config.alloy` já copiado (passo 5), edite a seção
@@ -400,7 +426,7 @@ sudo journalctl -u alloy -n 100 | grep -i -E "beyla|bpf|permission|capabilit"
 Causas comuns:
 - Kernel sem BTF → revalidar `/sys/kernel/btf/vmlinux` (seção 5.1).
 - Capability faltando → confirme o drop-in com `systemctl cat alloy` e
-  verifique se as 6 capabilities aparecem em `AmbientCapabilities` e
+  verifique se as 7 capabilities aparecem em `AmbientCapabilities` e
   `CapabilityBoundingSet`.
 - Kernel `< 5.8` → não há workaround; Beyla eBPF não é suportado neste host.
 
