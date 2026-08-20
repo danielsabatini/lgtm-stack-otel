@@ -1,18 +1,34 @@
-# MEMORY.md
+# LGTM Stack — Estado Operacional
 
-> Índice da memória de execução, compartilhado entre ferramentas de IA neste repositório (`AGENTS.md` §13). Entradas completas ficam em `.journal/` (histórico local, não comitado — não atravessa clone/máquina). Este índice tem teto de tamanho: entradas antigas saem daqui e permanecem só no journal.
+## Resumo do Estado Atual
 
-## Estado durável
+- A stack principal (Gateway + Backend LGTM) foi validada com sucesso, roteando sinais de hosts remotos autenticados.
+- Traces distribuídos via Beyla eBPF validados fim-a-fim numa VM Debian com cadeia de microserviços HTTP rodando em cleartext, gerando um único traceID.
+- Exemplos de configuração canônica atualizados para refletir as boas práticas validadas (tail sampling deferido, context propagation eBPF por headers e fix no bpffs).
 
-- **Em andamento:** nenhum.
-- **Bloqueado:** nenhum.
-- **Convenções ativas:** ver `PROJECT.md` (regras técnicas) e `AGENTS.md` (governança da plataforma). **Fluxo GitOps Obrigatório:** Toda alteração de configuração (.alloy, .yaml, dashboards .json, scripts) é aplicada e versionada primeiro no repositório local e depois sincronizada para os servidores remotos (rsync/SSH/API). `.agents/` (symlink somente-leitura para `ai-agent-platform/.agents`) é o repositório canônico de agentes/skills (`AGENTS.md` §9). `.opencode/` é uma pasta local real (workspace da ferramenta opencode, `AGENTS.md` §10) com `.opencode/agents` e `.opencode/skills` symlinkados internamente para `.agents/agents` e `.agents/skills`.
-- **Pendência de processo:** a partir desta sessão, toda tarefa que altere estado permanente do repositório deve gerar uma entrada em `.journal/` (`AGENTS.md` §14.5/§14.13) — o gap de 2026-08-13 a 2026-08-16 (upgrades de Grafana/Mimir/Loki/Alloy/Tempo, rollout de monitoramento DNS) não tem entradas correspondentes e não é reconstruível retroativamente.
+## Trabalho Recente
 
-## Entradas recentes
+- **Incidente — Tail Sampling travado no Alloy Gateway (2026-08-20):** Traces do host `lgtm-cliente-1` (192.168.1.61) pararam de chegar ao Tempo mesmo com Beyla, conectividade e demo multi-tier funcionando normalmente. Causa raiz: o processor `otelcol.processor.tail_sampling.apps_traces` (`alloy-gateway/conf.d/003-otlp-gtw-local.alloy`) travou internamente no container `alloy-gateway` (Docker local, 192.168.1.35) — continuava recebendo spans (`otelcol_receiver_accepted_spans_total` subindo) mas nunca liberava a decisão de amostragem para o exportador do Tempo (`otelcol_exporter_sent_spans_total` parado, `sampling_traces_on_memory` == `new_trace_id_received_total`, sem erros de política nem fila cheia — um deadlock silencioso, não backpressure). Sem crash nem OOM do container. Resolvido com `docker compose restart alloy-gateway`; validado fim-a-fim via `/metrics` do gateway e busca no Tempo (`resource.instance="lgtm-cliente-1"`) logo após o restart.
+- **Validação de Traces (Beyla):** Demo multi-tier (frontend → middleware → backend) instrumentado na porta via drop-in systemd e `context_propagation = "headers"`.
+- **Governança Documental:** Backport das correções do drop-in do Alloy (capabilities e chown via `ExecStartPre`) e do template Alloy local (`config.alloy`) para `examples/push/linux/`.
+- **Painel de Traces no Dashboard "Linux Hosts":** Adicionado painel "Distributed Traces" (id=43) usando TraceQL `{ resource.instance =~ "$instance" }`. Corrigido "No data found" causado por tentativa de streaming gRPC do Grafana contra a porta HTTP-only do Tempo (`3200`) — resolvido com `streamingEnabled: {search: false, metrics: false}` em `grafana/provisioning/datasources/datasources.yaml`. Validado via `/api/ds/query`: 18 traces retornados para `lgtm-cliente-1`. Ver `.journal/2026/08/20/0003-corrigir-painel-traces-grafana.md`.
+- **Journal Atualizado:** Commits refletidos e estado imutável gravado em `.journal/`.
 
-- **2026-08-16 — Calibração de Latência, Separação de Cache e Diagramas Mermaid** (`.journal/2026/08/16/0005-calibracao-latencia-cache-e-diagramas-mermaid.md`): substituição de diagramas ASCII em `docs/ARCHITECTURE.md` e `docs/ALERTS.md` por diagramas Mermaid em SVG e PNG via `@mermaid-architecture` e `mermaid-render-diagram`, calibração da latência de forward do CoreDNS para filtrar `rcode="NOERROR"` eliminando falsos alarmes causados por NXDOMAINs sintéticos, otimização e deploy do script `dns-load-test.sh` nos três nós DNS, separação arquitetural de cache (Capacity com consumo acumulado vs teto total de 110 K e Diagnostics com breakdown por zona e tipo), e habilitação de efeito `centerGlow` em todos os gauges.
-- **2026-08-16 — Consolidação GitOps de Dashboards, Layouts e Documentação Final** (`.journal/2026/08/16/0004-consolidacao-gitops-dashboards-e-docs-finais.md`): remoção da pasta obsoleta `grafana-dashboards-backup/` consolidando `grafana/provisioning/dashboards/` como fonte única de dashboards, renomeação do dashboard para `MGC Internal DNS` (`adth4vt`) com inicialização expandida em Health, regras de layout (Timeseries em 1 coluna, Health/Inventory em Narrow + Short + 2 colunas), auditoria final dos 28 painéis Linux e guia passo a passo em `docs/DASHBOARDS.md`.
-- **2026-08-16 — Auditoria do CoreDNS, Dashboards e Metodologia de Observabilidade** (`.journal/2026/08/16/0003-auditoria-coredns-e-metodologia-observabilidade.md`): validação das 7 correções do CoreDNS nos nós `br-ne1`, atualização das allowlists do Alloy (`pull-coredns`, `pull-etcd`), reestruturação e calibração de todos os painéis de CoreDNS, etcd e Linux no dashboard `adth4vt` (separação de latência interna vs forward, novos painéis de Upstream Health, Process Memory RSS, Cache Evictions e Cluster Role Leader/Follower), padronização das 58 descrições em 3 pontos (*O que é*, *O que observar*, *Ação*), criação da Metodologia de Observabilidade (`docs/OBSERVABILITY-METHODOLOGY.md`) com 5 diagramas Mermaid em SVG/PNG, e alinhamento de toda a documentação em `docs/*` para a estrutura numerada e didática.
-- **2026-08-16 — Auditoria de conformidade com `AGENTS.md` v3.0** (`.journal/2026/08/16/0001-auditoria-conformidade-agents-v3.md`): consolidação de `ROADMAP.md` (removida duplicação raiz/`docs/`), correção de referências de seção obsoletas do `AGENTS.md` em `MEMORY.md`/`CLAUDE.md`/`OPENCODE.md`/`COPILOT.md`/`.github/copilot-instructions.md`/`PROJECT.md`/`.gitignore`, criação do symlink canônico `.agents/` (decisão do usuário: criar `.agents/` local em vez de depender só de `.opencode`), troca de `.opencode` de symlink externo para pasta local real com symlinks internos `agents`/`skills` apontando para `.agents/` (decisão do usuário, mesma sessão), redação de credencial em texto puro em `.claude/settings.local.json`, reestruturação de `.journal/` para o padrão `YYYY/MM/DD/NNNN-slug.md`, e ADR em `docs/decisions/` registrando as decisões de 2026-08-13 e 2026-08-16.
-- **2026-08-13 — Bootstrap de governança em camadas** (`.journal/2026/08/13/0001-bootstrap-governanca-camadas.md`): criação de `PROJECT.md`, enxugamento de `CLAUDE.md`/`OPENCODE.md`/`.github/copilot-instructions.md`, stub `COPILOT.md`, criação deste `MEMORY.md` e do `.journal/`.
+## Cobertura de Instrumentação (Traces)
+
+- Apenas `lgtm-cliente-1` possui traces reais no Tempo no momento. Hosts `dns-ne1-1`, `dns-ne1-2`, `dns-ne1-3`, `test-host`, `ws1` não têm Beyla instrumentado enviando spans — painel exibirá "No data" para eles corretamente até serem instrumentados.
+
+## Decisões Ativas / Restrições (Referência Rápida)
+
+- *eBPF Trace Propagation*: Apenas modo `headers` é endossado por padrão para evitar colisão TC.
+- *Sampling*: Exclusivamente deferido ao Gateway. Todos os exports do node devem estar em `always_on`.
+- *Troubleshooting de traces "não chegando"*: Se Beyla/Alloy do host e a conectividade de rede estiverem OK mas nenhum trace aparecer no Tempo, checar primeiro o `otelcol.processor.tail_sampling.apps_traces` do `alloy-gateway` via `curl http://localhost:12345/metrics` (local, Docker) — comparar `otelcol_receiver_accepted_spans_total` (subindo?) com `otelcol_exporter_sent_spans_total` do exporter `tempo` (parado?) e `sampling_traces_on_memory` (igual a `new_trace_id_received_total` = sinal de deadlock). Ver incidente de 2026-08-20 acima.
+- *Privilégios*: O Alloy roda restrito (sandbox systemd), as permissões necessárias eBPF são concedidas via capabilities (`AmbientCapabilities`/`CapabilityBoundingSet`) e montagens BPFFS requerem injeção `ExecStartPre=+`.
+
+## Bloqueios Atuais
+
+Nenhum.
+
+## Próximas Ações
+
+O estado da branch `dev` é consistente e seguro para avanço em novos casos de uso de infraestrutura.

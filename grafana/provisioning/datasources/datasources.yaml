@@ -43,6 +43,10 @@ datasources:
     access: proxy
     jsonData:
       httpMethod: GET
+      # Desabilita streaming gRPC (endpoint 3200 do Tempo serve apenas HTTP)
+      streamingEnabled:
+        search: false
+        metrics: false
       # Link Trace -> Logs (formato v2, mais completo)
       tracesToLogsV2:
         datasourceUid: loki

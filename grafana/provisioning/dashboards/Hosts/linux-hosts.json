@@ -785,11 +785,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -803,8 +803,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -826,8 +826,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "green"
+                          "fixedColor": "green",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -987,11 +987,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -1005,8 +1005,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -1028,8 +1028,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "green"
+                          "fixedColor": "green",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -2002,25 +2002,25 @@
             "version": "13.1.2",
             "spec": {
               "options": {
+                "allowDownload": true,
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
+                "displayedFields": [],
                 "enableInfiniteScrolling": false,
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
+                "showCommonLabels": false,
                 "showControls": true,
                 "showFieldSelector": true,
+                "showLabels": false,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true,
-                "allowDownload": true,
-                "displayedFields": [],
-                "showCommonLabels": false,
-                "showLabels": false
+                "wrapLogMessage": true
               },
               "fieldConfig": {
                 "defaults": {},
@@ -2075,25 +2075,25 @@
             "version": "13.1.2",
             "spec": {
               "options": {
+                "allowDownload": true,
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
+                "displayedFields": [],
                 "enableInfiniteScrolling": false,
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
+                "showCommonLabels": false,
                 "showControls": true,
                 "showFieldSelector": true,
+                "showLabels": false,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true,
-                "allowDownload": true,
-                "displayedFields": [],
-                "showCommonLabels": false,
-                "showLabels": false
+                "wrapLogMessage": true
               },
               "fieldConfig": {
                 "defaults": {},
@@ -2148,25 +2148,25 @@
             "version": "13.1.2",
             "spec": {
               "options": {
+                "allowDownload": true,
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
+                "displayedFields": [],
                 "enableInfiniteScrolling": false,
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
+                "showCommonLabels": false,
                 "showControls": true,
                 "showFieldSelector": true,
+                "showLabels": false,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true,
-                "allowDownload": true,
-                "displayedFields": [],
-                "showCommonLabels": false,
-                "showLabels": false
+                "wrapLogMessage": true
               },
               "fieldConfig": {
                 "defaults": {},
@@ -2221,25 +2221,25 @@
             "version": "13.1.2",
             "spec": {
               "options": {
+                "allowDownload": true,
                 "dedupStrategy": "none",
                 "detailsMode": "sidebar",
+                "displayedFields": [],
                 "enableInfiniteScrolling": false,
                 "enableLogDetails": true,
                 "fontSize": "small",
                 "prettifyLogMessage": true,
+                "showCommonLabels": false,
                 "showControls": true,
                 "showFieldSelector": true,
+                "showLabels": false,
                 "showLevel": true,
                 "showTime": true,
                 "sortOrder": "Descending",
                 "syntaxHighlighting": true,
                 "timestampResolution": "ms",
                 "unwrappedColumns": false,
-                "wrapLogMessage": true,
-                "allowDownload": true,
-                "displayedFields": [],
-                "showCommonLabels": false,
-                "showLabels": false
+                "wrapLogMessage": true
               },
               "fieldConfig": {
                 "defaults": {},
@@ -2496,11 +2496,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -2514,8 +2514,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -2537,8 +2537,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "orange"
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -3335,6 +3335,210 @@
           }
         }
       },
+      "panel-43": {
+        "kind": "Panel",
+        "spec": {
+          "id": 43,
+          "title": "Distributed Traces",
+          "description": "Lista de traces distribuídos capturados via auto-instrumentação eBPF (Beyla) para os serviços em execução neste host.\n• O que observar: Traces com duração elevada (coluna Duration) ou status de erro (ícone vermelho) indicam requisições lentas ou falhas na cadeia de chamadas entre serviços.\n• Ação em caso de problema: Clique no Trace ID para abrir a visualização completa (waterfall) dos spans, identificar o serviço/etapa responsável pela lentidão ou erro, e correlacionar com os logs do host via 'journalctl -u alloy -f | grep -i beyla'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "tempo",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "tempo"
+                      },
+                      "spec": {
+                        "limit": 20,
+                        "metricsQueryType": "range",
+                        "query": "{ resource.instance =~ \"$instance\" }",
+                        "queryType": "traceql",
+                        "serviceMapUseNativeHistograms": false,
+                        "tableType": "traces"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "enablePagination": true,
+                "showHeader": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false,
+                    "minWidth": 50,
+                    "wrapHeaderText": false,
+                    "wrapText": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Trace ID"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 287
+                      },
+                      {
+                        "id": "links",
+                        "value": [
+                          {
+                            "title": "Ver waterfall neste dashboard",
+                            "url": "/d/linux-hosts/linux-hosts?${__url_time_range}&var-instance=${instance}&var-trace_id=${__value.raw}"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Start time"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 156
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Name"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 83
+                      },
+                      {
+                        "id": "links",
+                        "value": [
+                          {
+                            "title": "Ver waterfall neste dashboard",
+                            "url": "/d/linux-hosts/linux-hosts?${__url_time_range}&var-instance=${instance}&var-trace_id=${__data.fields[\"traceID\"]}"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-44": {
+        "kind": "Panel",
+        "spec": {
+          "id": 44,
+          "title": "Trace Detail",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "tempo",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "tempo"
+                      },
+                      "spec": {
+                        "limit": 20,
+                        "metricsQueryType": "range",
+                        "query": "$trace_id",
+                        "queryType": "traceql",
+                        "serviceMapUseNativeHistograms": false,
+                        "tableType": "traces"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "traces",
+            "version": "13.1.2",
+            "spec": {
+              "options": {
+                "spanFilters": {
+                  "adhocFilters": [],
+                  "criticalPathOnly": false,
+                  "matchesOnly": false
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-5": {
         "kind": "Panel",
         "spec": {
@@ -3633,11 +3837,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -3651,8 +3855,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -3948,11 +4152,11 @@
                       {
                         "id": "custom.lineStyle",
                         "value": {
-                          "fill": "dash",
                           "dash": [
                             10,
                             10
-                          ]
+                          ],
+                          "fill": "dash"
                         }
                       },
                       {
@@ -3966,8 +4170,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "dark-red"
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -3989,8 +4193,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "purple"
+                          "fixedColor": "purple",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -4012,8 +4216,8 @@
                       {
                         "id": "color",
                         "value": {
-                          "mode": "fixed",
-                          "fixedColor": "orange"
+                          "fixedColor": "orange",
+                          "mode": "fixed"
                         }
                       }
                     ]
@@ -4385,6 +4589,40 @@
                           }
                         }
                       }
+                    },
+                    {
+                      "kind": "TabsLayoutTab",
+                      "spec": {
+                        "title": "Traces",
+                        "layout": {
+                          "kind": "AutoGridLayout",
+                          "spec": {
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
+                            "items": [
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-43"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-44"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
                     }
                   ]
                 }
@@ -4455,8 +4693,20 @@
           "options": [],
           "multi": false,
           "includeAll": false,
-          "allValue": "",
           "allowCustomValue": false
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "trace_id",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "hide": "hideVariable",
+          "skipUrlSync": false
         }
       }
     ],

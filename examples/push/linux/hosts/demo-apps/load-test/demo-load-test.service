@@ -1,0 +1,16 @@
+[Unit]
+Description=Gerador de carga para a cadeia demo (frontend/middleware/backend) — LGTM Stack
+Documentation=https://github.com/magalu/lgtm-stack/blob/main/examples/push/linux/INSTALL.md
+After=demo-frontend.service
+Requires=demo-frontend.service
+
+[Service]
+Type=simple
+User=nobody
+Environment=QPS=2
+ExecStart=/opt/demo-apps/load-test/demo-load-test.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
