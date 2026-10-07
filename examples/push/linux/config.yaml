@@ -1,0 +1,219 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Agent Linux
+# =============================================================================
+# Arquivo: /etc/otelcol-contrib/config.yaml   (serviço: otelcol-contrib)
+#
+# Coleta no próprio host e envia tudo em OTLP ao Gateway da stack:
+#   - Métricas de host .......... host_metrics  (system.*)
+#   - Logs do journald .......... journald      (ssh, kernel, cron, systemd)
+#   - Traces + métricas HTTP .... OBI (serviço obi) -> OTLP 127.0.0.1:4317
+#   - Self-monitoring ........... telemetria interna -> OTLP 127.0.0.1:4317
+#
+# Identidade (OTel Semantic Conventions), em /etc/otelcol-contrib/otelcol-contrib.conf:
+#   OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=prd,cloud.provider=mgc,cloud.region=br-se1,cloud.availability_zone=a"
+#   host.name e os.type vêm do detector "system".
+# Gateway: LGTM_GATEWAY_ENDPOINT (default lgtm-stack:4317).
+#
+# Política Lean: coletar e armazenar apenas o necessário. Cada métrica e cada
+# fonte de log abaixo é explícita; o que não está listado não é coletado.
+# =============================================================================
+
+receivers:
+  # Entrada local do OBI e do self-monitoring. Só loopback: o agente não
+  # expõe portas na rede.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DE HOST (nomes system.* da OTel Semantic Conventions)
+  # ---------------------------------------------------------------------------
+  # Os atributos seguem a versão emitida pelo receiver (ex.: state, direction,
+  # device): as system semantic conventions estão em "Development" e a
+  # especificação orienta as instrumentações a não adotar breaking changes
+  # antes de estabilizar.
+  host_metrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time: { enabled: true }
+      load:
+        metrics:
+          system.cpu.load_average.1m: { enabled: true }
+          system.cpu.load_average.5m: { enabled: true }
+          system.cpu.load_average.15m: { enabled: true }
+      memory:
+        metrics:
+          system.memory.usage: { enabled: true }
+          system.memory.limit: { enabled: true }
+      paging:
+        metrics:
+          system.paging.usage: { enabled: true }
+          system.paging.faults: { enabled: false }
+          system.paging.operations: { enabled: false }
+      disk:
+        # Ignora dispositivos sem valor operacional (loop, ram, cd, device-mapper)
+        exclude:
+          devices: ["^(loop|ram|fd|sr)[0-9]*$", "^dm-[0-9]+$"]
+          match_type: regexp
+        metrics:
+          system.disk.io: { enabled: true }
+          system.disk.operations: { enabled: true }
+          system.disk.operation_time: { enabled: true }
+          system.disk.io_time: { enabled: true }
+          system.disk.merged: { enabled: false }
+          system.disk.pending_operations: { enabled: false }
+          system.disk.weighted_io_time: { enabled: false }
+      filesystem:
+        # Ignora pseudo-filesystems (sem valor operacional, só cardinalidade)
+        exclude_fs_types:
+          fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs, tmpfs]
+          match_type: strict
+        metrics:
+          system.filesystem.usage: { enabled: true }
+          system.filesystem.inodes.usage: { enabled: true }
+      network:
+        # Ignora interfaces virtuais (loopback, docker, veth, bridges)
+        exclude:
+          interfaces: ["^lo$", "^docker.*", "^veth.*", "^br-.*", "^virbr.*"]
+          match_type: regexp
+        metrics:
+          system.network.io: { enabled: true }
+          system.network.dropped: { enabled: true }
+          system.network.errors: { enabled: true }
+          system.network.packets: { enabled: false }
+          system.network.connections: { enabled: false }
+      system:
+        metrics:
+          system.uptime: { enabled: true }
+
+  # ---------------------------------------------------------------------------
+  # LOGS DO JOURNALD (OTel Logs Data Model)
+  # ---------------------------------------------------------------------------
+  # Cada fonte filtra na origem (priority = severidade mínima do journalctl).
+  # Os operadores comuns (âncora &journal_operators) convertem a entrada do
+  # journal em log record OTel: PRIORITY -> SeverityNumber/SeverityText,
+  # _PID/_COMM -> process.pid/process.executable.name, MESSAGE -> Body.
+  journald/ssh:
+    units: [ssh.service]
+    priority: info
+    resource:
+      service.name: ssh
+    attributes:
+      category: security
+    operators: &journal_operators
+      - type: severity_parser
+        parse_from: body.PRIORITY
+        # SeverityText recebe o nome OTel (WARN, ERROR...), não o número syslog
+        overwrite_text: true
+        mapping:
+          fatal: ["0", "1", "2"]
+          error: "3"
+          warn: "4"
+          info2: "5"
+          info: "6"
+          debug: "7"
+      - type: move
+        if: body._PID != nil
+        from: body._PID
+        to: attributes["process.pid"]
+      - type: move
+        if: body._COMM != nil
+        from: body._COMM
+        to: attributes["process.executable.name"]
+      - type: move
+        from: body.MESSAGE
+        to: body
+
+  journald/kernel:
+    matches:
+      - _TRANSPORT: kernel
+    priority: warning
+    resource:
+      service.name: kernel
+    attributes:
+      category: system
+    operators: *journal_operators
+
+  journald/cron:
+    units: [cron.service]
+    priority: warning
+    resource:
+      service.name: cron
+    attributes:
+      category: application
+    operators: *journal_operators
+
+  journald/systemd:
+    matches:
+      - SYSLOG_IDENTIFIER: systemd
+    priority: warning
+    resource:
+      service.name: systemd
+    attributes:
+      category: platform
+    operators: *journal_operators
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  # Identidade: OTEL_RESOURCE_ATTRIBUTES (env) + host.name/os.type (system).
+  # override=true torna o Collector a fonte única da identidade do host: o OBI
+  # usa o FQDN no host.name e as métricas/logs usam o hostname; sem isso o
+  # mesmo host apareceria com dois nomes. Só são sobrescritos os atributos
+  # detectados (host.name, os.type e os de OTEL_RESOURCE_ATTRIBUTES); o
+  # service.name de cada serviço é preservado.
+  resource_detection:
+    detectors: [env, system]
+    override: true
+    system:
+      hostname_sources: [os]
+
+  batch: {}
+
+exporters:
+  otlp_grpc/gateway:
+    endpoint: ${env:LGTM_GATEWAY_ENDPOINT:-lgtm-stack:4317}
+    tls:
+      # TODO: ajuste conforme a política de TLS do seu ambiente.
+      insecure: true
+
+service:
+  # Self-monitoring: métricas internas do Collector (nível basic = só o
+  # essencial) em OTLP para o receiver local, recebendo a mesma identidade.
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-agent
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://127.0.0.1:4317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [host_metrics, otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    logs:
+      receivers: [journald/ssh, journald/kernel, journald/cron, journald/systemd]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]

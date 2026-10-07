@@ -35,12 +35,11 @@ Todos os dados persistentes da stack residem em **volumes Docker nomeados**, arm
 ```text
 /docker/                        ← Ponto de montagem do disco dedicado (Docker data-root)
   volumes/
-    lgtm-stack_grafana-data/    ← Banco SQLite, usuários e preferências do Grafana
-    lgtm-stack_loki-data/       ← Chunks compactados e WAL do Loki
-    lgtm-stack_mimir-data/      ← Blocos TSDB e compactor do Mimir
-    lgtm-stack_tempo-data/      ← Blocos de traces e WAL do Tempo
-    lgtm-stack_alloy-gateway-data/
-    lgtm-stack_alloy-agent-data/
+    lgtm-stack-otel_grafana-data/    ← Banco SQLite, usuários e preferências do Grafana
+    lgtm-stack-otel_loki-data/       ← Chunks compactados e WAL do Loki
+    lgtm-stack-otel_mimir-data/      ← Blocos TSDB e compactor do Mimir
+    lgtm-stack-otel_tempo-data/      ← Blocos de traces e WAL do Tempo
+    lgtm-stack-otel_otel-agent-data/  ← Posição de leitura dos logs de container (otel-agent)
 ```
 
 ### Vantagens desse Modelo:

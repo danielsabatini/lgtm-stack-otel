@@ -8,6 +8,8 @@
 
 ## Trabalho Recente
 
+- **Migração Alloy → OpenTelemetry Collector + OBI (2026-10-07):** backends recebem só OTLP com semântica OTel (Mimir `NoTranslation`/UTF-8); `otel-gateway` e `otel-agent` em otelcol-contrib 0.162.0; template `examples/push/linux` (otelcol-contrib + OBI v0.14.0) validado na VM de teste Debian 13 (`otel-agent`, 192.168.1.42). Pendentes: demais templates de `examples/` e dashboards sobre os nomes OTel.
+
 - **Incidente — Tail Sampling travado no Alloy Gateway (2026-08-20):** Traces do host `lgtm-cliente-1` (192.168.1.61) pararam de chegar ao Tempo mesmo com Beyla, conectividade e demo multi-tier funcionando normalmente. Causa raiz: o processor `otelcol.processor.tail_sampling.apps_traces` (`alloy-gateway/conf.d/003-otlp-gtw-local.alloy`) travou internamente no container `alloy-gateway` (Docker local, 192.168.1.35) — continuava recebendo spans (`otelcol_receiver_accepted_spans_total` subindo) mas nunca liberava a decisão de amostragem para o exportador do Tempo (`otelcol_exporter_sent_spans_total` parado, `sampling_traces_on_memory` == `new_trace_id_received_total`, sem erros de política nem fila cheia — um deadlock silencioso, não backpressure). Sem crash nem OOM do container. Resolvido com `docker compose restart alloy-gateway`; validado fim-a-fim via `/metrics` do gateway e busca no Tempo (`resource.instance="lgtm-cliente-1"`) logo após o restart.
 - **Validação de Traces (Beyla):** Demo multi-tier (frontend → middleware → backend) instrumentado na porta via drop-in systemd e `context_propagation = "headers"`.
 - **Governança Documental:** Backport das correções do drop-in do Alloy (capabilities e chown via `ExecStartPre`) e do template Alloy local (`config.alloy`) para `examples/push/linux/`.
@@ -20,10 +22,12 @@
 
 ## Decisões Ativas / Restrições (Referência Rápida)
 
+- *Stack OpenTelemetry*: Gateway = `otel-gateway` (otelcol-contrib, só OTLP, sem conversões); agents = otelcol-contrib (host/journald/docker) + OBI (eBPF). Grafana Alloy só resta nos templates `.alloy` de `examples/` ainda não migrados.
+- *Identidade*: única por host, no agent (`OTEL_RESOURCE_ATTRIBUTES` + detector `system`, `override: true`). Atributos que identificam séries precisam estar em `promote_otel_resource_attributes` do Mimir (ex.: `container.name`).
 - *eBPF Trace Propagation*: Apenas modo `headers` é endossado por padrão para evitar colisão TC.
 - *Sampling*: Exclusivamente deferido ao Gateway. Todos os exports do node devem estar em `always_on`.
-- *Troubleshooting de traces "não chegando"*: Se Beyla/Alloy do host e a conectividade de rede estiverem OK mas nenhum trace aparecer no Tempo, checar primeiro o `otelcol.processor.tail_sampling.apps_traces` do `alloy-gateway` via `curl http://localhost:12345/metrics` (local, Docker) — comparar `otelcol_receiver_accepted_spans_total` (subindo?) com `otelcol_exporter_sent_spans_total` do exporter `tempo` (parado?) e `sampling_traces_on_memory` (igual a `new_trace_id_received_total` = sinal de deadlock). Ver incidente de 2026-08-20 acima.
-- *Privilégios*: O Alloy roda restrito (sandbox systemd), as permissões necessárias eBPF são concedidas via capabilities (`AmbientCapabilities`/`CapabilityBoundingSet`) e montagens BPFFS requerem injeção `ExecStartPre=+`.
+- *Troubleshooting de traces "não chegando"*: checar no Mimir as métricas internas do Gateway (`{"service.name"="otel-gateway"}`): `otelcol_receiver_accepted_spans` subindo com `otelcol_processor_tail_sampling_global_count_traces_sampled` parado indica tail sampling travado. **Atenção:** `sampling_traces_on_memory` igual a `new_trace_id_received` é NORMAL (traces ficam em memória após a decisão até serem despejados por `num_traces`); a heurística anterior estava errada. Lembrar também que traces "OK" rápidos são retidos só a 5%.
+- *Privilégios*: O OBI roda com usuário dedicado `obi` (unit `obi.service`), as permissões necessárias eBPF são concedidas via capabilities (`AmbientCapabilities`/`CapabilityBoundingSet`) e montagens BPFFS requerem injeção `ExecStartPre=+`.
 
 ## Bloqueios Atuais
 

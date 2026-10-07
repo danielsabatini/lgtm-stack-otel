@@ -1,6 +1,6 @@
 # LGTM Stack — Observabilidade Desacoplada e Lean
 
-> **Referência Central:** Arquitetura de referência completa para observabilidade corporativa utilizando **Grafana, Grafana Alloy, Grafana Loki, Grafana Mimir e Grafana Tempo (LGTMP)**, focada em segurança por isolamento de privilégios e eficiência de custos (*Lean Observability*).
+> **Referência Central:** Arquitetura de referência completa para observabilidade corporativa utilizando **Grafana, Grafana Loki, Grafana Mimir e Grafana Tempo**, com coleta e ingestão 100% **OpenTelemetry** (OpenTelemetry Collector + OBI), focada em segurança por isolamento de privilégios e eficiência de custos (*Lean Observability*).
 
 ---
 
@@ -8,14 +8,14 @@
 
 Em ambientes tradicionais de monitoramento, a infraestrutura de telemetria frequentemente sofre com dois problemas graves: vulnerabilidades de segurança (coletores com privilégios de `root` expostos diretamente à rede externa) e custos proibitivos de armazenamento causados pela coleta indiscriminada de métricas que nunca são consultadas.
 
-A **LGTM Stack** resolve esses desafios através do desacoplamento arquitetural entre **Alloy Agent** (coleta local privilegiada sem portas de rede) e **Alloy Gateway** (ingestão segura desprivilegiada), combinada com uma política estrita de *Explicit Allowlisting (Lean Metrics)* que reduz a cardinalidade e o consumo de disco em mais de **80% a 90%** em relação ao padrão de mercado.
+A **LGTM Stack** resolve esses desafios através do desacoplamento arquitetural entre **Agent OpenTelemetry** (coleta local privilegiada sem portas de rede) e **OTel Gateway** (ingestão segura desprivilegiada), combinada com uma política estrita de *Explicit Allowlisting (Lean Metrics)* que reduz a cardinalidade e o consumo de disco em mais de **80% a 90%** em relação ao padrão de mercado.
 
 ---
 
 ## 2. Objetivo
 
 1. **Unificar os 3 Sinais da Observabilidade:** Centralizar Métricas (Mimir), Logs (Loki) e Traces Distribuídos (Tempo) em uma interface única no Grafana 13.
-2. **Garantir Segurança por Design:** Isolar totalmente os bancos de dados TSDBs da rede pública, expondo apenas o Alloy Gateway para recepção desprivilegiada e o Grafana para leitura autenticada.
+2. **Garantir Segurança por Design:** Isolar totalmente os bancos de dados TSDBs da rede pública, expondo apenas o OTel Gateway para recepção desprivilegiada e o Grafana para leitura autenticada.
 3. **Fornecer Soluções Prontas para Produção:** Entregar dashboards provisionados como código (*GitOps*), documentação metodológica padronizada e templates de agentes para Linux, Windows, bancos de dados (MySQL, PostgreSQL, MSSQL) e infraestrutura de DNS interno (*CoreDNS + etcd*).
 
 ---
@@ -24,12 +24,12 @@ A **LGTM Stack** resolve esses desafios através do desacoplamento arquitetural 
 
 O repositório é organizado de forma modular e determinística:
 
-* **`compose.yaml`:** Declaração principal dos serviços da stack central (Loki, Mimir, Tempo, Grafana, Alloy Gateway e Alloy Agent local).
-* **`alloy-agent/conf.d/`:** Pipelines HCL para coleta local de métricas de host (CPU, Memória, Disco, Rede, Inodes), containers Docker e logs do systemd journal.
-* **`alloy-gateway/conf.d/`:** Ponto único de ingestão de rede, somente OTLP (4317/4318), gravando em OTLP nativo no Mimir, Loki e Tempo.
+* **`compose.yaml`:** Declaração principal dos serviços da stack central (Loki, Mimir, Tempo, Grafana, OTel Gateway e `otel-agent`).
+* **`otel-agent/`:** Agente OpenTelemetry Collector (container) do próprio servidor da stack: métricas de host e de containers, logs do journald e dos containers.
+* **`otel-gateway/config.yaml`:** OpenTelemetry Collector Contrib — ponto único de ingestão de rede, somente OTLP (4317/4318), gravando em OTLP nativo no Mimir, Loki e Tempo.
 * **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
-* **`examples/push/`:** Templates de instalação para agentes locais Alloy nos servidores monitorados (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
-* **`examples/pull/`:** Templates de scraping remoto (modo Pull) para serem carregados no Alloy Gateway central (Linux Host, Linux DNS, CoreDNS, etcd, DBaaS MySQL, DBaaS PostgreSQL, Windows).
+* **`examples/push/`:** Templates de instalação de agentes nos servidores monitorados (`linux`, `linux-mysql` e `linux-pgsql`: OpenTelemetry Collector + OBI; demais ainda em Alloy, em migração) (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
+* **`examples/pull/`:** Templates de coleta remota (modo Pull) para servidores sem agente, carregados pelo `otel-agent` da stack em `otel-agent/pull.d/` (`linux`, `linux-dbaas-mysql` e `linux-dbaas-pgsql` já em OpenTelemetry Collector; demais ainda em Alloy, em migração) (Linux Host, Linux DNS, CoreDNS, etcd, DBaaS MySQL, DBaaS PostgreSQL, Windows).
 * **`artifacts/`:** Scripts de teste de carga (DNS, MySQL, PostgreSQL), automação de túneis e planilhas de referência.
 * **`docs/`:** Documentação oficial, técnica e operacional da stack.
 
@@ -55,7 +55,7 @@ docker compose up -d
 
 Após a inicialização:
 * **Grafana UI:** Acesse `http://localhost:3000` (Usuário: `admin` / Senha definida no `.env`, padrão: `changeme`).
-* **Alloy Gateway UI:** Acesse `http://localhost:12345` para diagnóstico de componentes e pipelines.
+* **OTel Gateway:** health check em `http://localhost:13133/`; métricas internas do gateway no Mimir (`{"service.name"="otel-gateway"}`).
 
 ---
 
@@ -70,14 +70,14 @@ Para monitorar instâncias remotas, consulte o guia de instalação corresponden
 | **Linux + PostgreSQL Nativo** | Push (Agente Local) | [examples/push/linux-pgsql/INSTALL.md](examples/push/linux-pgsql/INSTALL.md) |
 | **Windows Server** | Push (Agente Local) | [examples/push/windows/INSTALL.md](examples/push/windows/INSTALL.md) |
 | **Windows + SQL Server (MSSQL)** | Push (Agente Local) | [examples/push/windows-mssql/INSTALL.md](examples/push/windows-mssql/INSTALL.md) |
-| **Linux Host Geral (Node Exporter)** | Pull Remoto (Gateway) | [examples/pull/linux/INSTALL.md](examples/pull/linux/INSTALL.md) |
+| **Linux Host Legado (Node Exporter)** | Pull Remoto (`otel-agent`) | [examples/pull/linux/INSTALL.md](examples/pull/linux/INSTALL.md) |
 | **Windows Server (Windows Exporter)** | Pull Remoto (Gateway) | [examples/pull/windows/INSTALL.md](examples/pull/windows/INSTALL.md) |
 | **Windows + SQL Server (MSSQL)** | Pull Remoto (Gateway) | [examples/pull/windows-mssql/INSTALL.md](examples/pull/windows-mssql/INSTALL.md) |
-| **Linux + DBaaS MySQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-mysql/INSTALL.md](examples/pull/linux-dbaas-mysql/INSTALL.md) |
-| **Linux + DBaaS PostgreSQL** | Pull Remoto (Gateway) | [examples/pull/linux-dbaas-pgsql/INSTALL.md](examples/pull/linux-dbaas-pgsql/INSTALL.md) |
+| **Linux + DBaaS MySQL** | Pull Remoto (`otel-agent`) | [examples/pull/linux-dbaas-mysql/INSTALL.md](examples/pull/linux-dbaas-mysql/INSTALL.md) |
+| **Linux + DBaaS PostgreSQL** | Pull Remoto (`otel-agent`) | [examples/pull/linux-dbaas-pgsql/INSTALL.md](examples/pull/linux-dbaas-pgsql/INSTALL.md) |
 | **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/dns/INSTALL.md](examples/pull/dns/INSTALL.md) |
 
-> 🔍 **Auto-Instrumentação de Traces (Beyla eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
+> 🔍 **Auto-Instrumentação de Traces e Métricas HTTP (OBI eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#6-traces-e-métricas-http-com-obi-opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
 
 ---
 
@@ -88,7 +88,7 @@ A stack opera com isolamento estrito de portas. Nenhum banco de dados (TSDB) é 
 | Porta | Protocolo | Origem Recomendada | Descrição do Serviço |
 |---|---|---|---|
 | **`3000`** | TCP | Pública / VPN | Interface Web e leitura de Dashboards no **Grafana**. |
-| **`12345`** | TCP | VPN / Admin | Interface Web de diagnóstico do **Alloy Gateway**. |
+| **`13133`** | TCP | VPN / Admin | Health check do **OTel Gateway**. |
 | **`4317`** | TCP | VPC / Rede Interna | Ingestão OTLP gRPC (traces, métricas e logs de agents e aplicações). |
 | **`4318`** | TCP | VPC / Rede Interna | Ingestão OTLP HTTP (traces, métricas e logs de agents e aplicações). |
 
@@ -111,7 +111,7 @@ A stack opera com isolamento estrito de portas. Nenhum banco de dados (TSDB) é 
 * **[docs/OBSERVABILITY-METHODOLOGY.md](docs/OBSERVABILITY-METHODOLOGY.md):** Metodologia canônica dos 5 Pilares Numéricos (*Health, Capacity, Activity, Diagnostics, Inventory*), 4 Categorias de Logs, Traces OTLP, SLIs/SLOs e Playbook de Incidentes.
 * **[docs/METRICS.md](docs/METRICS.md):** Política de métricas Lean, allowlists e padrão de tooltips em 3 blocos.
 * **[docs/LOGS.md](docs/LOGS.md):** Política de logs estruturados no Loki, estágios de relabel e parsing.
-* **[docs/TRACES.md](docs/TRACES.md):** Rastreamento distribuído no Tempo, Beyla eBPF e tail-sampling.
+* **[docs/TRACES.md](docs/TRACES.md):** Rastreamento distribuído no Tempo, OBI (eBPF) e tail-sampling.
 * **[docs/DASHBOARDS.md](docs/DASHBOARDS.md):** Provisionamento GitOps com schema nativo do Grafana 13 (`v2`), convenções visuais e arquitetura da solução DNS.
 * **[docs/ALERTS.md](docs/ALERTS.md):** Estratégia de regras de alerta por taxa de queima de SLO (*Multi-Window Multi-Burn-Rate*).
 

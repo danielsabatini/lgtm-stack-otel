@@ -105,12 +105,12 @@ docker logs tempo-verify 2>&1 | grep -q "Tempo started" \
   || docker logs tempo-verify 2>&1 | tail -20
 docker rm -f tempo-verify
 
-# Validar pipelines do Alloy (gateway e agent):
-for d in alloy-gateway alloy-agent; do
-  docker run --rm -v $(pwd)/$d/conf.d:/c:ro \
-    grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1} validate /c \
-    && echo "✓ $d válido"
-done
+# Validar o OTel Gateway e as configs de agente em examples/:
+docker run --rm -e ENVIRONMENT=prd \
+  -v $(pwd)/otel-gateway/config.yaml:/etc/otelcol-contrib/config.yaml:ro \
+  otel/opentelemetry-collector-contrib:${OTELCOL_CONTRIB_VERSION:-0.162.0} \
+  validate --config=/etc/otelcol-contrib/config.yaml && echo "✓ otel-gateway válido"
+python3 artifacts/scripts/check-examples-consistency.py
 ```
 
 ### 4.5 Inicialização e Acompanhamento de Logs
@@ -131,7 +131,9 @@ As versões abaixo foram testadas e validadas neste repositório:
 | Componente | Versão Estável | Papel na Stack | Observações de Compatibilidade |
 |---|:---:|---|---|
 | **Grafana** | `13.2.3` | Visualização | UI, Provisioning e migrações SQLite 100% validadas. |
-| **Alloy** | `v1.20.1` | Coletor & Gateway | Pipelines de métricas, logs e traces OTLP validados. |
+| **OpenTelemetry Collector Contrib** | `0.162.0` | Gateway & Agent | Gateway OTLP (tail sampling) e agent Linux (`host_metrics`, `journald`) validados em Debian 13. |
+| **OBI** | `v0.14.0` | Agent (eBPF) | Traces + métricas HTTP com propagação de contexto validados (kernel 6.12). |
+| **Alloy** (legado) | `v1.20.1` | Agent local da stack e templates não migrados | Em migração para OpenTelemetry Collector. |
 | **Loki** | `3.7.8` | Logs TSDB | Suporte a chunks TSDB v13 e retenção via compactor. |
 | **Mimir** | `3.2.1` | Métricas TSDB | Suporte a blocos de índice v2 e compactor integrado. |
 | **Tempo** | `3.1.0` | Traces TSDB | Modo monolítico; blocos novos em vParquet5 (vParquet4 antigos seguem legíveis, sem migração). |
@@ -154,7 +156,7 @@ Caso o novo serviço entre em falha contínua após o upgrade:
 - [ ] **Métricas:** No Grafana, execute no Explore a query `up` apontando para o Mimir (todos os serviços devem retornar `1`).
 - [ ] **Logs:** No Explore, busque logs recentes no Loki (`{service_name="ssh"}`) e confirme que novas entradas estão chegando.
 - [ ] **Traces:** Confirme que spans recentes aparecem no datasource do Tempo.
-- [ ] **Health da UI do Gateway:** Acesse `http://localhost:12345` e confirme que todos os componentes do Alloy estão em estado `Healthy`.
+- [ ] **Health do Gateway:** `curl -s http://localhost:13133/` deve retornar `"status":"Server available"`.
 
 ---
 

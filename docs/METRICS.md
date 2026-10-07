@@ -1,10 +1,10 @@
-# Métricas (Mimir e Alloy Prometheus)
+# Métricas (Mimir e OpenTelemetry)
 
 Este documento cobre somente a política de métricas da stack.
 
 ## Endpoints de Ingestão
 
-Toda métrica entra na stack em OTLP pelo Alloy Gateway (portas 4317/4318) e é gravada no Mimir pelo endpoint OTLP nativo. Não há ingestão Prometheus `remote_write`.
+Toda métrica entra na stack em OTLP pelo OTel Gateway (portas 4317/4318) e é gravada no Mimir pelo endpoint OTLP nativo. Não há ingestão Prometheus `remote_write`.
 
 Para consultar as portas exatas e o roteamento de rede, consulte a matriz oficial em:
 👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
@@ -35,7 +35,17 @@ docker run --rm --network lgtm curlimages/curl -s http://mimir:9009/metrics \
   | grep 'cortex_request_duration_seconds_count{.*route="otlp_v1_metrics"'
 ```
 
-> **Escopo atual:** os Alloy Agents e os templates de `examples/` ainda usam `prometheus.remote_write` para a porta 9999, que **não existe mais** no Gateway — esses envios falham até a migração dos clientes para OTLP (conversão exporter Prometheus → OTLP no próprio agente). O self-monitoring do Gateway também passa a ser coletado pelo Alloy Agent do host da stack. Ver [ROADMAP.md](../ROADMAP.md).
+> **Origem das métricas:** no agente OpenTelemetry (`examples/push/linux`), as métricas de host vêm do receiver `host_metrics` com os nomes da OTel Semantic Conventions (`system.cpu.time`, `system.memory.usage`, `system.filesystem.usage`...) e as métricas HTTP do OBI (`http.server.request.duration`...). Os atributos do `host_metrics` seguem a versão emitida pelo receiver (`state`, `direction`, `device`), pois as system semantic conventions estão em *Development* e a especificação orienta não adotar breaking changes antes de estabilizar. No servidor da stack, o `otel-agent` coleta também as métricas de containers via `docker_stats` (`container.cpu.usage.total`, `container.cpu.throttling_data.*`, `container.memory.usage.total`/`limit`, `container.network.io.usage.rx_bytes`/`tx_bytes`), identificadas pelo label `container.name` (promovido no Mimir — sem ele as séries de containers diferentes se misturariam). Os templates `.alloy` ainda não migrados usam `remote_write` para a porta 9999, que **não existe mais** no Gateway — esses envios falham até a migração (ver [ROADMAP.md](../ROADMAP.md)).
+>
+> **Bancos de dados:** no servidor MySQL (`examples/push/linux-mysql`), o receiver nativo `mysql` substitui o `mysqld_exporter`: ~38 séries por instância (`mysql.server.healthy`, `mysql.threads`, `mysql.query.count`, `mysql.query.slow.count`, `mysql.row_operations`, `mysql.row_locks`, `mysql.buffer_pool.*`, `mysql.innodb.redo_log.checkpoint.age`, `mysql.tmp_resources`...), todas habilitadas explicitamente. `mysql.table.io.wait.*` e `mysql.index.io.wait.*` vêm ligadas por padrão no receiver com uma série por tabela/índice e ficam **desligadas**.
+>
+> **PostgreSQL** (`examples/push/linux-pgsql`): o receiver nativo `postgresql` substitui o `postgres_exporter`, sempre com o feature gate `receiver.postgresql.useOTelSemconv` (Alpha): um resource por servidor e o banco no atributo `db.namespace` de cada série — sem o gate, o banco fica só no resource e as séries de bancos diferentes se misturam no Mimir. Apenas métricas no nível de banco (~14 séries por banco: `postgresql.backends`, `connection.max`, `commits`, `rollbacks`, `tup_*`, `deadlocks`, `temp.io`, `blks_hit`/`blks_read`, `db_size`, `bgwriter.checkpoint.count`); as métricas por tabela/índice, ligadas por padrão no receiver, ficam **desligadas**.
+>
+> **Servidores legados (pull, `examples/pull/linux`):** o `otel-agent` faz o scrape do `node_exporter` remoto e converte para OTLP; os nomes continuam `node_*` (sem equivalência 1:1 com `system.*`), com a identidade OpenTelemetry por alvo (`host.name`, `deployment.environment.name`, `cloud.*`), `job=node-exporter` e `up`. Mesma allowlist Lean do template legado: ~64 séries por servidor (contra ~1.555 expostas pelo `node_exporter`); as séries sintéticas `scrape_*` são descartadas.
+>
+> **DBaaS MySQL (pull, `examples/pull/linux-dbaas-mysql`):** o `otel-agent` coleta os dois endpoints expostos pelo serviço (`:8080/node/metrics` e `:8080/mysql/metrics`) com jobs `node-exporter` e `mysqld-exporter` e a mesma identidade por instância; o resource do banco recebe `db.system.name=mysql`. Allowlist de SO idêntica à do pull Linux (conferida pelo script de consistência) e 14 métricas `mysql_*` (16 séries com `up`), contra ~3.000 expostas pelo mysqld_exporter.
+>
+> **DBaaS PostgreSQL (pull, `examples/pull/linux-dbaas-pgsql`):** mesmo modelo, com os endpoints `:8080/node/metrics` e `:8080/postgres/metrics` (jobs `node-exporter` e `postgres-exporter`, `db.system.name=postgresql`). O label `datname` do postgres_exporter vira `db.namespace` (mesma dimensão do template push `linux-pgsql`); os bancos internos `template0`/`template1` e o label `server` (caminho do socket) são descartados. Referência: 44 séries de banco com 2 bancos de aplicação, contra 597 expostas.
 
 ## Política de Coleta (Lean Agent Metrics)
 
@@ -44,8 +54,9 @@ Diferente do padrão de mercado que coleta centenas de métricas irrelevantes, n
 O _Node Exporter_ original pode gerar até **1400 séries ativas**. Em nossa stack, filtramos agressivamente na origem para persistir apenas o que é visualizado nos Dashboards.
 
 ### Estratégia de Filtragem:
-- **Agente (Push):** O filtro ocorre no Alloy Agent antes de enviar o dado pela rede.
-- **Gateway (Pull Legado):** O filtro ocorre no Alloy Gateway assim que o dado é coletado do exporter remoto.
+- **Agente OpenTelemetry:** cada scraper e cada métrica do `host_metrics` é habilitada explicitamente (`metrics: <nome>: { enabled: true|false }`); dispositivos (`loop`, `ram`, `dm-*`), pseudo-filesystems e interfaces virtuais são excluídos; o OBI exporta só `features: [application]`; o self-monitoring usa `level: basic`. Referência: ~66 séries `system.*` por host Linux.
+- **Templates `.alloy` legados:** o filtro ocorre via `metric_relabel` `keep` no agente antes de enviar o dado pela rede.
+- **Gateway:** nunca filtra nem transforma — só repassa o que o agente decidiu coletar.
 
 O resultado é um Mimir _Lean_ operando com **80% a 90% de economia de disco** em comparação com coletas não filtradas.
 

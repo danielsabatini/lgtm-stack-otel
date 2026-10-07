@@ -50,4 +50,4 @@ AGENTS.md
 .journal/
 
 # Ignore instance-specific remote scrape configurations in gateway
-alloy-gateway/conf.d/pull*
+otel-agent/pull.d/*.yaml

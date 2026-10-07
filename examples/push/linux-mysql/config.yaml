@@ -1,0 +1,345 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Agent Linux + MySQL
+# =============================================================================
+# Arquivo: /etc/otelcol-contrib/config.yaml   (serviço: otelcol-contrib)
+#
+# Mesma base do template examples/push/linux/config.yaml (host + journald),
+# acrescida do banco MySQL — mantenha a parte de host idêntica (o script
+# artifacts/scripts/check-examples-consistency.py confere):
+#   - Métricas de host .......... host_metrics  (system.*)
+#   - Logs do journald .......... journald      (ssh, kernel, cron, systemd)
+#   - Métricas do MySQL ......... mysql         (mysql.*, receiver nativo OTel)
+#   - Error log do MySQL ........ file_log      (/var/log/mysql/error.log)
+#   - Traces + métricas HTTP .... OBI (opcional, serviço obi) -> OTLP 127.0.0.1:4317
+#   - Self-monitoring ........... telemetria interna -> OTLP 127.0.0.1:4317
+#
+# Identidade e Gateway, em /etc/otelcol-contrib/otelcol-contrib.conf:
+#   OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=prd,cloud.provider=mgc,cloud.region=br-se1,cloud.availability_zone=a"
+#   LGTM_GATEWAY_ENDPOINT=lgtm-stack:4317
+# Credencial do usuário de monitoramento (NUNCA neste arquivo), no mesmo .conf:
+#   MYSQL_MONITOR_USER=otel_monitor
+#   MYSQL_MONITOR_PASSWORD=<senha>
+#
+# Política Lean: coletar e armazenar apenas o necessário. Cada métrica e cada
+# fonte de log abaixo é explícita; o que não está listado não é coletado.
+# =============================================================================
+
+receivers:
+  # Entrada local do OBI e do self-monitoring. Só loopback: o agente não
+  # expõe portas na rede.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DE HOST (nomes system.* da OTel Semantic Conventions)
+  # ---------------------------------------------------------------------------
+  # Os atributos seguem a versão emitida pelo receiver (ex.: state, direction,
+  # device): as system semantic conventions estão em "Development" e a
+  # especificação orienta as instrumentações a não adotar breaking changes
+  # antes de estabilizar.
+  host_metrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time: { enabled: true }
+      load:
+        metrics:
+          system.cpu.load_average.1m: { enabled: true }
+          system.cpu.load_average.5m: { enabled: true }
+          system.cpu.load_average.15m: { enabled: true }
+      memory:
+        metrics:
+          system.memory.usage: { enabled: true }
+          system.memory.limit: { enabled: true }
+      paging:
+        metrics:
+          system.paging.usage: { enabled: true }
+          system.paging.faults: { enabled: false }
+          system.paging.operations: { enabled: false }
+      disk:
+        # Ignora dispositivos sem valor operacional (loop, ram, cd, device-mapper)
+        exclude:
+          devices: ["^(loop|ram|fd|sr)[0-9]*$", "^dm-[0-9]+$"]
+          match_type: regexp
+        metrics:
+          system.disk.io: { enabled: true }
+          system.disk.operations: { enabled: true }
+          system.disk.operation_time: { enabled: true }
+          system.disk.io_time: { enabled: true }
+          system.disk.merged: { enabled: false }
+          system.disk.pending_operations: { enabled: false }
+          system.disk.weighted_io_time: { enabled: false }
+      filesystem:
+        # Ignora pseudo-filesystems (sem valor operacional, só cardinalidade)
+        exclude_fs_types:
+          fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs, tmpfs]
+          match_type: strict
+        metrics:
+          system.filesystem.usage: { enabled: true }
+          system.filesystem.inodes.usage: { enabled: true }
+      network:
+        # Ignora interfaces virtuais (loopback, docker, veth, bridges)
+        exclude:
+          interfaces: ["^lo$", "^docker.*", "^veth.*", "^br-.*", "^virbr.*"]
+          match_type: regexp
+        metrics:
+          system.network.io: { enabled: true }
+          system.network.dropped: { enabled: true }
+          system.network.errors: { enabled: true }
+          system.network.packets: { enabled: false }
+          system.network.connections: { enabled: false }
+      system:
+        metrics:
+          system.uptime: { enabled: true }
+
+  # ---------------------------------------------------------------------------
+  # LOGS DO JOURNALD (OTel Logs Data Model)
+  # ---------------------------------------------------------------------------
+  # Cada fonte filtra na origem (priority = severidade mínima do journalctl).
+  # Os operadores comuns (âncora &journal_operators) convertem a entrada do
+  # journal em log record OTel: PRIORITY -> SeverityNumber/SeverityText,
+  # _PID/_COMM -> process.pid/process.executable.name, MESSAGE -> Body.
+  journald/ssh:
+    units: [ssh.service]
+    priority: info
+    resource:
+      service.name: ssh
+    attributes:
+      category: security
+    operators: &journal_operators
+      - type: severity_parser
+        parse_from: body.PRIORITY
+        # SeverityText recebe o nome OTel (WARN, ERROR...), não o número syslog
+        overwrite_text: true
+        mapping:
+          fatal: ["0", "1", "2"]
+          error: "3"
+          warn: "4"
+          info2: "5"
+          info: "6"
+          debug: "7"
+      - type: move
+        if: body._PID != nil
+        from: body._PID
+        to: attributes["process.pid"]
+      - type: move
+        if: body._COMM != nil
+        from: body._COMM
+        to: attributes["process.executable.name"]
+      - type: move
+        from: body.MESSAGE
+        to: body
+
+  journald/kernel:
+    matches:
+      - _TRANSPORT: kernel
+    priority: warning
+    resource:
+      service.name: kernel
+    attributes:
+      category: system
+    operators: *journal_operators
+
+  journald/cron:
+    units: [cron.service]
+    priority: warning
+    resource:
+      service.name: cron
+    attributes:
+      category: application
+    operators: *journal_operators
+
+  journald/systemd:
+    matches:
+      - SYSLOG_IDENTIFIER: systemd
+    priority: warning
+    resource:
+      service.name: systemd
+    attributes:
+      category: platform
+    operators: *journal_operators
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DO MYSQL (receiver nativo OpenTelemetry, nomes mysql.*)
+  # ---------------------------------------------------------------------------
+  # Usuário com o mínimo de privilégios (ver INSTALL.md): PROCESS, REPLICATION
+  # CLIENT e SELECT em performance_schema.*.
+  mysql:
+    endpoint: localhost:3306
+    username: ${env:MYSQL_MONITOR_USER}
+    password: ${env:MYSQL_MONITOR_PASSWORD}
+    collection_interval: 60s
+    resource_attributes:
+      db.system.name: { enabled: true }
+      db.system.version: { enabled: true }
+    metrics:
+      # Saúde e disponibilidade
+      mysql.server.healthy: { enabled: true }
+      mysql.uptime: { enabled: true }
+      # Conexões
+      mysql.threads: { enabled: true }
+      mysql.max_used_connections: { enabled: true }
+      mysql.connection.errors: { enabled: true }
+      # Throughput
+      mysql.query.count: { enabled: true }
+      mysql.query.slow.count: { enabled: true }
+      mysql.row_operations: { enabled: true }
+      # Contenção
+      mysql.row_locks: { enabled: true }
+      # Memória / InnoDB
+      mysql.buffer_pool.usage: { enabled: true }
+      mysql.buffer_pool.limit: { enabled: true }
+      mysql.buffer_pool.operations: { enabled: true }
+      mysql.innodb.redo_log.checkpoint.age: { enabled: true }
+      # Diagnóstico
+      mysql.tmp_resources: { enabled: true }
+      # Desligadas (Lean). ATENÇÃO: table/index.io.wait.* vêm ligadas por padrão
+      # e geram uma série por tabela/índice — explosão de cardinalidade.
+      mysql.table.io.wait.count: { enabled: false }
+      mysql.table.io.wait.time: { enabled: false }
+      mysql.index.io.wait.count: { enabled: false }
+      mysql.index.io.wait.time: { enabled: false }
+      mysql.buffer_pool.data_pages: { enabled: false }
+      mysql.buffer_pool.pages: { enabled: false }
+      mysql.buffer_pool.page_flushes: { enabled: false }
+      mysql.operations: { enabled: false }
+      mysql.page_operations: { enabled: false }
+      mysql.double_writes: { enabled: false }
+      mysql.handlers: { enabled: false }
+      mysql.locks: { enabled: false }
+      mysql.log_operations: { enabled: false }
+      mysql.opened_resources: { enabled: false }
+      mysql.prepared_statements: { enabled: false }
+      mysql.sorts: { enabled: false }
+      mysql.mysqlx_connections: { enabled: false }
+
+  # ---------------------------------------------------------------------------
+  # ERROR LOG DO MYSQL
+  # ---------------------------------------------------------------------------
+  # log_error_verbosity=2 (padrão do MySQL 8.4) já grava só ERROR, Warning e
+  # System na origem. Formato:
+  #   2026-10-07T18:46:53.897297Z 0 [Warning] [MY-010068] [Server] mensagem
+  file_log/mysql:
+    include: [/var/log/mysql/error.log]
+    start_at: end
+    include_file_name: false
+    storage: file_storage
+    resource:
+      service.name: mysql
+    attributes:
+      category: application
+    operators:
+      - type: regex_parser
+        regex: '^(?P<time>\S+) (?P<thread>\d+) \[(?P<prio>\w+)\] \[(?P<code>MY-\d+)\] \[(?P<subsystem>\w+)\] (?P<message>.*)$'
+        timestamp:
+          parse_from: attributes.time
+          layout_type: gotime
+          layout: '2006-01-02T15:04:05.999999Z07:00'
+        severity:
+          parse_from: attributes.prio
+          overwrite_text: true
+          mapping:
+            error: ERROR
+            warn: Warning
+            info: [System, Note]
+      - type: move
+        from: attributes.message
+        to: body
+      - type: move
+        from: attributes.thread
+        to: attributes["thread.id"]
+      - type: move
+        from: attributes.code
+        to: attributes["mysql.error.code"]
+      - type: move
+        from: attributes.subsystem
+        to: attributes["mysql.subsystem"]
+      - type: remove
+        field: attributes.time
+      - type: remove
+        field: attributes.prio
+
+extensions:
+  # Posição de leitura do error log entre reinícios.
+  file_storage:
+    directory: /var/lib/otelcol-contrib/file_storage
+    create_directory: true
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  # Identidade: OTEL_RESOURCE_ATTRIBUTES (env) + host.name/os.type (system).
+  # override=true torna o Collector a fonte única da identidade do host: o OBI
+  # usa o FQDN no host.name e as métricas/logs usam o hostname; sem isso o
+  # mesmo host apareceria com dois nomes. Só são sobrescritos os atributos
+  # detectados (host.name, os.type e os de OTEL_RESOURCE_ATTRIBUTES); o
+  # service.name de cada serviço é preservado.
+  resource_detection:
+    detectors: [env, system]
+    override: true
+    system:
+      hostname_sources: [os]
+
+  # Métricas do mysql receiver chegam sem service.name: identifica o serviço.
+  resource/mysql:
+    attributes:
+      - key: service.name
+        value: mysql
+        action: upsert
+
+  batch: {}
+
+exporters:
+  otlp_grpc/gateway:
+    endpoint: ${env:LGTM_GATEWAY_ENDPOINT:-lgtm-stack:4317}
+    tls:
+      # TODO: ajuste conforme a política de TLS do seu ambiente.
+      insecure: true
+
+service:
+  extensions: [file_storage]
+
+  # Self-monitoring: métricas internas do Collector (nível basic = só o
+  # essencial) em OTLP para o receiver local, recebendo a mesma identidade.
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-agent
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://127.0.0.1:4317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [host_metrics, otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    metrics/mysql:
+      receivers: [mysql]
+      processors: [memory_limiter, resource/mysql, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    logs:
+      receivers: [journald/ssh, journald/kernel, journald/cron, journald/systemd, file_log/mysql]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]

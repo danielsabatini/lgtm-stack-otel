@@ -29,9 +29,16 @@ Este roadmap organiza as entregas planejadas em três horizontes temporais bem d
 * [x] **Monitoramento de DNS Interno:** Coleta pull para CoreDNS e etcd com dashboard completo organizado na metodologia de 5 pilares.
 * [ ] **Stack 100% OpenTelemetry (OTLP + Semantic Conventions):**
   * [x] Backends: Mimir e Loki recebendo OTLP nativo com semântica preservada (`NoTranslation`/UTF-8 no Mimir, `otlp_config` no Loki); Tempo armazenando apenas traces (`metrics_generator` desabilitado); single-tenant monolítico.
-  * [x] Alloy Gateway: somente OTLP (4317/4318), sem conversões; portas 9998/9999 removidas.
-  * [ ] Alloy Agent local e templates de `examples/push`/`examples/pull`: OTLP na origem, com identidade em semantic conventions (`host.name`, `deployment.environment.name`, `cloud.*`, `service.name`) e conversão exporter Prometheus → OTLP no agente; self-monitoring do Gateway coletado pelo agente.
-  * [ ] Métricas RED e Service Graph emitidas pelo Beyla nos agents.
+  * [x] Gateway: OpenTelemetry Collector Contrib (`otel-gateway`), somente OTLP (4317/4318), sem conversões; portas 9998/9999 removidas.
+  * [x] Agent Linux (`examples/push/linux`): OpenTelemetry Collector Contrib (`host_metrics`, `journald`) + OBI (traces e métricas HTTP), validado em VM Debian 13.
+  * [x] Agent da própria stack: `otel-agent` (Collector em container, host + `docker_stats` + logs de containers + journald), validado em VM Debian 13 com Docker.
+  * [x] `examples/push/linux-mysql`: host + receiver nativo `mysql` + error log, validado com MySQL Community 8.4.11 LTS na VM Debian 13.
+  * [x] `examples/push/linux-pgsql`: host + receiver nativo `postgresql` (gate `useOTelSemconv`, `db.namespace`) + log com agrupamento de continuações, validado com PostgreSQL 18.6 na VM Debian 13.
+  * [x] `examples/pull/linux` (node_exporter legado): coleta pelo `otel-agent` via `otel-agent/pull.d/`, sem conversão no Gateway, validado contra node_exporter 1.9.0 na VM Debian 13.
+  * [x] `examples/pull/linux-dbaas-mysql`: node_exporter + mysqld_exporter do DBaaS pelo `otel-agent`, validado contra instância MySQL 8.4.6 (Magalu Cloud).
+  * [x] `examples/pull/linux-dbaas-pgsql`: node_exporter + postgres_exporter do DBaaS pelo `otel-agent` (`datname` → `db.namespace`), validado contra instância PostgreSQL 16.11 (Magalu Cloud).
+  * [ ] Demais templates de `examples/push`/`examples/pull` migrados para OpenTelemetry Collector: OTLP na origem, com identidade em semantic conventions (`host.name`, `deployment.environment.name`, `cloud.*`, `service.name`) e conversão exporter Prometheus → OTLP no agente; self-monitoring do Gateway coletado pelo agente.
+  * [ ] Service Graph a partir do OBI (feature `application_service_graph`), validar com o Service Map do Grafana.
   * [ ] Dashboards e datasources refeitos sobre os nomes OpenTelemetry.
 * [ ] **Implantação de Tracing Distribuído:** Guia e exemplos práticos para instrumentação de microsserviços via SDK OTel conectados ao Tempo.
 * [ ] **Continuous Profiling (Pyroscope):** Integração do Grafana Pyroscope na stack para análise de performance de CPU e memória a nível de linha de código.
@@ -43,7 +50,7 @@ Este roadmap organiza as entregas planejadas em três horizontes temporais bem d
 * [ ] **Auto-Sizing Tool:** Script automatizado que calcula a projeção de disco recomendada baseada no consumo real das últimas 24 horas.
 
 ### 3.3 Longo Prazo (Visão de Futuro)
-* [ ] **Kubernetes Sidecar Mode:** Versão otimizada do Alloy Agent empacotada para execução como DaemonSet em clusters Kubernetes.
+* [ ] **Kubernetes Sidecar Mode:** Versão otimizada do agente OpenTelemetry empacotada para execução como DaemonSet em clusters Kubernetes.
 
 ---
 

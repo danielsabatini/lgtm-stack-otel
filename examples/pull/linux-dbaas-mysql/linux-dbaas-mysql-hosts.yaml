@@ -1,0 +1,114 @@
+# =============================================================================
+# PULL — DBaaS MySQL (node_exporter + mysqld_exporter expostos pelo serviço)
+# =============================================================================
+# Carregado pelo otel-agent da stack: copie para
+# otel-agent/pull.d/linux-dbaas-mysql-hosts.yaml, ajuste os alvos e reinicie
+# (docker compose restart otel-agent).
+#
+# Instâncias gerenciadas (DBaaS) não permitem instalar agente: o serviço expõe
+# os exporters atrás de um proxy na porta 8080:
+#   http://<IP>:8080/node/metrics    -> node_exporter   (SO da instância)
+#   http://<IP>:8080/mysql/metrics   -> mysqld_exporter (banco)
+# O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
+# declarada por instância e envia ao otel-gateway (que continua só OTLP).
+#
+# Nomes das métricas: os dos exporters (node_*, mysql_*). Para métricas mysql.*
+# do receiver nativo é preciso conexão direta ao banco (ver
+# examples/push/linux-mysql).
+#
+# Política Lean: só as allowlists abaixo (~64 séries de SO + 14 de banco por
+# instância, contra ~1.500 + ~3.000 expostas pelos exporters).
+# =============================================================================
+
+receivers:
+  prometheus/pull_dbaas_mysql:
+    config:
+      scrape_configs:
+        # ---------------------------------------------------------------------
+        # SO da instância (node_exporter) — mesma allowlist de examples/pull/linux
+        # ---------------------------------------------------------------------
+        - job_name: node-exporter
+          metrics_path: /node/metrics
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs:
+            # Um item por instância DBaaS.
+            # TODO: ajuste o IP e a identidade de cada instância (repita nos dois jobs).
+            - targets: ["[IP_ADDRESS]:8080"]
+              labels:
+                host_name: "[INSTANCE_NAME]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: br-se1
+                cloud_availability_zone: a
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+            - source_labels: [device]
+              regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
+              action: drop
+            - source_labels: [fstype]
+              regex: 'tmpfs|overlay|squashfs|nsfs|autofs|ramfs'
+              action: drop
+            - source_labels: [__name__, device]
+              regex: 'node_network_.+;(lo|docker.*|veth.*|br-.*|virbr.*)'
+              action: drop
+
+        # ---------------------------------------------------------------------
+        # Banco (mysqld_exporter)
+        # ---------------------------------------------------------------------
+        - job_name: mysqld-exporter
+          metrics_path: /mysql/metrics
+          scrape_interval: 60s
+          scrape_timeout: 10s
+          static_configs:
+            # TODO: mesmos IPs e identidades do job node-exporter.
+            - targets: ["[IP_ADDRESS]:8080"]
+              labels:
+                host_name: "[INSTANCE_NAME]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: br-se1
+                cloud_availability_zone: a
+                db_system_name: mysql
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|mysql_up|mysql_global_variables_max_connections|mysql_global_status_threads_connected|mysql_global_status_uptime|mysql_global_status_questions|mysql_global_status_slow_queries|mysql_global_status_innodb_redo_log_physical_size|mysql_global_status_created_tmp_disk_tables|mysql_global_status_innodb_system_rows_read|mysql_global_status_innodb_system_rows_inserted|mysql_global_status_innodb_system_rows_updated|mysql_global_status_innodb_system_rows_deleted|mysql_global_status_innodb_buffer_pool_bytes_data|mysql_global_status_innodb_row_lock_waits
+
+processors:
+  # Séries sintéticas do scrape (fora do metric_relabel): descarta. A
+  # disponibilidade de cada endpoint fica no "up" (e no mysql_up do banco).
+  filter/pull_dbaas_mysql:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^scrape_")
+
+  # Labels de identidade do alvo -> Resource OpenTelemetry da instância.
+  groupbyattrs/pull_dbaas_mysql:
+    keys: [host_name, deployment_environment_name, cloud_provider, cloud_region, cloud_availability_zone, db_system_name]
+
+  transform/pull_dbaas_mysql:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["host.name"], attributes["host_name"])
+          - set(attributes["deployment.environment.name"], attributes["deployment_environment_name"])
+          - set(attributes["cloud.provider"], attributes["cloud_provider"])
+          - set(attributes["cloud.region"], attributes["cloud_region"])
+          - set(attributes["cloud.availability_zone"], attributes["cloud_availability_zone"])
+          - set(attributes["db.system.name"], attributes["db_system_name"]) where attributes["db_system_name"] != nil
+          - delete_matching_keys(attributes, "^(host_name|deployment_environment_name|cloud_provider|cloud_region|cloud_availability_zone|db_system_name)$")
+
+service:
+  pipelines:
+    # SEM resource_detection: a identidade é a da instância DBaaS, não a da stack.
+    metrics/pull_dbaas_mysql:
+      receivers: [prometheus/pull_dbaas_mysql]
+      processors: [memory_limiter, filter/pull_dbaas_mysql, groupbyattrs/pull_dbaas_mysql, transform/pull_dbaas_mysql, batch]
+      exporters: [otlp_grpc/gateway]

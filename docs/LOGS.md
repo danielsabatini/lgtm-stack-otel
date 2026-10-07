@@ -1,4 +1,4 @@
-# Logs (Loki, Alloy Syslog e OTLP)
+# Logs (Loki e OpenTelemetry)
 
 > **Referência Técnica:** Este documento estabelece a política de categorização, labels, pipelines de coleta e retenção de logs no Grafana Loki.
 
@@ -22,8 +22,8 @@ Para evitar que o Loki se torne um repositório confuso de mensagens desordenada
 
 ## 3. Endpoints e Roteamento de Ingestão
 
-Toda a ingestão de logs é centralizada no **Alloy Gateway**:
-* **Portas 4317 / 4318:** Única entrada de logs — OTLP vindo dos Alloy Agents e das aplicações. A API de push do Loki (antiga porta 9998) foi removida; os pipelines de journald/Docker dos agents passam a converter para OTLP no próprio agente (ver [ROADMAP.md](../ROADMAP.md)).
+Toda a ingestão de logs é centralizada no **OTel Gateway**:
+* **Portas 4317 / 4318:** Única entrada de logs — OTLP vindo dos agents e das aplicações. A API de push do Loki (antiga porta 9998) foi removida.
 
 ### 3.1 Logs OTLP (Semântica OpenTelemetry)
 
@@ -56,24 +56,48 @@ Conforme definido na metodologia de observabilidade ([OBSERVABILITY-METHODOLOGY.
 
 ---
 
-## 5. Pipelines de Coleta no Host Linux (Alloy Agent)
+## 5. Pipelines de Coleta no Host Linux (Agent OpenTelemetry)
 
-O Alloy Agent não lê o journald de forma cega. Cada serviço monitorado possui um arquivo de pipeline isolado em `alloy-agent/conf.d/` seguindo a convenção `<número>-log-<categoria>-<serviço>.alloy`:
+No agente OpenTelemetry (`examples/push/linux/config.yaml`), cada fonte do journald é um receiver `journald/<serviço>` que **filtra a severidade na origem** (opção `priority`, repassada ao `journalctl`) e converte a entrada do journal no OTel Logs Data Model:
 
-| Arquivo | Categoria | Serviço | Filtro de Descarte (Otimização) |
+| Receiver | `service.name` | `category` | Severidade mínima coletada |
 |---|---|---|---|
-| `200-log-sec-ssh.alloy` | `security` | `ssh` | Mantém todos os eventos de acesso. |
-| `225-log-sys-kernel.alloy` | `system` | `kernel` | Descarta mensagens informativas (prioridade 5, 6, 7). |
-| `250-log-app-docker.alloy` | `application` | `container-engine` | Descarta debug e info rotineiro. |
-| `251-log-app-containerd.alloy` | `application` | `containerd` | Descarta mensagens de nível baixo. |
-| `252-log-app-cron.alloy` | `application` | `cron` | Filtra execuções rotineiras sem erro. |
-| `275-log-plt-systemd.alloy` | `platform` | `systemd` | Mantém apenas avisos e falhas de serviços. |
+| `journald/ssh` (`ssh.service`) | `ssh` | `security` | `info` (todos os eventos de acesso) |
+| `journald/kernel` (`_TRANSPORT=kernel`) | `kernel` | `system` | `warning` |
+| `journald/cron` (`cron.service`) | `cron` | `application` | `warning` |
+| `journald/systemd` (`SYSLOG_IDENTIFIER=systemd`) | `systemd` | `platform` | `warning` |
 
-### Fluxo em 4 Etapas de Cada Pipeline:
-1. **SOURCE (`loki.source.journal`):** Coleta filtrada pela unit do systemd.
-2. **TRANSFORM (`loki.relabel`):** Converte a prioridade numérica em texto (`info`, `warning`, `error`).
-3. **NORMALIZE (`loki.process`):** Aplica regras de descarte de ruído e formata a mensagem.
-4. **WRITE (`loki.write`):** Envia o stream de log compactado para o Alloy Gateway.
+Conversão comum a todos (operadores YAML compartilhados por âncora): `PRIORITY` → `SeverityNumber`/`SeverityText` (0–2 `FATAL`, 3 `ERROR`, 4 `WARN`, 5 `INFO2`, 6 `INFO`, 7 `DEBUG`), `_PID` → `process.pid`, `_COMM` → `process.executable.name`, `MESSAGE` → Body. No Loki: `service_name` e `host_name` são labels de índice; `category`, `severity_text`, `process_pid` e `process_executable_name` ficam como structured metadata. Pré-requisito: o usuário `otelcol-contrib` no grupo `systemd-journal`.
+
+Verificação:
+
+```bash
+sudo journalctl -u otelcol-contrib -n 30 --no-pager | grep "Journalctl command"   # 4 fontes ativas
+```
+
+**Servidores MySQL** (`examples/push/linux-mysql`): além do journald, o receiver `file_log/mysql` lê `/var/log/mysql/error.log` (o MySQL grava só `ERROR`, `Warning` e `System` com o padrão `log_error_verbosity=2`). `[Warning]` → `WARN`, `[ERROR]` → `ERROR`, `[System]`/`[Note]` → `INFO`; o código `MY-nnnnnn` vira `mysql.error.code`, o subsistema `mysql.subsystem` e a thread `thread.id`, com `service.name=mysql`. Pré-requisito: usuário `otelcol-contrib` no grupo `adm`.
+
+**Servidores PostgreSQL** (`examples/push/linux-pgsql`): o receiver `file_log/postgresql` lê `/var/log/postgresql/postgresql-*.log` com o prefixo padrão do Debian (`%m [%p] %q%u@%d`), agrupa as linhas de continuação (`DETAIL`, `HINT`, `CONTEXT`, `STATEMENT`) no mesmo registro, converte `WARNING`/`ERROR`/`FATAL`/`PANIC` para a severidade OTel e extrai `process.pid`, `user.name` e `db.namespace`. O pipeline mantém só `WARN`+ e as linhas `duration:` (slow query); `LOG`/`INFO` rotineiros são descartados. Pré-requisito: usuário `otelcol-contrib` no grupo `adm`.
+
+### 5.1 Servidor da própria stack (`otel-agent` em container)
+
+O `otel-agent` (`otel-agent/config.yaml`, serviço no `compose.yaml`) usa as mesmas fontes de journald acima e acrescenta as do Docker:
+
+| Fonte | `service.name` | `category` | Como a severidade é tratada |
+|---|---|---|---|
+| `journald/docker` (`docker.service`) | `container-engine` | `application` | O `dockerd` grava **tudo** no journal com `PRIORITY=6`, inclusive erros: o nível real é extraído do texto (`level=error`) e o pipeline `logs/engine` mantém só `WARN`+. |
+| `journald/containerd` (`containerd.service`) | `containerd` | `application` | Idem `docker`. |
+| `file_log/containers` (`/var/lib/docker/containers/*/*-json.log`) | nome do serviço no compose | `application` | Nível extraído de logfmt (`level=warn`), JSON (`"level":"error"`) ou do formato do próprio Collector; mantém só `WARN`+ e linhas sem nível reconhecido. |
+
+Os logs de container usam o driver `json-file` declarado para todos os serviços da stack (`x-logging` no `compose.yaml`, com rotação `max-size: 10m` / `max-file: 3`). A opção `labels: com.docker.compose.service` grava o nome do serviço em cada linha, que vira `service.name` e `container.name`; o `container.id` vem do caminho do arquivo. A posição de leitura é persistida (`file_storage`), sem reler nem perder linhas após reinício.
+
+Pré-requisito no host: journal persistente em `/var/log/journal` (padrão no Debian 12+). Sem ele o `journalctl` do container encerra e o receiver tenta novamente a cada segundo (`journalctl command exited` nos logs do `otel-agent`).
+
+Verificação:
+
+```bash
+docker logs otel-agent 2>&1 | grep -cE "Journalctl command|Everything is ready"   # 7 = 6 fontes + pronto
+```
 
 ---
 
@@ -93,7 +117,7 @@ No Windows, o agente lê diretamente da API nativa do **Windows Event Log**:
 
 ## 7. Esquema Global de Labels
 
-Os streams coletados pelos Alloy Agents (journald, Docker, Windows Event Log) carregam os labels de identidade abaixo. Logs OTLP de aplicações seguem o mapeamento semântico da seção 3.1.
+Os streams coletados pelos agents legados em Alloy carregam os labels de identidade abaixo; no agente OpenTelemetry a identidade segue a seção 3.1. Logs OTLP de aplicações seguem o mapeamento semântico da seção 3.1.
 
 | Label | Descrição | Exemplo |
 |---|---|---|

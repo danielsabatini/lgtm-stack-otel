@@ -1,0 +1,354 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Agent local da LGTM Stack (container)
+# =============================================================================
+# Coleta o próprio servidor da stack e envia tudo em OTLP ao otel-gateway:
+#   - Métricas de host ............ host_metrics  (system.*, via /hostfs)
+#   - Métricas de containers ...... docker_stats  (container.*)
+#   - Logs do host (journald) ..... ssh, kernel, docker, containerd, cron, systemd
+#   - Logs dos containers ......... file_log      (json-file do Docker)
+#   - Self-monitoring ............. telemetria interna -> OTLP local
+#
+# Roda com network_mode: host e pid: host (ver compose.yaml) para enxergar as
+# interfaces de rede e os processos do host, não os do container.
+#
+# Identidade (OTel Semantic Conventions) via ambiente (compose.yaml / .env):
+#   OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=...,cloud.provider=...,..."
+#   host.name e os.type vêm do detector "system".
+#
+# Política Lean: cada métrica e cada fonte de log é explícita.
+# Mesma base do template examples/push/linux/config.yaml — mantenha alinhados.
+# =============================================================================
+
+receivers:
+  # Entrada local do self-monitoring (porta própria: a 4317 do host já é do
+  # otel-gateway, publicada pelo compose).
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:14317
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DE HOST (system.*) — filesystem do host montado em /hostfs
+  # ---------------------------------------------------------------------------
+  host_metrics:
+    collection_interval: 30s
+    root_path: /hostfs
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time: { enabled: true }
+      load:
+        metrics:
+          system.cpu.load_average.1m: { enabled: true }
+          system.cpu.load_average.5m: { enabled: true }
+          system.cpu.load_average.15m: { enabled: true }
+      memory:
+        metrics:
+          system.memory.usage: { enabled: true }
+          system.memory.limit: { enabled: true }
+      paging:
+        metrics:
+          system.paging.usage: { enabled: true }
+          system.paging.faults: { enabled: false }
+          system.paging.operations: { enabled: false }
+      disk:
+        exclude:
+          devices: ["^(loop|ram|fd|sr)[0-9]*$", "^dm-[0-9]+$"]
+          match_type: regexp
+        metrics:
+          system.disk.io: { enabled: true }
+          system.disk.operations: { enabled: true }
+          system.disk.operation_time: { enabled: true }
+          system.disk.io_time: { enabled: true }
+          system.disk.merged: { enabled: false }
+          system.disk.pending_operations: { enabled: false }
+          system.disk.weighted_io_time: { enabled: false }
+      filesystem:
+        exclude_fs_types:
+          fs_types: [autofs, binfmt_misc, bpf, cgroup2, configfs, debugfs, devpts, devtmpfs, fusectl, hugetlbfs, mqueue, nsfs, overlay, proc, procfs, pstore, rpc_pipefs, securityfs, selinuxfs, squashfs, sysfs, tracefs, tmpfs]
+          match_type: strict
+        # Volumes/overlays de containers aparecem como mountpoints do Docker
+        exclude_mount_points:
+          mount_points: ["/var/lib/docker/.*", "/run/docker/.*", "/docker/.*"]
+          match_type: regexp
+        metrics:
+          system.filesystem.usage: { enabled: true }
+          system.filesystem.inodes.usage: { enabled: true }
+      network:
+        exclude:
+          interfaces: ["^lo$", "^docker.*", "^veth.*", "^br-.*", "^virbr.*"]
+          match_type: regexp
+        metrics:
+          system.network.io: { enabled: true }
+          system.network.dropped: { enabled: true }
+          system.network.errors: { enabled: true }
+          system.network.packets: { enabled: false }
+          system.network.connections: { enabled: false }
+      system:
+        metrics:
+          system.uptime: { enabled: true }
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DE CONTAINERS (container.*) — Docker API, somente leitura
+  # ---------------------------------------------------------------------------
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 30s
+    metrics:
+      container.cpu.usage.total: { enabled: true }
+      container.cpu.throttling_data.periods: { enabled: true }
+      container.cpu.throttling_data.throttled_periods: { enabled: true }
+      container.memory.usage.total: { enabled: true }
+      container.memory.usage.limit: { enabled: true }
+      container.network.io.usage.rx_bytes: { enabled: true }
+      container.network.io.usage.tx_bytes: { enabled: true }
+      container.cpu.utilization: { enabled: false }
+      container.cpu.usage.usermode: { enabled: false }
+      container.cpu.usage.kernelmode: { enabled: false }
+      container.memory.percent: { enabled: false }
+      container.memory.file: { enabled: false }
+      container.network.io.usage.rx_dropped: { enabled: false }
+      container.network.io.usage.tx_dropped: { enabled: false }
+      container.blockio.io_service_bytes_recursive: { enabled: false }
+
+  # ---------------------------------------------------------------------------
+  # LOGS DO HOST (journald do host montado em /var/log/journal)
+  # ---------------------------------------------------------------------------
+  journald/ssh:
+    directory: /var/log/journal
+    units: [ssh.service, sshd.service]
+    priority: info
+    resource:
+      service.name: ssh
+    attributes:
+      category: security
+    operators: &journal_operators
+      - type: severity_parser
+        parse_from: body.PRIORITY
+        overwrite_text: true
+        mapping:
+          fatal: ["0", "1", "2"]
+          error: "3"
+          warn: "4"
+          info2: "5"
+          info: "6"
+          debug: "7"
+      - type: move
+        if: body._PID != nil
+        from: body._PID
+        to: attributes["process.pid"]
+      - type: move
+        if: body._COMM != nil
+        from: body._COMM
+        to: attributes["process.executable.name"]
+      - type: move
+        from: body.MESSAGE
+        to: body
+
+  journald/kernel:
+    directory: /var/log/journal
+    matches:
+      - _TRANSPORT: kernel
+    priority: warning
+    resource:
+      service.name: kernel
+    attributes:
+      category: system
+    operators: *journal_operators
+
+  # dockerd e containerd gravam TUDO no journal com PRIORITY 6 (info), inclusive
+  # erros: o nível real está no texto (level=error). Por isso leem a partir de
+  # info, extraem o nível da mensagem e o pipeline logs/engine mantém só WARN+.
+  journald/docker:
+    directory: /var/log/journal
+    units: [docker.service]
+    priority: info
+    resource:
+      service.name: container-engine
+    attributes:
+      category: application
+    operators: &engine_operators
+      - type: move
+        if: body._PID != nil
+        from: body._PID
+        to: attributes["process.pid"]
+      - type: move
+        if: body._COMM != nil
+        from: body._COMM
+        to: attributes["process.executable.name"]
+      - type: move
+        from: body.MESSAGE
+        to: body
+      - type: regex_parser
+        if: body matches 'level=\\w+'
+        regex: 'level=(?P<level>[A-Za-z]+)'
+        severity:
+          parse_from: attributes.level
+          overwrite_text: true
+          mapping:
+            fatal: [fatal, panic]
+            error: error
+            warn: [warn, warning]
+            info: info
+            debug: [debug, trace]
+      - type: remove
+        if: attributes.level != nil
+        field: attributes.level
+
+  journald/containerd:
+    directory: /var/log/journal
+    units: [containerd.service]
+    priority: info
+    resource:
+      service.name: containerd
+    attributes:
+      category: application
+    operators: *engine_operators
+
+  journald/cron:
+    directory: /var/log/journal
+    units: [cron.service, crond.service]
+    priority: warning
+    resource:
+      service.name: cron
+    attributes:
+      category: application
+    operators: *journal_operators
+
+  journald/systemd:
+    directory: /var/log/journal
+    matches:
+      - SYSLOG_IDENTIFIER: systemd
+    priority: warning
+    resource:
+      service.name: systemd
+    attributes:
+      category: platform
+    operators: *journal_operators
+
+  # ---------------------------------------------------------------------------
+  # LOGS DOS CONTAINERS (driver json-file, ver x-logging no compose.yaml)
+  # ---------------------------------------------------------------------------
+  # O compose grava o label com.docker.compose.service em cada linha (opção
+  # "labels" do driver json-file): ele vira service.name / container.name.
+  file_log/containers:
+    include: [/var/lib/docker/containers/*/*-json.log]
+    start_at: end
+    include_file_path: true
+    include_file_name: false
+    storage: file_storage
+    attributes:
+      category: application
+    operators:
+      - type: container
+        format: docker
+        add_metadata_from_filepath: false
+      # container.id a partir do caminho do arquivo
+      - type: regex_parser
+        parse_from: attributes["log.file.path"]
+        regex: '^/var/lib/docker/containers/(?P<container_id>[0-9a-f]{64})/'
+        parse_to: resource
+      - type: move
+        from: resource.container_id
+        to: resource["container.id"]
+      - type: move
+        if: attributes.attrs != nil and attributes.attrs["com.docker.compose.service"] != nil
+        from: attributes.attrs["com.docker.compose.service"]
+        to: resource["service.name"]
+      - type: copy
+        if: resource["service.name"] != nil
+        from: resource["service.name"]
+        to: resource["container.name"]
+      - type: remove
+        field: attributes["log.file.path"]
+      # Severidade: logfmt (level=warn), JSON ("level":"error") ou o formato
+      # console do próprio Collector ("<timestamp>\terror\t...")
+      - type: regex_parser
+        if: body matches 'level=\\w+' or body matches '"level":\\s*"\\w+"' or body matches '^\\S+\\t[a-z]+\\t'
+        regex: '(?:level=|"level":\s*"|^\S+\t)(?P<level>[A-Za-z]+)'
+        severity:
+          parse_from: attributes.level
+          overwrite_text: true
+          mapping:
+            fatal: [fatal, critical, crit, panic, emerg]
+            error: [error, err, eror]
+            warn: [warn, warning]
+            info: info
+            debug: [debug, trace]
+      - type: remove
+        if: attributes.level != nil
+        field: attributes.level
+      - type: remove
+        if: attributes.attrs != nil
+        field: attributes.attrs
+
+extensions:
+  # Guarda a posição de leitura dos logs de container entre reinícios.
+  file_storage:
+    directory: /var/lib/otelcol/file_storage
+    create_directory: true
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  resource_detection:
+    detectors: [env, system]
+    override: true
+    system:
+      hostname_sources: [os]
+
+  # Política Lean nos logs de container e do container engine: descarta
+  # INFO/DEBUG (mantém WARN+ e linhas sem nível reconhecido).
+  filter/min_warn:
+    error_mode: ignore
+    logs:
+      log_record:
+        - severity_number != SEVERITY_NUMBER_UNSPECIFIED and severity_number < SEVERITY_NUMBER_WARN
+
+  batch: {}
+
+exporters:
+  otlp_grpc/gateway:
+    endpoint: ${env:LGTM_GATEWAY_ENDPOINT:-127.0.0.1:4317}
+    tls:
+      insecure: true
+
+service:
+  extensions: [file_storage]
+
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-agent
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://127.0.0.1:14317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [host_metrics, docker_stats, otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    # Severidade já filtrada na origem (priority do journalctl)
+    logs/host:
+      receivers: [journald/ssh, journald/kernel, journald/cron, journald/systemd]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    # Severidade extraída do texto: filtro WARN+ no pipeline
+    logs/engine:
+      receivers: [journald/docker, journald/containerd, file_log/containers]
+      processors: [memory_limiter, filter/min_warn, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]

@@ -1,0 +1,95 @@
+# =============================================================================
+# PULL LEGADO — node_exporter remoto (servidor sem agente OpenTelemetry)
+# =============================================================================
+# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/linux-hosts.yaml,
+# ajuste os alvos e reinicie (docker compose restart otel-agent).
+#
+# O otel-agent faz o scrape do node_exporter (:9100) de cada servidor, converte
+# para OTLP e envia ao otel-gateway — o Gateway continua só OTLP, sem conversão.
+# A identidade OpenTelemetry de cada servidor (host.name,
+# deployment.environment.name, cloud.*) é declarada por alvo: o servidor
+# remoto não tem agente para detectá-la.
+#
+# Nomes das métricas: continuam os do node_exporter (node_*). Não há
+# equivalência 1:1 com system.* (host_metrics); traduzir seria uma conversão
+# pesada. Para métricas system.* e logs, instale o agente
+# (examples/push/linux/INSTALL.md).
+#
+# Política Lean: só as métricas da lista keep abaixo (mesma lista do template
+# legado), sem pseudo-dispositivos e pseudo-filesystems.
+# =============================================================================
+
+receivers:
+  prometheus/pull_linux:
+    config:
+      scrape_configs:
+        - job_name: node-exporter
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs:
+            # Um item por servidor legado.
+            # TODO: ajuste o IP:porta e a identidade de cada servidor.
+            - targets: ["[IP_ADDRESS]:9100"]
+              labels:
+                host_name: "[HOSTNAME]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: br-se1
+                cloud_availability_zone: a
+            # - targets: ["[IP_ADDRESS]:9100"]
+            #   labels:
+            #     host_name: "[HOSTNAME]"
+            #     deployment_environment_name: prd
+            #     cloud_provider: mgc
+            #     cloud_region: br-se1
+            #     cloud_availability_zone: a
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+            # Pseudo-dispositivos de disco
+            - source_labels: [device]
+              regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
+              action: drop
+            # Pseudo-filesystems e interfaces virtuais
+            - source_labels: [fstype]
+              regex: 'tmpfs|overlay|squashfs|nsfs|autofs|ramfs'
+              action: drop
+            - source_labels: [__name__, device]
+              regex: 'node_network_.+;(lo|docker.*|veth.*|br-.*|virbr.*)'
+              action: drop
+
+processors:
+  # O scrape gera séries sintéticas scrape_* (fora do metric_relabel): descarta
+  # (Lean). A disponibilidade do alvo fica no "up".
+  filter/pull_linux:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^scrape_")
+
+  # Os labels de identidade do alvo chegam como atributos de cada série:
+  # viram o Resource OpenTelemetry do servidor remoto.
+  groupbyattrs/pull_linux:
+    keys: [host_name, deployment_environment_name, cloud_provider, cloud_region, cloud_availability_zone]
+
+  transform/pull_linux:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["host.name"], attributes["host_name"])
+          - set(attributes["deployment.environment.name"], attributes["deployment_environment_name"])
+          - set(attributes["cloud.provider"], attributes["cloud_provider"])
+          - set(attributes["cloud.region"], attributes["cloud_region"])
+          - set(attributes["cloud.availability_zone"], attributes["cloud_availability_zone"])
+          - delete_matching_keys(attributes, "^(host_name|deployment_environment_name|cloud_provider|cloud_region|cloud_availability_zone)$")
+
+service:
+  pipelines:
+    # SEM resource_detection: a identidade é a do servidor remoto, não a da stack.
+    metrics/pull_linux:
+      receivers: [prometheus/pull_linux]
+      processors: [memory_limiter, filter/pull_linux, groupbyattrs/pull_linux, transform/pull_linux, batch]
+      exporters: [otlp_grpc/gateway]

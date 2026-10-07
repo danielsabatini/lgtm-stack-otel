@@ -51,7 +51,7 @@ docker compose stop grafana
 # 2. Copiar o arquivo grafana.db com segurança para uma pasta externa:
 mkdir -p ./backup
 docker run --rm \
-  -v lgtm-stack_grafana-data:/source:ro \
+  -v lgtm-stack-otel_grafana-data:/source:ro \
   -v $(pwd)/backup:/backup \
   busybox cp /source/grafana.db /backup/grafana-$(date +%Y%m%d).db
 
@@ -83,7 +83,7 @@ Antes de confiar no seu backup, valide se os arquivos não foram corrompidos:
 sqlite3 backup/grafana-YYYYMMDD.db "PRAGMA integrity_check;"
 
 # 2. Validar se o arquivo compactado de logs ou métricas pode ser lido:
-tar -tvf backup/lgtm-stack_loki-data-YYYYMMDD.tar.gz | head -n 10
+tar -tvf backup/lgtm-stack-otel_loki-data-YYYYMMDD.tar.gz | head -n 10
 ```
 
 ---

@@ -1,4 +1,13 @@
-name: lgtm-stack
+name: lgtm-stack-otel
+
+# Logs dos containers da stack: driver json-file (lido pelo otel-agent) com
+# rotação, gravando o nome do serviço em cada linha (vira service.name).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+    labels: com.docker.compose.service
 
 services:
   loki:
@@ -6,6 +15,7 @@ services:
     container_name: loki
     hostname: loki
     restart: unless-stopped
+    logging: *default-logging
     user: "10001:10001"
     environment:
       - LOKI_RETENTION=${LOKI_RETENTION:-30d}
@@ -30,6 +40,7 @@ services:
     container_name: mimir
     hostname: mimir
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - MIMIR_RETENTION=${MIMIR_RETENTION:-30d}
     # ports:
@@ -53,6 +64,7 @@ services:
     container_name: tempo
     hostname: tempo
     restart: unless-stopped
+    logging: *default-logging
     user: "10001:10001"
     environment:
       - TEMPO_RETENTION=${TEMPO_RETENTION:-336h}
@@ -77,6 +89,7 @@ services:
     container_name: grafana
     hostname: grafana
     restart: unless-stopped
+    logging: *default-logging
     user: "472:0"
     ports:
       - "3000:3000"
@@ -98,17 +111,21 @@ services:
           cpus: '${GRAFANA_CPUS:-1.0}'
           memory: ${GRAFANA_MEMORY:-4GB}
 
-  alloy-gateway:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1}
-    container_name: alloy-gateway
-    hostname: alloy-gateway
+  otel-gateway:
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_CONTRIB_VERSION:-0.162.0}
+    container_name: otel-gateway
+    hostname: otel-gateway
     restart: unless-stopped
+    logging: *default-logging
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-prd}
     volumes:
-      - ./alloy-gateway/conf.d:/etc/alloy/conf.d:ro
-      - alloy-gateway-data:/var/lib/alloy/data
-    command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
+      - ./otel-gateway/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    healthcheck:
+      disable: true
     ports:
-      - "12345:12345"  # UI do Alloy Gateway
+      - "13133:13133"  # Health check do Gateway (health_check extension)
       - "4317:4317"    # OTLP gRPC (traces, métricas e logs — agents e aplicações)
       - "4318:4318"    # OTLP HTTP (traces, métricas e logs — agents e aplicações)
     depends_on:
@@ -120,59 +137,53 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${ALLOY_GATEWAY_CPUS:-1.0}'
-          memory: ${ALLOY_GATEWAY_MEMORY:-2GB}
+          cpus: '${OTEL_GATEWAY_CPUS:-1.0}'
+          memory: ${OTEL_GATEWAY_MEMORY:-2GB}
 
-  alloy-agent:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1}
-    container_name: alloy-agent
-    hostname: alloy-agent
+  otel-agent:
+    build:
+      context: ./otel-agent
+      args:
+        OTELCOL_CONTRIB_VERSION: ${OTELCOL_CONTRIB_VERSION:-0.162.0}
+    image: lgtm-stack/otel-agent:${OTELCOL_CONTRIB_VERSION:-0.162.0}
+    container_name: otel-agent
     restart: unless-stopped
-    privileged: true
-    user: root
+    logging: *default-logging
+    # Enxerga a rede e os processos do HOST (não os do container).
+    network_mode: host
     pid: host
+    # root apenas para ler socket do Docker, journal e logs de containers
+    # (arquivos do root); sem nenhuma capability e sem escalonamento.
+    user: "0:0"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges=true"]
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-prd}
-      - CLOUD_PROVIDER=${CLOUD_PROVIDER:-mgc}
-      - CLOUD_REGION=${CLOUD_REGION:-br-se1}
-      - CLOUD_AVAILABILITY_ZONE=${CLOUD_AVAILABILITY_ZONE:-a}
+      # Identidade OpenTelemetry deste servidor (OTel Semantic Conventions)
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=${ENVIRONMENT:-prd},cloud.provider=${CLOUD_PROVIDER:-mgc},cloud.region=${CLOUD_REGION:-br-se1},cloud.availability_zone=${CLOUD_AVAILABILITY_ZONE:-a}
+      # otel-gateway publicado no host (network_mode: host)
+      - LGTM_GATEWAY_ENDPOINT=127.0.0.1:4317
     volumes:
-      # Volumes
-      - alloy-agent-data:/var/lib/alloy/data            
-      - ./alloy-agent/conf.d:/etc/alloy/conf.d:ro
-      
-      # Logs
+      - ./otel-agent/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      # Coletas pull de servidores legados (templates em examples/pull/)
+      - ./otel-agent/pull.d:/etc/otelcol-contrib/pull.d:ro
+      - otel-agent-data:/var/lib/otelcol
+      # Métricas de host (host_metrics root_path)
+      - /:/hostfs:ro
+      # Métricas e logs de containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_DATA_ROOT:-/var/lib/docker}/containers:/var/lib/docker/containers:ro
+      # Logs do host (journald)
       - /var/log/journal:/var/log/journal:ro
-      - /run/systemd/journal/socket:/run/systemd/journal/socket
       - /etc/machine-id:/etc/machine-id:ro
-      
-      # Node Exporter
-      - /:/rootfs:ro
-      - /sys:/sys:ro
-      - /proc:/procfs:ro
-      
-      # Container Exporter (cAdvisor usa /sys, /var/run e o data-root do Docker diretamente)
-      # O data-root é montado no MESMO caminho do host, pois o cAdvisor lê o caminho
-      # informado pelo daemon ("Docker Root Dir" em `docker info`).
-      - /var/run:/var/run:rw
-      - ${DOCKER_DATA_ROOT:-/var/lib/docker}:${DOCKER_DATA_ROOT:-/var/lib/docker}:ro
-      - /dev/disk/:/dev/disk:ro
-      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
-
-    command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
-    ports:
-      # Alloy Web UI — publicada só em loopback: o agent roda como root e não
-      # deve expor portas na rede (acesso remoto via túnel SSH).
-      - "127.0.0.1:12346:12345"
+    healthcheck:
+      disable: true
     depends_on:
-      - alloy-gateway
-    networks:
-      - lgtm
+      - otel-gateway
     deploy:
       resources:
         limits:
-          cpus: '${ALLOY_AGENT_CPUS:-0.5}'
-          memory: ${ALLOY_AGENT_MEMORY:-1GB}
+          cpus: '${OTEL_AGENT_CPUS:-0.5}'
+          memory: ${OTEL_AGENT_MEMORY:-512MB}
 
 networks:
   lgtm:
@@ -181,8 +192,7 @@ networks:
 
 volumes:
   grafana-data:
-  alloy-gateway-data:
-  alloy-agent-data:
+  otel-agent-data:
   loki-data:
   mimir-data:
   tempo-data:

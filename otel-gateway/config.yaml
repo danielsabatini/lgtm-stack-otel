@@ -1,0 +1,105 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Gateway da LGTM Stack
+# =============================================================================
+# Ponto único de ingestão (OTLP 4317 gRPC / 4318 HTTP) e único componente que
+# escreve nos backends. Não converte nem renomeia dados: agents e aplicações já
+# enviam OTLP com a OTel Semantic Conventions. Cada sinal vai ao seu backend:
+#   métricas -> Mimir (/otlp/v1/metrics)
+#   logs     -> Loki  (/otlp/v1/logs)
+#   traces   -> Tempo (OTLP gRPC), após tail sampling
+# Pipeline: otlp -> memory_limiter -> [tail_sampling (traces)] -> batch -> backend
+# =============================================================================
+
+extensions:
+  # Liveness/readiness: curl http://<host>:13133/
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1024
+    spike_limit_mib: 200
+
+  # Retém 100% dos erros e dos traces lentos; amostra 5% do restante.
+  # Os agents enviam 100% dos spans (sampler always_on) e calculam as métricas
+  # RED antes deste ponto, então o sampling não distorce taxa/erros/duração.
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: sample-ok
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 5
+
+  batch:
+    send_batch_size: 2000
+    timeout: 5s
+
+exporters:
+  otlp_http/mimir:
+    endpoint: http://mimir:9009/otlp
+
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+service:
+  extensions: [health_check]
+
+  # Self-monitoring: métricas internas do Collector em OTLP para a própria
+  # entrada do Gateway (sem scrape Prometheus, sem conversão).
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-gateway
+        - name: deployment.environment.name
+          value: ${env:ENVIRONMENT}
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://localhost:4317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/mimir]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]
+
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp_grpc/tempo]

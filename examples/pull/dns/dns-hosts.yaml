@@ -1,0 +1,145 @@
+# =============================================================================
+# PULL — Cluster de DNS interno (CoreDNS + etcd + node_exporter, 3 nós)
+# =============================================================================
+# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/dns-hosts.yaml,
+# ajuste os nós e reinicie (docker compose restart otel-agent).
+#
+# Cada nó do cluster expõe três exporters:
+#   :9100/metrics -> node_exporter (SO)        job/service.name: node-exporter
+#   :9153/metrics -> CoreDNS (resolução DNS)   job/service.name: coredns
+#   :2379/metrics -> etcd (backend do CoreDNS) job/service.name: etcd
+# O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
+# de cada nó e envia ao otel-gateway (que continua só OTLP).
+#
+# Os nós e a identidade são declarados UMA vez (âncora &dns_nodes); cada job só
+# troca a porta do alvo.
+#
+# Nomes das métricas: os dos exporters (node_*, coredns_*, etcd_*). Histogramas
+# de latência (CoreDNS e etcd) chegam ao Mimir como native histograms: o nome
+# fica sem _bucket/_sum/_count, ex.:
+#   histogram_quantile(0.99, sum by ("host.name") (rate({"coredns_dns_request_duration_seconds"}[5m])))
+#
+# Política Lean: só as allowlists abaixo (mesmas do template legado).
+# =============================================================================
+
+receivers:
+  prometheus/pull_dns:
+    config:
+      scrape_configs:
+        # ---------------------------------------------------------------------
+        # SO dos nós (node_exporter) — mesma allowlist de examples/pull/linux
+        # ---------------------------------------------------------------------
+        - job_name: node-exporter
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          # TODO: um item por nó do cluster (IP SEM porta) e sua identidade.
+          static_configs: &dns_nodes
+            - targets: ["[IP_NO_1]"]
+              labels:
+                host_name: "[HOSTNAME_NO_1]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: "[REGION]"
+                cloud_availability_zone: a
+            - targets: ["[IP_NO_2]"]
+              labels:
+                host_name: "[HOSTNAME_NO_2]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: "[REGION]"
+                cloud_availability_zone: b
+            - targets: ["[IP_NO_3]"]
+              labels:
+                host_name: "[HOSTNAME_NO_3]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: "[REGION]"
+                cloud_availability_zone: c
+          relabel_configs:
+            - source_labels: [__address__]
+              regex: '([^:]+)(?::\d+)?'
+              target_label: __address__
+              replacement: '$${1}:9100'
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+            - source_labels: [device]
+              regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
+              action: drop
+            - source_labels: [fstype]
+              regex: 'tmpfs|overlay|squashfs|nsfs|autofs|ramfs'
+              action: drop
+            - source_labels: [__name__, device]
+              regex: 'node_network_.+;(lo|docker.*|veth.*|br-.*|virbr.*)'
+              action: drop
+
+        # ---------------------------------------------------------------------
+        # CoreDNS
+        # ---------------------------------------------------------------------
+        - job_name: coredns
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs: *dns_nodes
+          relabel_configs:
+            - source_labels: [__address__]
+              regex: '([^:]+)(?::\d+)?'
+              target_label: __address__
+              replacement: '$${1}:9153'
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|coredns_build_info|coredns_plugin_enabled|process_start_time_seconds|process_open_fds|process_max_fds|process_resident_memory_bytes|coredns_panics_total|coredns_reload_failed_total|coredns_dns_requests_total|coredns_dns_responses_total|coredns_dns_request_duration_seconds_bucket|coredns_dns_request_duration_seconds_count|coredns_dns_request_duration_seconds_sum|coredns_cache_entries|coredns_cache_evictions_total|coredns_cache_hits_total|coredns_cache_misses_total|coredns_cache_requests_total|coredns_forward_healthcheck_broken_total|coredns_forward_max_concurrent_rejects_total|coredns_forward_requests_total|coredns_forward_responses_total|coredns_proxy_conn_cache_hits_total|coredns_proxy_conn_cache_misses_total|coredns_proxy_healthcheck_failures_total|coredns_proxy_request_duration_seconds_bucket|coredns_proxy_request_duration_seconds_count|coredns_proxy_request_duration_seconds_sum
+
+        # ---------------------------------------------------------------------
+        # etcd
+        # ---------------------------------------------------------------------
+        - job_name: etcd
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs: *dns_nodes
+          relabel_configs:
+            - source_labels: [__address__]
+              regex: '([^:]+)(?::\d+)?'
+              target_label: __address__
+              replacement: '$${1}:2379'
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|etcd_server_has_leader|etcd_server_is_leader|etcd_server_leader_changes_seen_total|etcd_server_proposals_committed_total|etcd_server_proposals_failed_total|etcd_server_version|etcd_cluster_version|etcd_server_go_version|process_start_time_seconds|etcd_server_quota_backend_bytes|etcd_mvcc_db_total_size_in_bytes|etcd_mvcc_db_total_size_in_use_in_bytes|etcd_debugging_mvcc_keys_total|etcd_disk_wal_fsync_duration_seconds_bucket|etcd_disk_wal_fsync_duration_seconds_count|etcd_disk_wal_fsync_duration_seconds_sum|etcd_disk_backend_commit_duration_seconds_bucket|etcd_disk_backend_commit_duration_seconds_count|etcd_disk_backend_commit_duration_seconds_sum|etcd_network_peer_round_trip_time_seconds_bucket|etcd_network_peer_round_trip_time_seconds_count|etcd_network_peer_round_trip_time_seconds_sum
+
+processors:
+  # Séries sintéticas do scrape (fora do metric_relabel): descarta. A
+  # disponibilidade de cada exporter fica no "up".
+  filter/pull_dns:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^scrape_")
+
+  # Labels de identidade do alvo -> Resource OpenTelemetry do nó.
+  groupbyattrs/pull_dns:
+    keys: [host_name, deployment_environment_name, cloud_provider, cloud_region, cloud_availability_zone]
+
+  transform/pull_dns:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["host.name"], attributes["host_name"])
+          - set(attributes["deployment.environment.name"], attributes["deployment_environment_name"])
+          - set(attributes["cloud.provider"], attributes["cloud_provider"])
+          - set(attributes["cloud.region"], attributes["cloud_region"])
+          - set(attributes["cloud.availability_zone"], attributes["cloud_availability_zone"])
+          - delete_matching_keys(attributes, "^(host_name|deployment_environment_name|cloud_provider|cloud_region|cloud_availability_zone)$")
+
+service:
+  pipelines:
+    # SEM resource_detection: a identidade é a de cada nó, não a da stack.
+    metrics/pull_dns:
+      receivers: [prometheus/pull_dns]
+      processors: [memory_limiter, filter/pull_dns, groupbyattrs/pull_dns, transform/pull_dns, batch]
+      exporters: [otlp_grpc/gateway]

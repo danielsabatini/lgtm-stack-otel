@@ -14,12 +14,10 @@ RETENTION_DAYS=7
 
 # Lista de volumes para backup
 VOLUMES=(
-  "lgtm-stack_grafana-data"
-  "lgtm-stack_loki-data"
-  "lgtm-stack_mimir-data"
-  "lgtm-stack_tempo-data"
-  "lgtm-stack_alloy-gateway-data"
-  "lgtm-stack_alloy-agent-data"
+  "lgtm-stack-otel_grafana-data"
+  "lgtm-stack-otel_loki-data"
+  "lgtm-stack-otel_mimir-data"
+  "lgtm-stack-otel_tempo-data"
 )
 
 echo "--- Iniciando Backup LGTM Stack: ${DATE} ---"

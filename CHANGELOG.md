@@ -7,6 +7,80 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 ### Alterado
+- **Grafana Alloy substituído pelo OpenTelemetry Collector + OBI** — *breaking change*:
+  - **Gateway:** `alloy-gateway/` → `otel-gateway/config.yaml` (OpenTelemetry
+    Collector Contrib `0.162.0`, imagem oficial): OTLP 4317/4318 →
+    `memory_limiter` → `tail_sampling` → `batch` → OTLP nativo no Mimir, Loki e
+    Tempo. Health check em `:13133` (substitui a UI `:12345`); self-monitoring
+    (`level: basic`) em OTLP para a própria entrada.
+  - **Agent da stack:** `alloy-agent/` → `otel-agent/` (Collector em container
+    com `journalctl`): `host_metrics` (`system.*`), `docker_stats`
+    (`container.*`), journald (ssh, kernel, docker, containerd, cron, systemd)
+    e logs dos containers via `json-file`. `network_mode: host`, `pid: host`,
+    root sem capabilities (`cap_drop: ALL`, `no-new-privileges`) e mounts
+    somente leitura — antes `privileged: true` com `/var/run` gravável.
+  - **Agent Linux** (`examples/push/linux`): `otelcol-contrib` (pacote oficial)
+    + **OBI** `v0.14.0` (OpenTelemetry eBPF Instrumentation, substitui o Beyla)
+    com `obi.service` próprio (usuário `obi`, capabilities eBPF). Métricas HTTP
+    com nomes da OTel Semantic Conventions (`http.server.request.duration`),
+    sobre 100% do tráfego, com exemplars `trace_id`; propagação de contexto W3C
+    validada (frontend → middleware → backend sob um único `traceID`).
+  - **Identidade única por host:** `OTEL_RESOURCE_ATTRIBUTES` + detector
+    `system` com `override: true` (`host.name`, `deployment.environment.name`,
+    `cloud.*`) — o OBI usa FQDN e passaria a divergir sem o override.
+  - **Política Lean explícita:** cada métrica (`enabled: true|false`) e cada
+    fonte de log é listada; severidade filtrada na origem; ~66 séries por host
+    Linux (antes ~356 com `node_exporter`). `check-examples-consistency.py`
+    valida configs do Collector e o espelhamento da política entre o template
+    de host e o `otel-agent`.
+  - **Compose:** logs de todos os serviços em `json-file` com rotação
+    (`x-logging`); novas variáveis `OTELCOL_CONTRIB_VERSION`, `OBI_VERSION`,
+    `OTEL_GATEWAY_*`, `OTEL_AGENT_*`.
+  - **Mimir:** `container.name` e `container.image.name` promovidos a label —
+    sem eles as séries `container.*` de containers diferentes se misturavam.
+  - Validado em VM Debian 13 (kernel 6.12): journald, host metrics, OBI,
+    Docker em container e queda de 70 s do Gateway sem perda de amostras.
+- **`examples/pull/linux-dbaas-pgsql` migrado**: scrape de `/node/metrics` e
+  `/postgres/metrics` (proxy :8080 do DBaaS) pelo `otel-agent`, jobs
+  `node-exporter`/`postgres-exporter`, identidade por instância,
+  `db.system.name=postgresql` e `datname` → `db.namespace` (mesma dimensão do
+  template push). Descartados `template0`/`template1` e o label `server`:
+  44 séries de banco contra 597 expostas. Validado contra DBaaS PostgreSQL
+  16.11: `xact_commit` e `database_size` idênticos à origem.
+- **`examples/pull/linux-dbaas-mysql` migrado**: scrape de `/node/metrics` e
+  `/mysql/metrics` (proxy :8080 do DBaaS) pelo `otel-agent`, jobs
+  `node-exporter`/`mysqld-exporter`, identidade OpenTelemetry por instância e
+  `db.system.name=mysql` no resource do banco. Allowlist de SO alinhada à do
+  pull Linux; 14 métricas `mysql_*` (16 séries com `up`) contra ~3.000
+  expostas. Validado contra DBaaS MySQL 8.4.6 via bastion (túnel SSH).
+- **Coleta pull de servidores legados pelo `otel-agent`** (`examples/pull/linux`):
+  o scrape de `node_exporter` remotos sai do Gateway e passa ao `otel-agent`,
+  que carrega `otel-agent/pull.d/*.yaml` (novo `entrypoint.sh`; arquivos com
+  IPs do ambiente não versionados). Converte para OTLP com a identidade
+  OpenTelemetry declarada por alvo (sem `resource_detection`), mantém os nomes
+  `node_*` e a allowlist Lean (64 séries por servidor contra ~1.555 expostas;
+  `scrape_*` descartadas). O Gateway continua só OTLP. O `INSTALL.md` exige
+  restringir a `:9100` do servidor legado ao IP da stack. O
+  `check-examples-consistency.py` valida cada template pull mesclado com o
+  `otel-agent/config.yaml`.
+- **`examples/push/linux-pgsql` migrado para OpenTelemetry Collector**: host
+  (mesma base do template Linux) + receiver nativo `postgresql` com o feature
+  gate `receiver.postgresql.useOTelSemconv` (um resource por servidor e banco
+  em `db.namespace`; sem ele as séries de bancos diferentes se misturavam no
+  Mimir) e só métricas no nível de banco (~14 séries por banco; as por
+  tabela/índice, ligadas por padrão, desligadas) + log do PostgreSQL com
+  agrupamento de `DETAIL`/`HINT`/`CONTEXT`/`STATEMENT`, fuso `-03`/`UTC`
+  normalizado e filtro `WARN`+ preservando slow queries. Validado com
+  PostgreSQL 18.6 (PGDG): commits, rollbacks, deadlocks e tuplas batem com o
+  `pg_stat_database`; deadlock real chega como um único registro `ERROR`.
+- **`examples/push/linux-mysql` migrado para OpenTelemetry Collector**: host
+  (mesma base do template Linux, conferida pelo script de consistência) +
+  receiver nativo `mysql` (~38 séries, lista explícita; desligadas as
+  `table/index.io.wait.*`, que vêm ligadas por padrão com uma série por
+  tabela/índice) + error log (`file_log`, severidade OTel, `mysql.error.code`).
+  Usuário de monitoramento com privilégios mínimos e credencial no arquivo de
+  ambiente com modo `640`. Validado com MySQL Community 8.4.11 LTS: slow
+  queries, row lock waits e queries batem com o `global_status` da fonte.
 - **Bump de versões da stack** (primeiro passo da migração para OTLP nativo
   fim-a-fim): Grafana `13.1.2` → `13.2.3`, Alloy `v1.18.0` → `v1.20.1`,
   Loki `3.7.4` → `3.7.8`, Mimir `3.1.4` → `3.2.1`, Tempo `3.0.2` → `3.1.0`
@@ -48,6 +122,14 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   monolítica e single-tenant (`docs/UPGRADE.md` §3, Regra 3).
 
 ### Corrigido
+- `MEMORY.md`: a heurística "`sampling_traces_on_memory` ==
+  `new_trace_id_received` indica tail sampling travado" estava errada — os
+  traces permanecem em memória após a decisão, então os valores coincidem em
+  operação normal. O sinal correto é `global_count_traces_sampled` parado com
+  spans chegando.
+- `dockerd`/`containerd` gravam todos os logs no journal com `PRIORITY=6`;
+  o filtro por prioridade descartava os erros (`level=error`). Agora o nível
+  é extraído do texto.
 - **Exemplars**: estavam descartados pelo Mimir (`max_global_exemplars_per_user: 0`).
 - **Link Trace → Métricas** removido do datasource Tempo: apontava para
   `traces_spanmetrics_duration_milliseconds_bucket` (inexistente) e as métricas

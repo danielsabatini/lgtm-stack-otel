@@ -4,7 +4,7 @@
 
 ## O que é este repositório
 
-Stack de observabilidade (LGTM: Loki, Grafana, Tempo, Mimir) self-hosted via Docker Compose, voltada para deploy em VMs (principalmente Magalu Cloud). Não é código de aplicação — é infraestrutura declarativa: `compose.yaml`, configs YAML dos backends, pipelines Alloy (`.alloy`), dashboards JSON do Grafana e documentação extensa em Markdown (PT-BR).
+Stack de observabilidade (LGTM: Loki, Grafana, Tempo, Mimir) self-hosted via Docker Compose, voltada para deploy em VMs (principalmente Magalu Cloud). Não é código de aplicação — é infraestrutura declarativa: `compose.yaml`, configs YAML dos backends e do OpenTelemetry Collector (gateway e agents), templates `.alloy` legados em migração, dashboards JSON do Grafana e documentação extensa em Markdown (PT-BR).
 
 ## Governança de documentação (regra crítica)
 
@@ -59,7 +59,7 @@ Healthchecks manuais (Loki, Mimir e Tempo são distroless, sem shell — não us
 
 ```bash
 curl -s http://localhost:3000/api/health | jq .database   # Grafana
-curl -s http://localhost:12345/-/ready                     # Alloy Gateway
+curl -s http://localhost:13133/                            # OTel Gateway (health_check)
 ```
 
 Validação de config de um TSDB antes de subir upgrade (troque a versão pela do `.env`):
@@ -71,42 +71,40 @@ docker run --rm -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml \
 
 Não existe test suite, linter ou build step neste repositório — validação é feita via `docker compose config`, `-verify-config` dos binários, e checagem manual de ingestão pós-deploy (ver checklist em `docs/UPGRADE.md`).
 
-**Ao criar ou editar qualquer arquivo `.alloy` em `examples/`**, rode antes de finalizar:
+**Ao criar ou editar qualquer template em `examples/`** (config do OpenTelemetry Collector ou `.alloy` legado), rode antes de finalizar:
 
 ```bash
 python3 artifacts/scripts/check-examples-consistency.py
 ```
 
-Esse script (a) valida a sintaxe de todo `.alloy` em `examples/` contra a imagem `grafana/alloy` pinada em `.env.example` (requer Docker), (b) confere se os arquivos que enviam dados ao gateway carregam os 5 labels de identidade global (`instance`, `environment`, `cloud_provider`, `cloud_region`, `cloud_availability_zone`), e (c) compara a allowlist de métricas entre arquivos que o próprio repositório documenta como espelhos um do outro (ex.: `linux/config.alloy` ↔ `pull-linux-hosts.alloy`; `windows/config.alloy` ↔ `windows-mssql/config.alloy` ↔ `pull-windows-*-hosts.alloy`). Os templates em `examples/` são single-file por design (facilita copiar para um host remoto), então essa duplicação é proposital — o script existe para pegar o caso em que uma métrica ou label é atualizado em um arquivo e esquecido nos espelhos.
+Esse script (requer Docker) (a) valida toda config do OpenTelemetry Collector em `examples/` (YAML com bloco `receivers:`) com `otelcol-contrib validate` na versão pinada em `.env.example` (`OTELCOL_CONTRIB_VERSION`), (b) confere nelas a identidade OpenTelemetry (`resource_detection` com detectores `env` + `system` e `override: true`, saída para `${env:LGTM_GATEWAY_ENDPOINT}`), e, para os templates `.alloy` ainda não migrados, (c) valida a sintaxe com `grafana/alloy`, (d) confere os 5 labels de identidade legados e (e) compara as allowlists entre arquivos espelhados. Os templates em `examples/` são single-file por design (facilita copiar para um host remoto), então a duplicação é proposital — o script pega o caso em que algo é atualizado num arquivo e esquecido nos espelhos.
 
 ## Arquitetura (visão essencial)
 
-**Padrão Gateway-Agent**: o Alloy é dividido em dois papéis para não expor um processo root à rede:
+**Padrão Gateway-Agent com OpenTelemetry Collector**: a coleta (privilegiada, no host) é separada da ingestão (sem privilégios, exposta na rede):
 
-- **Alloy Agent** (`alloy-agent/`): roda `privileged: true`/root, lê `/procfs`, `/sys`, `/rootfs`, journald e Docker socket para coletar métricas/logs do host. Não expõe portas na rede. Envia tudo via push HTTP interno para o Gateway.
-- **Alloy Gateway** (`alloy-gateway/`): roda sem privilégios, é o único ponto de ingestão da stack e aceita **somente OTLP** (4317 gRPC / 4318 HTTP). Não converte nem renomeia dados — só aplica `memory_limiter`, tail sampling de traces e `batch` — e grava em OTLP nativo: métricas → Mimir, logs → Loki, traces → Tempo.
+- **Agent** (`examples/push/<sistema>/`): **OpenTelemetry Collector Contrib** (`otelcol-contrib`, pacote oficial) instalado no host monitorado — métricas de host (`host_metrics`), logs (`journald`, Windows Event Log), receivers nativos de bancos — mais o **OBI** (OpenTelemetry eBPF Instrumentation, serviço `obi` opcional) para traces e métricas HTTP sem alterar código. O OBI envia OTLP ao Collector local (`127.0.0.1:4317`); o Collector aplica a identidade do host e é a única saída para o Gateway. Não expõe portas na rede.
+- **Gateway** (`otel-gateway/config.yaml`, serviço `otel-gateway` no `compose.yaml`): `otelcol-contrib` em container, sem privilégios, único ponto de ingestão da stack, **somente OTLP** (4317 gRPC / 4318 HTTP). Não converte nem renomeia dados — só aplica `memory_limiter`, `tail_sampling` (traces) e `batch` — e grava em OTLP nativo: métricas → Mimir, logs → Loki, traces → Tempo. Health check em `:13133`.
+
+- **Agent da própria stack** (`otel-agent/`, serviço `otel-agent` no `compose.yaml`): o mesmo Collector em container, com `network_mode: host`, `pid: host`, root sem capabilities (`cap_drop: ALL`) e mounts somente leitura; coleta host, containers (`docker_stats` + logs `json-file`) e journald do servidor da stack.
+
+> **Migração em andamento:** os templates `.alloy` de `examples/` (exceto `push/linux`) ainda usam o Grafana Alloy com `remote_write`/Loki push e **não entregam dados** ao Gateway OTLP até serem migrados (ver `ROADMAP.md`).
 
 **Regras arquiteturais invioláveis**:
-1. **Só o Alloy Gateway escreve nos backends.** Nenhum agente, aplicação ou backend escreve direto em `mimir:9009`, `loki:3100` ou `tempo:4317`.
-2. **Cada backend armazena apenas o seu sinal**: métricas no Mimir, logs no Loki, traces no Tempo (por isso o `metrics_generator` do Tempo é desabilitado).
-3. **O dado sai da origem já correto**: Alloy Agents e aplicações enviam OTLP com nomes e atributos da [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/). Conversões (ex.: exporter Prometheus → OTLP) acontecem no agente, nunca no Gateway.
+1. **Só o Gateway escreve nos backends.** Nenhum agente, aplicação ou backend escreve direto em `mimir:9009`, `loki:3100` ou `tempo:4317`.
+2. **Cada backend armazena apenas o seu sinal**: métricas no Mimir, logs no Loki, traces no Tempo (por isso o `metrics_generator` do Tempo é desabilitado; métricas RED vêm do OBI na origem).
+3. **O dado sai da origem já correto**: agents e aplicações enviam OTLP com nomes e atributos da [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/). Conversões (ex.: exporter Prometheus → OTLP) acontecem no agente, nunca no Gateway.
+4. **Identidade única por host**: definida uma vez no agente (`OTEL_RESOURCE_ATTRIBUTES` + detector `system`, `override: true`) — `host.name`, `deployment.environment.name`, `cloud.provider`, `cloud.region`, `cloud.availability_zone`. Nunca labels de identidade fixos por pipeline.
 
 Loki, Mimir e Tempo não publicam portas no host — só acessíveis pela rede Docker `lgtm`, e são imagens distroless (sem shell, sem healthcheck `CMD-SHELL`). Grafana é o único ponto de leitura.
 
-**Política de métricas Lean (whitelist estrita)**: em vez de coletar tudo que os exporters (Node Exporter, cAdvisor, mysqld_exporter, postgres_exporter) produzem, cada pipeline `.alloy` aplica `metric_relabel` com ação `keep` para reter só o que os dashboards usam — reduz cardinalidade em 80–95%. Nunca adicione uma métrica "por segurança". Ao adicionar um painel novo que precise de métrica ainda não coletada: adicione a métrica na regra `keep` do `.alloy` correspondente (`alloy-agent/conf.d/` para push local, `alloy-gateway/conf.d/pull-*.alloy` para pull remoto) e, se a cardinalidade subir de forma relevante, atualize `docs/SIZING.md`.
+**Política Lean (coletar e armazenar o mínimo necessário)**: nada é coletado "por segurança". Nas configs do Collector, cada scraper/métrica (`metrics: <nome>: { enabled: true|false }`) e cada fonte de log (com filtro de severidade na origem, ex.: `priority: warning` no journald) é explícita; dispositivos, filesystems e interfaces sem valor operacional são excluídos; o self-monitoring usa `level: basic`; o OBI exporta só `features: [application]`. Nos templates `.alloy` legados, a mesma política é aplicada com `metric_relabel` `keep`. Ao precisar de uma métrica nova para um painel, habilite-a explicitamente no template correspondente e, se a cardinalidade subir de forma relevante, atualize `docs/SIZING.md`.
 
-**Convenção de arquivos `.alloy`** (`alloy-agent/conf.d/`, `alloy-gateway/conf.d/`): nome no padrão `<numero>-<tipo>-<categoria>-<serviço>.alloy` (ex.: `200-log-sec-ssh.alloy`, `001-metric-node-local.alloy`). O número controla ordem de carregamento. Pipelines de log seguem 4 estágios encadeados via `forward_to`, com componentes nomeados `<serviço>_<passo>`:
+**Nomes no Mimir e no Loki**: métricas são gravadas com os nomes OpenTelemetry (PromQL com aspas: `{"system.cpu.time", "host.name"="web-01"}`); no Loki os resource attributes de identidade viram labels com `_` (`host_name`, `service_name`). Use variáveis do Grafana (`$host`, `$service`) em vez de nomes fixos. Detalhes em `docs/METRICS.md` e `docs/LOGS.md`.
 
-1. `loki.source.journal` (SOURCE) — filtra por `_SYSTEMD_UNIT`
-2. `loki.relabel` (TRANSFORM) — normaliza `priority` → `level`, injeta labels estáticos (`category`, `service_name`)
-3. `loki.process` (NORMALIZE) — dropa por priority, aplica labels finais
-4. `loki.write` (WRITE) — envia para `alloy-gateway`
+**Dashboards** (`grafana/provisioning/dashboards/` — Fonte Única da Verdade): todos os dashboards são armazenados exclusivamente sob o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`). Fluxo GitOps: edite na UI do Grafana → exporte diretamente via API nativa v2 (`GET /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`) → salve no arquivo correspondente em `grafana/provisioning/dashboards/<Pasta>/<nome>.json` → commit. Nunca use o endpoint legado `/api/dashboards/db` (que destrói `TabsLayout` achatando em linhas simples). UIDs de dashboards em produção nunca devem mudar. `grafana/provisioning/dashboards/dashboards.yaml` faz hot-reload a cada 10s. Detalhes completos e padrões de design em `docs/DASHBOARDS.md`. Os dashboards atuais ainda consultam os nomes Prometheus antigos e serão refeitos sobre os nomes OpenTelemetry.
 
-Hosts são identificados apenas pelo label `instance` (nunca `nodename`, para evitar cardinalidade duplicada). Use variáveis do Grafana (`$instance`, `$container`) em vez de nomes de host fixos.
-
-**Dashboards** (`grafana/provisioning/dashboards/` — Fonte Única da Verdade): todos os dashboards são armazenados exclusivamente sob o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`). Fluxo GitOps: edite na UI do Grafana → exporte diretamente via API nativa v2 (`GET /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`) → salve no arquivo correspondente em `grafana/provisioning/dashboards/<Pasta>/<nome>.json` → commit. Nunca use o endpoint legado `/api/dashboards/db` (que destrói `TabsLayout` achatando em linhas simples). UIDs de dashboards em produção nunca devem mudar. `grafana/provisioning/dashboards/dashboards.yaml` faz hot-reload a cada 10s. Detalhes completos e padrões de design em `docs/DASHBOARDS.md`.
-
-**`examples/`**: modelos de monitoramento divididos em duas categorias: `examples/push/` (templates de agentes locais com seu próprio `INSTALL.md` e `config.alloy` para serem instalados dentro do host alvo) e `examples/pull/` (templates de scraping remoto para serem carregados no `alloy-gateway/conf.d/` da stack central).
+**`examples/`**: modelos de monitoramento em duas categorias: `examples/push/` (agentes instalados no host alvo, cada um com seu `INSTALL.md` e configs) e `examples/pull/` (coletas remotas de servidores **sem agente**, ex.: só `node_exporter`). Os templates pull são copiados para `otel-agent/pull.d/` (não versionado) e executados pelo `otel-agent` da stack, que faz o scrape, converte para OTLP com a identidade OpenTelemetry declarada por alvo e envia ao Gateway — o Gateway nunca executa coletas. O pipeline pull não usa `resource_detection` (atribuiria a identidade da stack). Templates pull ainda em `.alloy` estão em migração.
 
 ## Convenções de versão e upgrade
 
@@ -117,7 +115,7 @@ Os três arquivos de config (`loki/loki.yaml`, `mimir/mimir.yaml`, `tempo/tempo.
 ## Princípios de design (de `CONTRIBUTING.md`)
 
 1. **Whitelist first** — nunca adicione uma métrica "por segurança"; só o que os dashboards exigem.
-2. **Desacoplamento** — Alloy Agent coleta (privilegiado), Alloy Gateway ingere (sem privilégios).
+2. **Desacoplamento** — o agente coleta (privilegiado, no host), o Gateway ingere (sem privilégios, somente OTLP).
 3. **Portabilidade** — use variáveis do Grafana (`$instance`, `$container`), não nomes de host fixos.
 4. **Sincronização de alertas** — thresholds visuais nos painéis só existem para métricas com alertas, com valores idênticos aos da regra de alerta.
 5. **Fluxo GitOps (Local First → Sync Remoto)** — Toda alteração de configuração, dashboards ou pipelines deve ser realizada e versionada primeiro no repositório local (Fonte Única da Verdade) e então sincronizada para os servidores remotos (via rsync/SSH/API). É proibido alterar arquivos diretamente em produção sem persistir no repositório.

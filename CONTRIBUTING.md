@@ -13,8 +13,8 @@ Obrigado pelo interesse em contribuir com a LGTM Stack! Este projeto foca em **L
 
 ### 1. Adicionando novas métricas
 Se você adicionar um novo painel ao Grafana que exige uma métrica ainda não coletada:
-1.  Identifique a métrica no exporter (Node Exporter, cAdvisor, etc).
-2.  Adicione o nome da métrica na regra `keep` do arquivo `.alloy` correspondente em `alloy-agent/conf.d/`.
+1.  Identifique a métrica no receiver do OpenTelemetry Collector (`host_metrics`, `docker_stats`, etc.).
+2.  Habilite-a explicitamente (`metrics: <nome>: { enabled: true }`) em `otel-agent/config.yaml` e no template correspondente de `examples/push/` (ou na regra `keep` do `.alloy`, nos templates legados ainda não migrados).
 3.  Atualize o `docs/SIZING.md` se a cardinalidade aumentar significativamente.
 
 ### 1.1 Editando templates em `examples/`
