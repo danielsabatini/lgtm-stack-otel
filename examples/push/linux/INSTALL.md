@@ -164,7 +164,7 @@ sudo cp ~/lgtm-stack/examples/push/linux/config.alloy /etc/alloy/config.alloy
 > Pule esta seção se você não for coletar traces distribuídos (`beyla.ebpf`)
 > deste host. Métricas e logs funcionam normalmente sem este passo.
 
-O Alloy `v1.18.0` já inclui nativamente o componente `beyla.ebpf` — não é
+O Alloy `v1.20.1` já inclui nativamente o componente `beyla.ebpf` — não é
 necessário instalar um binário Beyla separado. Porém, auto-instrumentação
 eBPF exige requisitos de kernel e capabilities que o pacote systemd padrão
 do Alloy **não** concede por padrão (o serviço roda como usuário dedicado,

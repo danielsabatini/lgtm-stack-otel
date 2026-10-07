@@ -30,6 +30,18 @@ Antes de alterar as versões no arquivo `.env`:
 1. Consulte as *Release Notes* oficiais do componente procurando por `Breaking Changes`, `schema_config` e `migration`.
 2. Se a nova versão exigir alterações no arquivo de configuração (`loki.yaml`, `mimir.yaml`, `tempo.yaml`), edite os arquivos **antes** de atualizar a imagem.
 
+### 🛑 Regra 3: Instalação Sempre Monolítica e Single-Tenant
+Loki, Mimir e Tempo rodam **sempre** como monolito (`target: all`, um único processo por backend) e **sem multi-tenancy** (`auth_enabled: false` no Loki, `multitenancy_enabled: false` no Mimir e no Tempo). Essas chaves ficam explícitas no topo de `loki/loki.yaml`, `mimir/mimir.yaml` e `tempo/tempo.yaml` — não remova nem altere ao fazer upgrade, mesmo que o default da nova versão mude. Nenhum cliente precisa enviar o header `X-Scope-OrgID`.
+
+### 3.1 Breaking Changes Conhecidos (bump de 2026-10)
+
+| Componente | De → Para | O que muda | Impacto nesta stack |
+|---|---|---|---|
+| Mimir | `3.1.4` → `3.2.1` | Query sharding e *remote execution* passam a vir ligados por padrão; flags experimentais de query removidos; UI web do Alertmanager removida (só API v2). | Nenhum: nenhum flag removido é usado. |
+| Tempo | `3.0.2` → `3.1.0` | Blocos novos gravados em **vParquet5**; escrita em vParquet3 proibida; mudanças em cache Redis e query-frontend. | Nenhum: blocos vParquet4 existentes continuam legíveis e são compactados normalmente; Redis não é usado. |
+| Alloy | `v1.18.0` → `v1.20.1` | v1.19 renomeou as métricas internas do `memory_limiter` e removeu `prometheus.write.queue`; v1.20 alterou componentes de kafka/hetzner/k8sattributes. | Nenhum: nenhum dashboard consulta essas métricas e nenhum desses componentes é usado. |
+| Loki / Grafana | `3.7.4` → `3.7.8` / `13.1.2` → `13.2.3` | Apenas correções de segurança. | Nenhum. |
+
 ---
 
 ## 4. Procedimento de Upgrade Passo a Passo
@@ -47,8 +59,8 @@ sync
 Edite apenas as variáveis das imagens que deseja atualizar:
 ```bash
 # Exemplo no arquivo .env:
-# GRAFANA_LOKI_VERSION=3.7.4
-# GRAFANA_MIMIR_VERSION=3.1.4
+# GRAFANA_LOKI_VERSION=3.7.8
+# GRAFANA_MIMIR_VERSION=3.2.1
 ```
 
 ### 4.3 Validação do Compose e Download Seguro
@@ -66,8 +78,9 @@ Valide se os arquivos de configuração são aceitos pelas novas imagens antes d
 ```bash
 # Validar Loki:
 docker run --rm \
+  -e LOKI_RETENTION=${LOKI_RETENTION:-30d} \
   -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml \
-  grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.4} \
+  grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.8} \
   -config.file=/etc/loki/local-config.yaml -config.expand-env=true -verify-config \
   && echo "✓ loki.yaml válido"
 
@@ -75,17 +88,29 @@ docker run --rm \
 docker run --rm \
   -e MIMIR_RETENTION=${MIMIR_RETENTION:-30d} \
   -v $(pwd)/mimir/mimir.yaml:/etc/mimir.yaml \
-  grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.1.4} \
+  grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.2.1} \
   -config.file=/etc/mimir.yaml -config.expand-env=true -modules \
   && echo "✓ mimir.yaml válido"
 
-# Validar Tempo:
-docker run --rm \
+# Validar Tempo (o binário não tem flag de verify: sobe um container
+# descartável e confere se ele chega em "Tempo started"):
+docker run -d --name tempo-verify \
   -e TEMPO_RETENTION=${TEMPO_RETENTION:-336h} \
   -v $(pwd)/tempo/tempo.yaml:/etc/tempo.yaml \
-  grafana/tempo:${GRAFANA_TEMPO_VERSION:-3.0.2} \
-  -config.file=/etc/tempo.yaml -config.expand-env=true -version \
-  && echo "✓ tempo.yaml válido"
+  grafana/tempo:${GRAFANA_TEMPO_VERSION:-3.1.0} \
+  -config.file=/etc/tempo.yaml -config.expand-env=true
+sleep 10
+docker logs tempo-verify 2>&1 | grep -q "Tempo started" \
+  && echo "✓ tempo.yaml válido" \
+  || docker logs tempo-verify 2>&1 | tail -20
+docker rm -f tempo-verify
+
+# Validar pipelines do Alloy (gateway e agent):
+for d in alloy-gateway alloy-agent; do
+  docker run --rm -v $(pwd)/$d/conf.d:/c:ro \
+    grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1} validate /c \
+    && echo "✓ $d válido"
+done
 ```
 
 ### 4.5 Inicialização e Acompanhamento de Logs
@@ -105,11 +130,11 @@ As versões abaixo foram testadas e validadas neste repositório:
 
 | Componente | Versão Estável | Papel na Stack | Observações de Compatibilidade |
 |---|:---:|---|---|
-| **Grafana** | `13.1.2` | Visualização | UI, Provisioning e migrações SQLite 100% validadas. |
-| **Alloy** | `v1.18.0` | Coletor & Gateway | Pipelines de métricas, logs e traces OTLP validados. |
-| **Loki** | `3.7.4` | Logs TSDB | Suporte a chunks TSDB v13 e retenção via compactor. |
-| **Mimir** | `3.1.4` | Métricas TSDB | Suporte a blocos de índice v2 e compactor integrado. |
-| **Tempo** | `3.0.2` | Traces TSDB | Modo monolítico vParquet4 com tail sampling. |
+| **Grafana** | `13.2.3` | Visualização | UI, Provisioning e migrações SQLite 100% validadas. |
+| **Alloy** | `v1.20.1` | Coletor & Gateway | Pipelines de métricas, logs e traces OTLP validados. |
+| **Loki** | `3.7.8` | Logs TSDB | Suporte a chunks TSDB v13 e retenção via compactor. |
+| **Mimir** | `3.2.1` | Métricas TSDB | Suporte a blocos de índice v2 e compactor integrado. |
+| **Tempo** | `3.1.0` | Traces TSDB | Modo monolítico; blocos novos em vParquet5 (vParquet4 antigos seguem legíveis, sem migração). |
 
 ---
 

@@ -41,3 +41,23 @@ ingester:
 limits:
   compactor_blocks_retention_period: ${MIMIR_RETENTION}
   out_of_order_time_window: 10m
+
+  # Exemplars (link métrica -> trace no Grafana). 0 = desabilitado.
+  max_global_exemplars_per_user: 100000
+
+  # ---------------------------------------------------------------------------
+  # OTLP nativo com semântica OpenTelemetry preservada (endpoint /otlp/v1/metrics)
+  # ---------------------------------------------------------------------------
+  # Nomes de métricas e atributos gravados exatamente como na OTel Semantic
+  # Conventions (ex.: http.server.request.duration{http.request.method="GET"}),
+  # sem escaping para underscore nem sufixos _total/_seconds.
+  # PromQL: {"http.server.request.duration", "service.name"="checkout"}
+  name_validation_scheme: utf8
+  otel_translation_strategy: NoTranslation
+  # NoTranslation exige histogramas nativos (não há sufixos _bucket/_sum/_count)
+  otel_convert_histograms_to_nhcb: true
+  # Resource attributes de identidade viram labels em toda série (sem join com target_info)
+  promote_otel_resource_attributes: "service.name,service.namespace,service.version,service.instance.id,deployment.environment.name,host.name,cloud.provider,cloud.region,cloud.availability_zone"
+  otel_keep_identifying_resource_attributes: true
+  # Instrumentation scope -> labels otel_scope_name / otel_scope_version
+  otel_promote_scope_metadata: true

@@ -2,7 +2,7 @@ name: lgtm-stack
 
 services:
   loki:
-    image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.4}
+    image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.7.8}
     container_name: loki
     hostname: loki
     restart: unless-stopped
@@ -26,7 +26,7 @@ services:
           memory: ${LOKI_MEMORY:-6GB}
 
   mimir:
-    image: grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.1.4}
+    image: grafana/mimir:${GRAFANA_MIMIR_VERSION:-3.2.1}
     container_name: mimir
     hostname: mimir
     restart: unless-stopped
@@ -49,7 +49,7 @@ services:
           memory: ${MIMIR_MEMORY:-8GB}
 
   tempo:
-    image: grafana/tempo:${GRAFANA_TEMPO_VERSION:-3.0.2}
+    image: grafana/tempo:${GRAFANA_TEMPO_VERSION:-3.1.0}
     container_name: tempo
     hostname: tempo
     restart: unless-stopped
@@ -73,7 +73,7 @@ services:
           memory: ${TEMPO_MEMORY:-6GB}
 
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-13.1.2}
+    image: grafana/grafana:${GRAFANA_VERSION:-13.2.3}
     container_name: grafana
     hostname: grafana
     restart: unless-stopped
@@ -99,7 +99,7 @@ services:
           memory: ${GRAFANA_MEMORY:-4GB}
 
   alloy-gateway:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.18.0}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1}
     container_name: alloy-gateway
     hostname: alloy-gateway
     restart: unless-stopped
@@ -109,10 +109,8 @@ services:
     command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
     ports:
       - "12345:12345"  # UI do Alloy Gateway
-      - "9999:9999"    # Recepção de métricas dos Alloy Agents
-      - "9998:9998"    # Recepção de logs dos Alloy Agents
-      - "4317:4317"    # OTLP gRPC (traces/metrics das aplicações)
-      - "4318:4318"    # OTLP HTTP (traces/metrics das aplicações)
+      - "4317:4317"    # OTLP gRPC (traces, métricas e logs — agents e aplicações)
+      - "4318:4318"    # OTLP HTTP (traces, métricas e logs — agents e aplicações)
     depends_on:
       - loki
       - mimir
@@ -126,7 +124,7 @@ services:
           memory: ${ALLOY_GATEWAY_MEMORY:-2GB}
 
   alloy-agent:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.18.0}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.20.1}
     container_name: alloy-agent
     hostname: alloy-agent
     restart: unless-stopped
@@ -153,16 +151,19 @@ services:
       - /sys:/sys:ro
       - /proc:/procfs:ro
       
-      # Container Exporter (cAdvisor usa /sys, /var/run e /var/lib/docker diretamente)
+      # Container Exporter (cAdvisor usa /sys, /var/run e o data-root do Docker diretamente)
+      # O data-root é montado no MESMO caminho do host, pois o cAdvisor lê o caminho
+      # informado pelo daemon ("Docker Root Dir" em `docker info`).
       - /var/run:/var/run:rw
-      - /var/lib/docker:/var/lib/docker:ro
+      - ${DOCKER_DATA_ROOT:-/var/lib/docker}:${DOCKER_DATA_ROOT:-/var/lib/docker}:ro
       - /dev/disk/:/dev/disk:ro
       - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
-      - /docker:/docker:ro      
 
-    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/conf.d/"]
+    command: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/conf.d/"]
     ports:
-      - "12346:12345"  # Alloy Web UI
+      # Alloy Web UI — publicada só em loopback: o agent roda como root e não
+      # deve expor portas na rede (acesso remoto via túnel SSH).
+      - "127.0.0.1:12346:12345"
     depends_on:
       - alloy-gateway
     networks:

@@ -84,9 +84,12 @@ Esse script (a) valida a sintaxe de todo `.alloy` em `examples/` contra a imagem
 **Padrão Gateway-Agent**: o Alloy é dividido em dois papéis para não expor um processo root à rede:
 
 - **Alloy Agent** (`alloy-agent/`): roda `privileged: true`/root, lê `/procfs`, `/sys`, `/rootfs`, journald e Docker socket para coletar métricas/logs do host. Não expõe portas na rede. Envia tudo via push HTTP interno para o Gateway.
-- **Alloy Gateway** (`alloy-gateway/`): roda sem privilégios, é o único ponto de ingestão da stack (OTLP 4317/4318, Loki push 9998, Prometheus remote_write 9999). Faz fanout para Loki, Mimir e Tempo.
+- **Alloy Gateway** (`alloy-gateway/`): roda sem privilégios, é o único ponto de ingestão da stack e aceita **somente OTLP** (4317 gRPC / 4318 HTTP). Não converte nem renomeia dados — só aplica `memory_limiter`, tail sampling de traces e `batch` — e grava em OTLP nativo: métricas → Mimir, logs → Loki, traces → Tempo.
 
-**Regra arquitetural inviolável**: todo `prometheus.remote_write` (agente local, agentes remotos, pull legado) deve apontar para `http://alloy-gateway:9999/api/v1/metrics/write`. Nunca escrever diretamente em `mimir:9009`.
+**Regras arquiteturais invioláveis**:
+1. **Só o Alloy Gateway escreve nos backends.** Nenhum agente, aplicação ou backend escreve direto em `mimir:9009`, `loki:3100` ou `tempo:4317`.
+2. **Cada backend armazena apenas o seu sinal**: métricas no Mimir, logs no Loki, traces no Tempo (por isso o `metrics_generator` do Tempo é desabilitado).
+3. **O dado sai da origem já correto**: Alloy Agents e aplicações enviam OTLP com nomes e atributos da [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/). Conversões (ex.: exporter Prometheus → OTLP) acontecem no agente, nunca no Gateway.
 
 Loki, Mimir e Tempo não publicam portas no host — só acessíveis pela rede Docker `lgtm`, e são imagens distroless (sem shell, sem healthcheck `CMD-SHELL`). Grafana é o único ponto de leitura.
 

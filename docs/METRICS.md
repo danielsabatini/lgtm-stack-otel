@@ -4,10 +4,38 @@ Este documento cobre somente a política de métricas da stack.
 
 ## Endpoints de Ingestão
 
-A LGTM Stack possui endpoints específicos nativos (recebimento via Prometheus `remote_write`) e endpoints unificados (OTLP) expostos pelo Alloy Gateway. 
+Toda métrica entra na stack em OTLP pelo Alloy Gateway (portas 4317/4318) e é gravada no Mimir pelo endpoint OTLP nativo. Não há ingestão Prometheus `remote_write`.
 
 Para consultar as portas exatas e o roteamento de rede, consulte a matriz oficial em:
 👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
+
+## OTLP Nativo e Semântica OpenTelemetry
+
+Métricas que chegam ao Gateway (sempre OTLP, portas 4317/4318) são gravadas no Mimir pelo endpoint OTLP nativo (`otelcol.exporter.otlphttp "mimir"` → `http://mimir:9009/otlp/v1/metrics`), **sem conversão para o padrão Prometheus**. Os nomes de métricas e de atributos são preservados exatamente como na [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) (bloco `limits` de `mimir/mimir.yaml`):
+
+| Configuração (`mimir.yaml`) | Efeito |
+|---|---|
+| `name_validation_scheme: utf8` + `otel_translation_strategy: NoTranslation` | Nome da métrica e dos labels com pontos, sem sufixos `_total`/`_seconds` (ex.: `http.server.request.duration`). |
+| `otel_convert_histograms_to_nhcb: true` | Histogramas OTel viram *native histograms* (uma série por histograma, sem `_bucket`/`_sum`/`_count`). |
+| `promote_otel_resource_attributes` | `service.name`, `service.namespace`, `service.version`, `service.instance.id`, `deployment.environment.name`, `host.name`, `cloud.provider`, `cloud.region` e `cloud.availability_zone` viram labels em **toda** série (sem `join` com `target_info`). |
+| `otel_keep_identifying_resource_attributes` / `otel_promote_scope_metadata` | Mantém `job`/`instance` derivados (spec de compatibilidade OTel↔Prometheus) e o instrumentation scope como `otel_scope_name`/`otel_scope_version`. |
+| `max_global_exemplars_per_user: 100000` | Habilita exemplars (link métrica → trace). |
+
+Como consultar (PromQL com nomes UTF-8 — nome e labels com ponto vão entre aspas):
+
+```promql
+sum by ("service.name") (rate({"http.server.request.count", "deployment.environment.name"="prd"}[5m]))
+histogram_quantile(0.95, sum by ("service.name") (rate({"http.server.request.duration"}[5m])))
+```
+
+Verificação rápida (rede interna `lgtm`):
+
+```bash
+docker run --rm --network lgtm curlimages/curl -s http://mimir:9009/metrics \
+  | grep 'cortex_request_duration_seconds_count{.*route="otlp_v1_metrics"'
+```
+
+> **Escopo atual:** os Alloy Agents e os templates de `examples/` ainda usam `prometheus.remote_write` para a porta 9999, que **não existe mais** no Gateway — esses envios falham até a migração dos clientes para OTLP (conversão exporter Prometheus → OTLP no próprio agente). O self-monitoring do Gateway também passa a ser coletado pelo Alloy Agent do host da stack. Ver [ROADMAP.md](../ROADMAP.md).
 
 ## Política de Coleta (Lean Agent Metrics)
 

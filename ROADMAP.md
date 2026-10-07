@@ -27,6 +27,12 @@ Este roadmap organiza as entregas planejadas em três horizontes temporais bem d
 * [x] **Integração MySQL:** Criação de templates Alloy e dashboards provisionados para MySQL / MariaDB.
 * [x] **Lean Observability DBaaS:** Otimização rigorosa de allowlists nos exporters de banco de dados, reduzindo o volume de séries ativas em > 90%.
 * [x] **Monitoramento de DNS Interno:** Coleta pull para CoreDNS e etcd com dashboard completo organizado na metodologia de 5 pilares.
+* [ ] **Stack 100% OpenTelemetry (OTLP + Semantic Conventions):**
+  * [x] Backends: Mimir e Loki recebendo OTLP nativo com semântica preservada (`NoTranslation`/UTF-8 no Mimir, `otlp_config` no Loki); Tempo armazenando apenas traces (`metrics_generator` desabilitado); single-tenant monolítico.
+  * [x] Alloy Gateway: somente OTLP (4317/4318), sem conversões; portas 9998/9999 removidas.
+  * [ ] Alloy Agent local e templates de `examples/push`/`examples/pull`: OTLP na origem, com identidade em semantic conventions (`host.name`, `deployment.environment.name`, `cloud.*`, `service.name`) e conversão exporter Prometheus → OTLP no agente; self-monitoring do Gateway coletado pelo agente.
+  * [ ] Métricas RED e Service Graph emitidas pelo Beyla nos agents.
+  * [ ] Dashboards e datasources refeitos sobre os nomes OpenTelemetry.
 * [ ] **Implantação de Tracing Distribuído:** Guia e exemplos práticos para instrumentação de microsserviços via SDK OTel conectados ao Tempo.
 * [ ] **Continuous Profiling (Pyroscope):** Integração do Grafana Pyroscope na stack para análise de performance de CPU e memória a nível de linha de código.
 * [ ] **Monitoramento Avançado de SQL Server:** Expansão das métricas de Wait Stats e Deadlocks no Windows Exporter.
@@ -37,7 +43,6 @@ Este roadmap organiza as entregas planejadas em três horizontes temporais bem d
 * [ ] **Auto-Sizing Tool:** Script automatizado que calcula a projeção de disco recomendada baseada no consumo real das últimas 24 horas.
 
 ### 3.3 Longo Prazo (Visão de Futuro)
-* [ ] **Multi-tenancy:** Suporte a múltiplos ambientes e clientes isolados com segurança no mesmo cluster de Mimir e Loki.
 * [ ] **Kubernetes Sidecar Mode:** Versão otimizada do Alloy Agent empacotada para execução como DaemonSet em clusters Kubernetes.
 
 ---

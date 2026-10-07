@@ -32,7 +32,7 @@ As aplicações podem enviar traces apontando seus exporters OpenTelemetry diret
 
 Em servidores Linux onde não é viável alterar o código das aplicações para inserir SDKs do OpenTelemetry, a stack suporta a auto-instrumentação via **Grafana Beyla (`beyla.ebpf`)**:
 * **Zero Código:** Inspeciona chamadas HTTP, HTTPS e gRPC diretamente no nível do kernel Linux via eBPF.
-* **Métricas RED Automáticas:** Gera automaticamente métricas de taxa de requisições, erros e duração (`traces_spanmetrics_*`) no Mimir.
+* **Métricas RED Automáticas:** O Beyla emite no próprio agente as métricas HTTP/gRPC da OTel Semantic Conventions (ex.: `http.server.request.duration`) e as métricas de service graph, contando 100% do tráfego (antes do tail sampling do Gateway).
 * **Guia de Instalação:** Consulte o guia em [examples/push/linux/INSTALL.md](../examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
 
 ---
@@ -49,11 +49,18 @@ O Alloy Gateway aplica o padrão **Tail Sampling** diretamente na memória antes
 
 ---
 
-## 6. Geração de Métricas e Grafo de Serviços (Service Graph)
+## 6. Métricas Derivadas de Traces (RED e Service Graph)
 
-O componente `metrics_generator` do Grafana Tempo processa os spans ingeridos em tempo real e alimenta o Mimir com:
-* **Service Graph:** Grafo de topologia visual no Grafana mostrando as conexões e dependências entre microsserviços.
-* **Span Metrics (Métricas RED):** Métricas de taxa de chamadas (`traces_spanmetrics_calls_total`) e histogramas de latência por rota HTTP.
+O `metrics_generator` do Tempo está **desabilitado**: cada backend armazena apenas o seu sinal e só o Gateway escreve nos backends (ver [ARCHITECTURE.md](ARCHITECTURE.md)). Além disso, o Tempo só enxergaria os traces que sobraram do tail sampling (erros, lentos e 5% dos OK), subestimando a taxa de requisições.
+
+As métricas de taxa, erros e latência e o Service Graph passam a ser emitidos **na origem** (Beyla no Alloy Agent), em OTLP e com a semântica OpenTelemetry, e chegam ao Mimir pelo Gateway como qualquer outra métrica. Exemplars dessas métricas carregam o label `trace_id`, usado pelo datasource Mimir para abrir o trace no Tempo.
+
+Verificação de que o Tempo não escreve métricas:
+
+```bash
+docker run --rm --network lgtm curlimages/curl -s http://tempo:3200/metrics \
+  | grep -c prometheus_remote_storage_samples_total   # deve ser 0
+```
 
 ---
 

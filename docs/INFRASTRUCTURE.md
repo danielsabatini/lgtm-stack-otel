@@ -104,7 +104,11 @@ cd lgtm-stack
 
 # 2. Configurar o arquivo de variáveis de ambiente:
 cp .env.example .env
-# Edite as senhas e parâmetros de retenção conforme necessário no .env
+# Edite as senhas e parâmetros de retenção conforme necessário no .env.
+# DOCKER_DATA_ROOT deve ser igual ao "Docker Root Dir" do passo 5.3
+# (padrão /docker; use /var/lib/docker se o data-root não foi alterado):
+docker info --format '{{.DockerRootDir}}'
+grep DOCKER_DATA_ROOT .env
 
 # 3. Iniciar todos os containers em segundo plano:
 docker compose up -d

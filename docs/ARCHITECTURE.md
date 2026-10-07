@@ -42,7 +42,7 @@ flowchart TB
     subgraph EXT ["🌐 Aplicações & Servidores Remotos (Rede / VPC)"]
         APP1["🖥️ Hosts Remotos<br/>(Alloy Agent / Node Exporter)"]:::extBox
         APP2["📦 Aplicações Microservices<br/>(OTLP Traces / Metrics)"]:::extBox
-        APP3["📜 Emissores de Logs<br/>(Loki Push / Fluentd)"]:::extBox
+        APP3["📜 Emissores de Logs<br/>(OTLP Logs)"]:::extBox
     end
 
     subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
@@ -51,7 +51,7 @@ flowchart TB
         end
 
         subgraph UNPRIV ["🕸️ Camada de Ingestão de Rede (Modo Seguro / Desprivilegiado)"]
-            GATEWAY["🚪 Alloy Gateway<br/>• privileged: false (Unprivileged)<br/>• Portas: 4317 (gRPC), 4318 (HTTP), 9998 (Loki), 9999 (Mimir)<br/>• Autenticação, Relabel e Fan-out de Telemetria"]:::gtwBox
+            GATEWAY["🚪 Alloy Gateway<br/>• privileged: false (Unprivileged)<br/>• Portas: 4317 (OTLP gRPC), 4318 (OTLP HTTP)<br/>• Somente OTLP: sampling, batch e fan-out sem conversão"]:::gtwBox
         end
 
         subgraph BACKENDS ["🗄️ Bancos de Dados TSDB (Rede Interna Docker 'lgtm' - Sem Exposição Pública)"]
@@ -66,10 +66,10 @@ flowchart TB
     end
 
     %% Conexões e Fluxos
-    AGENT -->|"Push HTTP Interno<br/>(Sem porta exposta)"| GATEWAY
-    APP1 -->|"Prometheus Remote Write<br/>(Porta 9999)"| GATEWAY
+    AGENT -->|"OTLP Interno<br/>(Sem porta exposta)"| GATEWAY
+    APP1 -->|"OTLP Métricas e Logs<br/>(Portas 4317 / 4318)"| GATEWAY
     APP2 -->|"OTLP gRPC / HTTP<br/>(Portas 4317 / 4318)"| GATEWAY
-    APP3 -->|"Loki Push API<br/>(Porta 9998)"| GATEWAY
+    APP3 -->|"OTLP Logs<br/>(Portas 4317 / 4318)"| GATEWAY
 
     GATEWAY -->|"Gravação de Logs"| LOKI
     GATEWAY -->|"Gravação de Métricas"| MIMIR
@@ -89,12 +89,22 @@ flowchart TB
 
 ### 4.1 Alloy Gateway (Ingestão e Roteamento)
 Roda sem privilégios elevados e atua como o **ponto único de entrada** para toda a telemetria que chega pela rede:
-* **Portas 4317 (gRPC) e 4318 (HTTP):** Ingestão de traces e métricas no padrão OpenTelemetry (OTLP).
-* **Porta 9999:** Recebimento de métricas no padrão Prometheus `remote_write`.
-* **Porta 9998:** Recebimento de logs via API de push do Grafana Loki.
-* **Roteamento:** Encaminha métricas para o Mimir, logs para o Loki e traces para o Tempo.
+* **Portas 4317 (gRPC) e 4318 (HTTP):** Única entrada da stack — traces, métricas e logs no padrão OpenTelemetry (OTLP), vindos dos Alloy Agents e das aplicações.
+* **Roteamento:** Encaminha cada sinal ao seu backend em **OTLP nativo**: métricas → Mimir (`/otlp/v1/metrics`), logs → Loki (`/otlp/v1/logs`), traces → Tempo (gRPC). O Gateway não converte nem renomeia dados: só aplica `memory_limiter`, tail sampling de traces e `batch` (`alloy-gateway/conf.d/003-otlp-gtw-local.alloy` e `999-outputs.alloy`).
 
-> ⚠️ **Regra Arquitetural Inviolável:** Todo envio de métricas (`prometheus.remote_write`) — seja do agente local, de agentes remotos ou de coletas pull — deve apontar para `http://alloy-gateway:9999/api/v1/metrics/write`. **Nunca escreva diretamente no Mimir (`mimir:9009`)**.
+> ⚠️ **Regras Arquiteturais Invioláveis:**
+> 1. **Só o Alloy Gateway escreve nos backends.** Agentes, aplicações e os próprios backends nunca escrevem direto em `mimir:9009`, `loki:3100` ou `tempo:4317`.
+> 2. **Cada backend armazena apenas o seu sinal** (métricas → Mimir, logs → Loki, traces → Tempo). Por isso o `metrics_generator` do Tempo fica desabilitado.
+> 3. **O dado sai da origem já correto**: OTLP com a [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/). Conversões acontecem no Alloy Agent, nunca no Gateway.
+
+Verificação de que só há escrita OTLP nos backends (contadores por rota, rede interna `lgtm`):
+
+```bash
+docker run --rm --network lgtm curlimages/curl -s http://mimir:9009/metrics \
+  | grep -E 'cortex_request_duration_seconds_count\{.*route="(api_v1_push|otlp_v1_metrics)"'   # só otlp_v1_metrics
+docker run --rm --network lgtm curlimages/curl -s http://loki:3100/metrics \
+  | grep -E 'loki_request_duration_seconds_count\{.*route="(loki_api_v1_push|otlp_v1_logs)"'    # só otlp_v1_logs
+```
 
 ### 4.2 Alloy Agent (Coleta Local no Host)
 Roda com permissões administrativas (`privileged: true`) para inspecionar o estado do sistema operacional e contêineres:
@@ -122,12 +132,10 @@ Para permitir que agentes remotos enviem dados e os operadores acessem os painé
 |---|---|---|---|
 | **`3000`** | TCP | Pública (Internet / VPN) | Acesso à interface web do **Grafana**. |
 | **`12345`** | TCP | VPN / Admin | Acesso à interface web de diagnóstico do **Alloy Gateway**. |
-| **`4317`** | TCP | Rede Interna (VPC / VPN) | Ingestão OTLP gRPC (Traces e Métricas de Aplicações). |
-| **`4318`** | TCP | Rede Interna (VPC / VPN) | Ingestão OTLP HTTP (Traces e Métricas de Aplicações). |
-| **`9998`** | TCP | Rede Interna (VPC / VPN) | Ingestão de Logs via Loki Push API. |
-| **`9999`** | TCP | Rede Interna (VPC / VPN) | Ingestão de Métricas via Prometheus Remote Write. |
+| **`4317`** | TCP | Rede Interna (VPC / VPN) | Ingestão OTLP gRPC (traces, métricas e logs de agents e aplicações). |
+| **`4318`** | TCP | Rede Interna (VPC / VPN) | Ingestão OTLP HTTP (traces, métricas e logs de agents e aplicações). |
 
-> 🔒 **Recomendação de Segurança:** Nunca abra as portas de ingestão (`4317`, `4318`, `9998`, `9999`) diretamente para a internet aberta. O tráfego de telemetria entre servidores remotos e a stack central deve trafegar através de VPN, VPC Peering ou túneis criptografados.
+> 🔒 **Recomendação de Segurança:** Nunca abra as portas de ingestão (`4317`, `4318`) diretamente para a internet aberta. O tráfego de telemetria entre servidores remotos e a stack central deve trafegar através de VPN, VPC Peering ou túneis criptografados.
 
 ---
 

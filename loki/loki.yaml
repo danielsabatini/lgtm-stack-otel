@@ -1,3 +1,5 @@
+# Monolito single-tenant: todos os componentes num único processo, sem X-Scope-OrgID
+target: all
 auth_enabled: false
 
 server:
@@ -34,6 +36,20 @@ limits_config:
   reject_old_samples_max_age: 168h
   max_cache_freshness_per_query: 10m
   retention_period: ${LOKI_RETENTION}
+
+  # OTLP nativo (endpoint /otlp/v1/logs): resource attributes da OTel Semantic
+  # Conventions que viram index labels (pontos convertidos para underscore, ex.:
+  # host.name -> host_name). Somam-se aos defaults do Loki (service.name,
+  # service.namespace, service.instance.id, deployment.environment.name,
+  # cloud.region, cloud.availability_zone, k8s.*). Demais atributos, trace_id,
+  # span_id e severity_text ficam como structured metadata.
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - host.name
+            - cloud.provider
 
 compactor:
   working_directory: /loki/compactor

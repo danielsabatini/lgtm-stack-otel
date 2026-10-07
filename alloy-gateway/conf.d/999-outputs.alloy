@@ -2,30 +2,35 @@
 // GLOBAL OUTPUTS — Mimir, Loki and Tempo Endpoints
 // =============================================================================
 // This file centralizes all outgoing traffic from the Gateway.
+// Todos os sinais saem em OTLP nativo (sem prometheus.remote_write/loki.write).
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// METRICS (Prometheus / Mimir)
+// METRICS — OTLP nativo (Mimir /otlp/v1/metrics)
 // -----------------------------------------------------------------------------
-prometheus.remote_write "mimir" {
-  endpoint {
-    url = "http://mimir:9009/api/v1/push"
+// Nomes e atributos preservados na OTel Semantic Conventions (ver limits.otel_*
+// em mimir/mimir.yaml).
+otelcol.exporter.otlphttp "mimir" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
   }
 }
 
 
 // -----------------------------------------------------------------------------
-// LOGS (Loki)
+// LOGS — OTLP nativo (Loki /otlp/v1/logs)
 // -----------------------------------------------------------------------------
-loki.write "loki" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+// Resource attributes -> index labels / structured metadata conforme
+// limits_config.otlp_config em loki/loki.yaml.
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki:3100/otlp"
   }
 }
 
 
 // -----------------------------------------------------------------------------
-// TRACES (Tempo)
+// TRACES — OTLP nativo (Tempo)
 // -----------------------------------------------------------------------------
 otelcol.exporter.otlp "tempo" {
   client {
@@ -34,21 +39,4 @@ otelcol.exporter.otlp "tempo" {
       insecure = true
     }
   }
-}
-
-
-// =============================================================================
-// BRIDGES (OpenTelemetry to Prometheus/Loki)
-// =============================================================================
-
-otelcol.exporter.prometheus "mimir" {
-  forward_to = [
-    prometheus.remote_write.mimir.receiver,
-  ]
-}
-
-otelcol.exporter.loki "loki" {
-  forward_to = [
-    loki.write.loki.receiver,
-  ]
 }

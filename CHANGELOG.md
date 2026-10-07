@@ -5,6 +5,62 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Alterado
+- **Bump de versões da stack** (primeiro passo da migração para OTLP nativo
+  fim-a-fim): Grafana `13.1.2` → `13.2.3`, Alloy `v1.18.0` → `v1.20.1`,
+  Loki `3.7.4` → `3.7.8`, Mimir `3.1.4` → `3.2.1`, Tempo `3.0.2` → `3.1.0`
+  (`.env.example`, `compose.yaml`). Configs validadas contra as novas imagens
+  (`-verify-config` no Loki, `-modules` no Mimir, startup do Tempo,
+  `alloy validate` no gateway, agent e todos os `examples/`). Breaking changes
+  avaliados em `docs/UPGRADE.md` §3.1 — nenhum afeta esta stack; Tempo passa a
+  gravar blocos novos em vParquet5 sem migração.
+- **Monolito single-tenant explícito**: `target: all` adicionado em
+  `loki/loki.yaml` e `tempo/tempo.yaml`, e `multitenancy_enabled: false` em
+  `tempo/tempo.yaml` (antes implícitos por default). Regra registrada em
+  `docs/UPGRADE.md` §3 (Regra 3).
+
+- **Data-root do Docker parametrizado**: os binds fixos `/var/lib/docker` e
+  `/docker` do `alloy-agent` (cAdvisor) foram substituídos por um único
+  `${DOCKER_DATA_ROOT}` montado no mesmo caminho do host (`.env.example`,
+  default `/docker`; fallback `/var/lib/docker` no `compose.yaml`). Permite
+  subir a stack em hosts sem o disco dedicado `/docker` (ex.: Docker Desktop).
+
+- **Backends e Gateway 100% OTLP (migração OpenTelemetry)** — *breaking change*:
+  - Alloy Gateway aceita **somente OTLP** (4317/4318) e grava em OTLP nativo no
+    Mimir (`/otlp/v1/metrics`), Loki (`/otlp/v1/logs`) e Tempo, sem conversões:
+    removidas as pontes `otelcol.exporter.prometheus`/`otelcol.exporter.loki`,
+    os writers `prometheus.remote_write`/`loki.write`, as portas 9998/9999
+    (`compose.yaml`) e os arquivos `000-metric-alloy-local.alloy`,
+    `001-metric-gtw-local.alloy` e `002-log-gtw-local.alloy`.
+  - Mimir: semântica OpenTelemetry preservada (`NoTranslation` + nomes UTF-8,
+    native histograms, promoção dos resource attributes de identidade,
+    exemplars habilitados). Loki: `host.name` e `cloud.provider` como index
+    labels; `trace_id`/`span_id`/`severity_text` em structured metadata.
+  - Tempo: `metrics_generator` desabilitado — cada backend guarda só o seu
+    sinal; RED e Service Graph passam a vir do Beyla nos agents.
+  - Regras arquiteturais revistas em `PROJECT.md` e `docs/ARCHITECTURE.md`:
+    só o Gateway escreve nos backends; dado sai correto da origem.
+  - **Impacto:** Alloy Agents e templates de `examples/` (ainda em
+    `remote_write`/Loki push para 9999/9998) param de entregar dados até a
+    migração dos clientes; dashboards serão refeitos sobre os nomes OTel.
+- `ROADMAP.md`: removido o item "Multi-tenancy" — toda instalação é
+  monolítica e single-tenant (`docs/UPGRADE.md` §3, Regra 3).
+
+### Corrigido
+- **Exemplars**: estavam descartados pelo Mimir (`max_global_exemplars_per_user: 0`).
+- **Link Trace → Métricas** removido do datasource Tempo: apontava para
+  `traces_spanmetrics_duration_milliseconds_bucket` (inexistente) e as métricas
+  do Tempo foram desligadas; será refeito sobre as métricas do Beyla.
+- **Links Log ↔ Trace para logs OTLP**: derived field por label `trace_id`
+  (structured metadata) e query Trace → Logs `| trace_id="..."`; regex legado mantido.
+- **UI do Alloy Agent**: escutava só em `127.0.0.1` dentro do container, então a
+  porta publicada não respondia. Agora `--server.http.listen-addr=0.0.0.0:12345`,
+  publicada apenas em `127.0.0.1:12346` no host (agent root não expõe portas na rede).
+- `docs/UPGRADE.md`: dry-run do Tempo usava `-version` (não valida a config);
+  substituído por subida de container descartável. Dry-run do Loki passa a
+  injetar `LOKI_RETENTION`, e foi incluída a validação dos pipelines Alloy.
+
 ## [0.0.15] - 2026-08-16
 ### Adicionado
 - **Solução Completa MGC Internal DNS** (`grafana/provisioning/dashboards/DNS/mgc-internal-dns.json` - UID: `adth4vt`): monitoramento em 3 camadas interdependentes (*Linux, CoreDNS e etcd*) com SLIs de latência interna (<16ms) e forward (<250ms), Upstream Health, Process RSS, Cache Evictions e Cluster Role (Leader/Follower).

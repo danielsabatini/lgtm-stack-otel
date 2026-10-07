@@ -23,8 +23,23 @@ Para evitar que o Loki se torne um repositório confuso de mensagens desordenada
 ## 3. Endpoints e Roteamento de Ingestão
 
 Toda a ingestão de logs é centralizada no **Alloy Gateway**:
-* **Porta 9998:** Recepção de streams via API de Push nativa do Loki (usada pelos Alloy Agents nos hosts).
-* **Portas 4317 / 4318:** Recepção de logs estruturados de aplicações no padrão OpenTelemetry (OTLP).
+* **Portas 4317 / 4318:** Única entrada de logs — OTLP vindo dos Alloy Agents e das aplicações. A API de push do Loki (antiga porta 9998) foi removida; os pipelines de journald/Docker dos agents passam a converter para OTLP no próprio agente (ver [ROADMAP.md](../ROADMAP.md)).
+
+### 3.1 Logs OTLP (Semântica OpenTelemetry)
+
+Logs OTLP são gravados no endpoint OTLP nativo do Loki (`otelcol.exporter.otlphttp "loki"` → `http://loki:3100/otlp/v1/logs`), seguindo o [OTel Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-model/):
+
+| Campo OTel | Onde fica no Loki | Exemplo de consulta |
+|---|---|---|
+| Resource attributes de identidade (`service.name`, `service.namespace`, `service.instance.id`, `deployment.environment.name`, `host.name`, `cloud.provider`, `cloud.region`, `cloud.availability_zone`) | **Index labels** (o Loki troca `.` por `_`) | `{service_name="checkout", host_name="app-host-01"}` |
+| `Body` | Linha do log (texto puro) | `|= "payment declined"` |
+| `SeverityText` / `SeverityNumber` | Structured metadata `severity_text` / `severity_number` | `| severity_text="ERROR"` |
+| `TraceId` / `SpanId` | Structured metadata `trace_id` / `span_id` | `| trace_id="04d102d4..."` |
+| Demais atributos (resource e log record) | Structured metadata | `| service_version="1.4.2"` |
+
+A lista de index labels é definida em `limits_config.otlp_config` (`loki/loki.yaml`) somada aos defaults do Loki. Não promova atributos de alta cardinalidade (IDs de requisição, usuário) a index label.
+
+Os links do Grafana usam esses campos: **Log → Trace** pelo derived field `TraceID` (tipo *label*, lê `trace_id` do structured metadata) e **Trace → Logs** pela query `{service_name="<service.name do span>"} | trace_id="<trace>"` (`grafana/provisioning/datasources/datasources.yaml`).
 
 ---
 
@@ -78,7 +93,7 @@ No Windows, o agente lê diretamente da API nativa do **Windows Event Log**:
 
 ## 7. Esquema Global de Labels
 
-Todos os streams de log carregam os labels de identidade padronizados:
+Os streams coletados pelos Alloy Agents (journald, Docker, Windows Event Log) carregam os labels de identidade abaixo. Logs OTLP de aplicações seguem o mapeamento semântico da seção 3.1.
 
 | Label | Descrição | Exemplo |
 |---|---|---|

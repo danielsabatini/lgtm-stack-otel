@@ -16,6 +16,7 @@ datasources:
       incrementalQuerying: true
       incrementalQueryOverlapWindow: "10m"
       # Link Exemplar -> Trace (clique em exemplar no gráfico abre o trace no Tempo)
+      # Exemplars OTLP: o Mimir grava o TraceId do exemplar no label "trace_id"
       exemplarTraceIdDestinations:
         - name: trace_id
           datasourceUid: tempo
@@ -29,9 +30,17 @@ datasources:
     jsonData:
       # Link direto Log -> Trace
       derivedFields:
+        # Logs OTLP: trace_id chega como structured metadata (OTel Logs Data Model)
+        - datasourceUid: tempo
+          matcherType: label
+          matcherRegex: "trace_id"
+          name: TraceID
+          url: "$${__value.raw}"
+          urlDisplayLabel: "Ver trace no Tempo"
+        # Logs legados (Loki push): trace_id=<id> no texto da linha
         - datasourceUid: tempo
           matcherRegex: "trace_id=(\\w+)"
-          name: TraceID
+          name: TraceIDLine
           url: "$${__value.raw}"
           urlDisplayLabel: "Ver trace no Tempo"
 
@@ -52,20 +61,12 @@ datasources:
         datasourceUid: loki
         spanStartTimeShift: "-1m"
         spanEndTimeShift: "1m"
-        filterByTraceID: true
+        filterByTraceID: false
         filterBySpanID: false
-        customQuery: false
-      # Link Trace -> Métricas (Service Graph via Mimir)
-      tracesToMetrics:
-        datasourceUid: mimir
-        spanStartTimeShift: "-1m"
-        spanEndTimeShift: "1m"
-        queries:
-          - name: "Request rate"
-            query: "rate(traces_spanmetrics_calls_total{$$__tags}[5m])"
-          - name: "Request duration p95"
-            query: "histogram_quantile(0.95, sum(rate(traces_spanmetrics_duration_milliseconds_bucket{$$__tags}[5m])) by (le))"
-      # Service Map via Mimir
+        # trace_id é structured metadata nos logs OTLP (não está no texto da linha)
+        customQuery: true
+        query: '{service_name="$${__span.tags["service.name"]}"} | trace_id="$${__trace.traceId}"'
+      # Service Map via Mimir (métricas traces_service_graph_* emitidas pelos agents)
       serviceMap:
         datasourceUid: mimir
       nodeGraph:

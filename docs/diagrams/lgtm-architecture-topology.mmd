@@ -10,7 +10,7 @@ flowchart TB
     subgraph EXT ["🌐 Aplicações & Servidores Remotos (Rede / VPC)"]
         APP1["🖥️ Hosts Remotos<br/>(Alloy Agent / Node Exporter)"]:::extBox
         APP2["📦 Aplicações Microservices<br/>(OTLP Traces / Metrics)"]:::extBox
-        APP3["📜 Emissores de Logs<br/>(Loki Push / Fluentd)"]:::extBox
+        APP3["📜 Emissores de Logs<br/>(OTLP Logs)"]:::extBox
     end
 
     subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
@@ -19,7 +19,7 @@ flowchart TB
         end
 
         subgraph UNPRIV ["🕸️ Camada de Ingestão de Rede (Modo Seguro / Desprivilegiado)"]
-            GATEWAY["🚪 Alloy Gateway<br/>• privileged: false (Unprivileged)<br/>• Portas: 4317 (gRPC), 4318 (HTTP), 9998 (Loki), 9999 (Mimir)<br/>• Autenticação, Relabel e Fan-out de Telemetria"]:::gtwBox
+            GATEWAY["🚪 Alloy Gateway<br/>• privileged: false (Unprivileged)<br/>• Portas: 4317 (OTLP gRPC), 4318 (OTLP HTTP)<br/>• Somente OTLP: sampling, batch e fan-out sem conversão"]:::gtwBox
         end
 
         subgraph BACKENDS ["🗄️ Bancos de Dados TSDB (Rede Interna Docker 'lgtm' - Sem Exposição Pública)"]
@@ -34,10 +34,10 @@ flowchart TB
     end
 
     %% Conexões e Fluxos
-    AGENT -->|"Push HTTP Interno<br/>(Sem porta exposta)"| GATEWAY
-    APP1 -->|"Prometheus Remote Write<br/>(Porta 9999)"| GATEWAY
+    AGENT -->|"OTLP Interno<br/>(Sem porta exposta)"| GATEWAY
+    APP1 -->|"OTLP Métricas e Logs<br/>(Portas 4317 / 4318)"| GATEWAY
     APP2 -->|"OTLP gRPC / HTTP<br/>(Portas 4317 / 4318)"| GATEWAY
-    APP3 -->|"Loki Push API<br/>(Porta 9998)"| GATEWAY
+    APP3 -->|"OTLP Logs<br/>(Portas 4317 / 4318)"| GATEWAY
 
     GATEWAY -->|"Gravação de Logs"| LOKI
     GATEWAY -->|"Gravação de Métricas"| MIMIR

@@ -26,7 +26,7 @@ O repositório é organizado de forma modular e determinística:
 
 * **`compose.yaml`:** Declaração principal dos serviços da stack central (Loki, Mimir, Tempo, Grafana, Alloy Gateway e Alloy Agent local).
 * **`alloy-agent/conf.d/`:** Pipelines HCL para coleta local de métricas de host (CPU, Memória, Disco, Rede, Inodes), containers Docker e logs do systemd journal.
-* **`alloy-gateway/conf.d/`:** Ponto único de ingestão de rede com suporte a OTLP (4317/4318), Prometheus `remote_write` (9999) e Loki Push (9998).
+* **`alloy-gateway/conf.d/`:** Ponto único de ingestão de rede, somente OTLP (4317/4318), gravando em OTLP nativo no Mimir, Loki e Tempo.
 * **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
 * **`examples/push/`:** Templates de instalação para agentes locais Alloy nos servidores monitorados (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
 * **`examples/pull/`:** Templates de scraping remoto (modo Pull) para serem carregados no Alloy Gateway central (Linux Host, Linux DNS, CoreDNS, etcd, DBaaS MySQL, DBaaS PostgreSQL, Windows).
@@ -89,10 +89,8 @@ A stack opera com isolamento estrito de portas. Nenhum banco de dados (TSDB) é 
 |---|---|---|---|
 | **`3000`** | TCP | Pública / VPN | Interface Web e leitura de Dashboards no **Grafana**. |
 | **`12345`** | TCP | VPN / Admin | Interface Web de diagnóstico do **Alloy Gateway**. |
-| **`4317`** | TCP | VPC / Rede Interna | Ingestão OTLP gRPC (Traces e Métricas de Aplicações). |
-| **`4318`** | TCP | VPC / Rede Interna | Ingestão OTLP HTTP (Traces e Métricas de Aplicações). |
-| **`9998`** | TCP | VPC / Rede Interna | Ingestão de Logs via Loki Push API. |
-| **`9999`** | TCP | VPC / Rede Interna | Ingestão de Métricas via Prometheus Remote Write. |
+| **`4317`** | TCP | VPC / Rede Interna | Ingestão OTLP gRPC (traces, métricas e logs de agents e aplicações). |
+| **`4318`** | TCP | VPC / Rede Interna | Ingestão OTLP HTTP (traces, métricas e logs de agents e aplicações). |
 
 > 📖 Para diagrama visual de rede e topologia de segurança, consulte [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
