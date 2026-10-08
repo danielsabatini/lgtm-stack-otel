@@ -33,8 +33,8 @@
         "kind": "Panel",
         "spec": {
           "id": 1,
-          "title": "Buffer Cache Hit Ratio (%)",
-          "description": "Percentual de páginas lidas da memória (buffer pool) sem acesso a disco, por instância.\n• O que observar: acima de 98% (verde). Abaixo de 95% indica memória insuficiente para o volume de dados consultado.\n• Ação em caso de problema: conferir 'Page Life Expectancy' em Diagnostics, a configuração 'max server memory' e consultas que fazem varreduras completas.",
+          "title": "Transaction Log Usage (máx %)",
+          "description": "Ocupação do log de transações do banco mais cheio de cada instância. Log cheio interrompe as escritas do banco.\n• O que observar: abaixo de 70%; acima de 80% (laranja) e 90% (vermelho) o log está perto de crescer ou de travar as transações (em modelo FULL, só é liberado após backup de log).\n• Ação em caso de problema: ver em Diagnostics qual banco está cheio e conferir 'log_reuse_wait_desc' em 'sys.databases'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -52,7 +52,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\") ({\"sqlserver.page.buffer_cache.hit_ratio\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
+                        "expr": "max by (\"sqlserver.instance.name\") (max by (\"sqlserver.instance.name\", \"db.namespace\") ({\"sqlserver.transaction_log.usage\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"}))",
                         "legendFormat": "{{sqlserver.instance.name}}",
                         "range": true
                       }
@@ -100,15 +100,19 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "red"
+                        "color": "green"
                       },
                       {
-                        "value": 95,
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 80,
                         "color": "orange"
                       },
                       {
-                        "value": 98,
-                        "color": "green"
+                        "value": 90,
+                        "color": "red"
                       }
                     ]
                   },
@@ -128,547 +132,6 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Page Life Expectancy",
-          "description": "Tempo médio (segundos) que uma página permanece no buffer pool antes de ser descartada, por instância.\n• O que observar: acima de 300 s é a referência mínima clássica; quedas bruscas indicam pressão de memória (páginas sendo expulsas).\n• Ação em caso de problema: identificar consultas com muitas leituras ('sys.dm_exec_query_stats' ordenado por total_logical_reads) e revisar 'max server memory'.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\") ({\"sqlserver.page.life_expectancy\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
-                        "legendFormat": "{{sqlserver.instance.name}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "center",
-                "orientation": "auto",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value_and_name",
-                "wideLayout": true,
-                "text": {
-                  "titleSize": 12,
-                  "valueSize": 28
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "red"
-                      },
-                      {
-                        "value": 300,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "unit": "s"
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-3": {
-        "kind": "Panel",
-        "spec": {
-          "id": 3,
-          "title": "User Connections",
-          "description": "Número de conexões de usuário abertas em cada instância.\n• O que observar: crescimento contínuo sem aumento de carga indica vazamento de conexões na aplicação (pool não devolvendo conexões).\n• Ação em caso de problema: listar as sessões com 'sp_who2' ou 'sys.dm_exec_sessions' agrupando por host_name/program_name.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\") ({\"sqlserver.user.connection.count\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
-                        "legendFormat": "{{sqlserver.instance.name}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "center",
-                "orientation": "auto",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value_and_name",
-                "wideLayout": true,
-                "text": {
-                  "titleSize": 12,
-                  "valueSize": 28
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 0
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-4": {
-        "kind": "Panel",
-        "spec": {
-          "id": 4,
-          "title": "Batch Requests/s",
-          "description": "Lotes de comandos SQL recebidos por segundo em cada instância (principal medida de carga do SQL Server).\n• O que observar: compare com o padrão do horário; quedas a zero em horário comercial indicam aplicação parada ou sem acesso ao banco.\n• Ação em caso de problema: conferir conectividade da aplicação e os logs do SQL Server na aba Logs.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\") ({\"sqlserver.batch.request.rate\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
-                        "legendFormat": "{{sqlserver.instance.name}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "center",
-                "orientation": "auto",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value_and_name",
-                "wideLayout": true,
-                "text": {
-                  "titleSize": 12,
-                  "valueSize": 28
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "unit": "reqps",
-                  "decimals": 1
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-5": {
-        "kind": "Panel",
-        "spec": {
-          "id": 5,
-          "title": "Transaction Log - Usage by Database (%)",
-          "description": "Percentual do log de transações ocupado em cada banco.\n• O que observar: valores próximos de 100% forçam crescimento do arquivo (ou falha, se o crescimento estiver limitado). Em modelo FULL, o log só é liberado após backup de log.\n• Ação em caso de problema: conferir 'log_reuse_wait_desc' em 'sys.databases' (ex.: LOG_BACKUP, ACTIVE_TRANSACTION) e a rotina de backup de log.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\", \"db.namespace\") ({\"sqlserver.transaction_log.usage\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
-                        "legendFormat": "{{sqlserver.instance.name}} / {{db.namespace}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "mode": "multi",
-                  "sort": "desc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "decimals": 2,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "transparent"
-                      },
-                      {
-                        "value": 90,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "lineInterpolation": "smooth",
-                    "lineWidth": 2,
-                    "showPoints": "never",
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "axisPlacement": "auto",
-                    "gradientMode": "none",
-                    "thresholdsStyle": {
-                      "mode": "dashed"
-                    }
-                  },
-                  "unit": "percent",
-                  "max": 100
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-6": {
-        "kind": "Panel",
-        "spec": {
-          "id": 6,
-          "title": "Transaction Log - Growths",
-          "description": "Número de vezes que o arquivo de log de transações cresceu, por banco, no intervalo.\n• O que observar: crescimentos frequentes indicam log subdimensionado ou incremento de autogrowth pequeno, causando fragmentação (VLFs) e pausas de escrita.\n• Ação em caso de problema: dimensionar o log para o pico de uso e ajustar o FILEGROWTH para um valor fixo adequado (ex.: 512 MB).",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "max by (\"sqlserver.instance.name\", \"db.namespace\") (increase({\"sqlserver.transaction_log.growth.count\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"}[$__rate_interval]))",
-                        "legendFormat": "{{sqlserver.instance.name}} / {{db.namespace}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "mode": "multi",
-                  "sort": "desc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "decimals": 0,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "drawStyle": "bars",
-                    "fillOpacity": 10,
-                    "lineInterpolation": "smooth",
-                    "lineWidth": 2,
-                    "showPoints": "never",
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "axisPlacement": "auto",
-                    "gradientMode": "none",
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-7": {
-        "kind": "Panel",
-        "spec": {
-          "id": 7,
           "title": "User Connections",
           "description": "Conexões de usuário por instância ao longo do tempo.\n• O que observar: picos coincidentes com lentidão ou crescimento contínuo (vazamento de conexões).\n• Ação em caso de problema: conferir o tamanho do pool de conexões da aplicação e as sessões com 'sys.dm_exec_sessions'.",
           "links": [],
@@ -801,10 +264,10 @@
           }
         }
       },
-      "panel-8": {
+      "panel-3": {
         "kind": "Panel",
         "spec": {
-          "id": 8,
+          "id": 3,
           "title": "Batch Requests/s",
           "description": "Lotes de comandos SQL recebidos por segundo em cada instância.\n• O que observar: padrão diário de carga e picos fora do normal.\n• Ação em caso de problema: identificar as consultas mais executadas com 'sys.dm_exec_query_stats' (execution_count).",
           "links": [],
@@ -938,10 +401,10 @@
           }
         }
       },
-      "panel-9": {
+      "panel-4": {
         "kind": "Panel",
         "spec": {
-          "id": 9,
+          "id": 4,
           "title": "Transactions/s by Database",
           "description": "Transações iniciadas por segundo em cada banco.\n• O que observar: qual banco concentra a carga de escrita e mudanças bruscas de volume.\n• Ação em caso de problema: correlacionar com o uso do log de transações em Capacity e com a latência de disco da linha Windows.",
           "links": [],
@@ -1075,10 +538,10 @@
           }
         }
       },
-      "panel-10": {
+      "panel-5": {
         "kind": "Panel",
         "spec": {
-          "id": 10,
+          "id": 5,
           "title": "Page Reads and Writes/s",
           "description": "Leituras e gravações físicas de páginas (8 KB) por segundo em cada instância.\n• O que observar: leituras físicas altas e sustentadas indicam dados que não cabem no buffer pool.\n• Ação em caso de problema: conferir Buffer Cache Hit Ratio e Page Life Expectancy e revisar índices das consultas com mais leituras.",
           "links": [],
@@ -1212,10 +675,284 @@
           }
         }
       },
-      "panel-11": {
+      "panel-6": {
         "kind": "Panel",
         "spec": {
-          "id": 11,
+          "id": 6,
+          "title": "Transaction Log - Usage by Database (%)",
+          "description": "Percentual do log de transações ocupado em cada banco (detalhe do alarme do Health).\n• O que observar: valores próximos de 100% forçam crescimento do arquivo (ou falha, se o crescimento estiver limitado). Em modelo FULL, o log só é liberado após backup de log.\n• Ação em caso de problema: conferir 'log_reuse_wait_desc' em 'sys.databases' (ex.: LOG_BACKUP, ACTIVE_TRANSACTION) e a rotina de backup de log.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "max by (\"sqlserver.instance.name\", \"db.namespace\") ({\"sqlserver.transaction_log.usage\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"})",
+                        "legendFormat": "{{sqlserver.instance.name}} / {{db.namespace}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.2.3",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 2,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 2,
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "axisPlacement": "auto",
+                    "gradientMode": "none",
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "unit": "percent",
+                  "max": 100
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "Transaction Log - Growths",
+          "description": "Número de vezes que o arquivo de log de transações cresceu, por banco, no intervalo.\n• O que observar: crescimentos frequentes indicam log subdimensionado ou incremento de autogrowth pequeno, causando fragmentação (VLFs) e pausas de escrita.\n• Ação em caso de problema: dimensionar o log para o pico de uso e ajustar o FILEGROWTH para um valor fixo adequado (ex.: 512 MB).",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "max by (\"sqlserver.instance.name\", \"db.namespace\") (increase({\"sqlserver.transaction_log.growth.count\", \"host.name\"=\"$host\", \"sqlserver.instance.name\"=~\"$instance\"}[$__rate_interval]))",
+                        "legendFormat": "{{sqlserver.instance.name}} / {{db.namespace}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.2.3",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "bars",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 2,
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "axisPlacement": "auto",
+                    "gradientMode": "none",
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
           "title": "SQL Compilations and Recompilations/s",
           "description": "Compilações e recompilações de planos de execução por segundo.\n• O que observar: compilações acima de ~10% dos Batch Requests/s indicam consultas sem reaproveitamento de plano (SQL ad hoc sem parâmetros); recompilações frequentes indicam mudanças de esquema ou estatísticas.\n• Ação em caso de problema: parametrizar as consultas da aplicação ou avaliar 'optimize for ad hoc workloads'.",
           "links": [],
@@ -1370,10 +1107,10 @@
           }
         }
       },
-      "panel-12": {
+      "panel-9": {
         "kind": "Panel",
         "spec": {
-          "id": 12,
+          "id": 9,
           "title": "Lock Waits/s",
           "description": "Pedidos de lock que precisaram esperar, por segundo.\n• O que observar: deve ficar próximo de zero; picos indicam bloqueio entre transações.\n• Ação em caso de problema: identificar a sessão bloqueadora com 'sys.dm_exec_requests' (coluna blocking_session_id) ou 'sp_who2'.",
           "links": [],
@@ -1507,10 +1244,10 @@
           }
         }
       },
-      "panel-13": {
+      "panel-10": {
         "kind": "Panel",
         "spec": {
-          "id": 13,
+          "id": 10,
           "title": "Lock Wait Time (avg)",
           "description": "Tempo médio de espera dos pedidos de lock que precisaram aguardar.\n• O que observar: esperas acima de centenas de milissegundos afetam diretamente o tempo de resposta da aplicação.\n• Ação em caso de problema: reduzir a duração das transações e revisar índices das consultas envolvidas no bloqueio.",
           "links": [],
@@ -1644,12 +1381,12 @@
           }
         }
       },
-      "panel-14": {
+      "panel-11": {
         "kind": "Panel",
         "spec": {
-          "id": 14,
+          "id": 11,
           "title": "Page Life Expectancy",
-          "description": "Tempo de vida das páginas no buffer pool ao longo do tempo (linha tracejada: referência de 300 s).\n• O que observar: quedas bruscas coincidem com consultas que varrem grandes volumes de dados.\n• Ação em caso de problema: correlacionar o horário da queda com as consultas em execução e com as leituras físicas em Activity.",
+          "description": "Tempo de vida das páginas no buffer pool ao longo do tempo (referência clássica: acima de 300 s).\n• O que observar: quedas bruscas coincidem com consultas que varrem grandes volumes de dados.\n• Ação em caso de problema: correlacionar o horário da queda com as consultas em execução e com as leituras físicas em Activity.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1712,11 +1449,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "transparent"
-                      },
-                      {
-                        "value": 300,
-                        "color": "red"
+                        "color": "green"
                       }
                     ]
                   },
@@ -1737,7 +1470,7 @@
                     "axisPlacement": "auto",
                     "gradientMode": "none",
                     "thresholdsStyle": {
-                      "mode": "dashed"
+                      "mode": "off"
                     }
                   },
                   "unit": "s"
@@ -1785,10 +1518,10 @@
           }
         }
       },
-      "panel-15": {
+      "panel-12": {
         "kind": "Panel",
         "spec": {
-          "id": 15,
+          "id": 12,
           "title": "Buffer Cache Hit Ratio (%)",
           "description": "Percentual de páginas encontradas em memória ao longo do tempo.\n• O que observar: quedas abaixo de 95% sustentadas.\n• Ação em caso de problema: ver Page Life Expectancy e leituras físicas; avaliar aumento de memória.",
           "links": [],
@@ -1923,10 +1656,10 @@
           }
         }
       },
-      "panel-16": {
+      "panel-13": {
         "kind": "Panel",
         "spec": {
-          "id": 16,
+          "id": 13,
           "title": "Instances",
           "description": "Número de instâncias do SQL Server monitoradas neste servidor.\n• O que observar: deve corresponder às instâncias instaladas (serviços MSSQLSERVER e MSSQL$<NOME>).\n• Ação em caso de problema: instância ausente indica receiver sqlserver não configurado para ela no config.yaml do agente.",
           "links": [],
@@ -2005,10 +1738,10 @@
           }
         }
       },
-      "panel-17": {
+      "panel-14": {
         "kind": "Panel",
         "spec": {
-          "id": 17,
+          "id": 14,
           "title": "Databases",
           "description": "Número de bancos de usuário e de sistema monitorados (exclui os bancos internos ocultos).\n• O que observar: referência para o inventário de bancos do servidor.\n• Ação em caso de problema: conferir a lista com 'SELECT name FROM sys.databases'.",
           "links": [],
@@ -2087,10 +1820,10 @@
           }
         }
       },
-      "panel-18": {
+      "panel-15": {
         "kind": "Panel",
         "spec": {
-          "id": 18,
+          "id": 15,
           "title": "SQL Server Errors",
           "description": "Erros e avisos (Critical/Error/Warning) das instâncias do SQL Server no Event Log Application. A mensagem traz 'Error: <n> Severity: <s> State: <e>'; o número do erro fica em db_response_status_code.\n• O que observar: severidade 17 ou maior (recursos, hardware ou falhas graves), falhas de login (18456) e erros de I/O (823/824/825).\n• Ação em caso de problema: consultar o número do erro na documentação do SQL Server e o ERRORLOG da instância.",
           "links": [],
@@ -2150,10 +1883,10 @@
           }
         }
       },
-      "panel-19": {
+      "panel-16": {
         "kind": "Panel",
         "spec": {
-          "id": 19,
+          "id": 16,
           "title": "CPU Utilization (%)",
           "description": "Percentual de uso de CPU do host (100% menos o tempo ocioso de todos os núcleos).\n• O que observar: abaixo de 70% (verde). Valores sustentados acima de 80% (laranja) e 90% (vermelho) indicam sobrecarga.\n• Ação em caso de problema: ver em Diagnostics 'CPU - Usage by State' se o consumo é de processos (user), kernel (system) ou interrupções de hardware (interrupt) e identificar o processo com 'Get-Process | Sort-Object CPU -Descending | Select -First 10'.",
           "links": [],
@@ -2248,10 +1981,10 @@
           }
         }
       },
-      "panel-20": {
+      "panel-17": {
         "kind": "Panel",
         "spec": {
-          "id": 20,
+          "id": 17,
           "title": "Memory Utilization (%)",
           "description": "Memória em uso sobre a memória total do servidor.\n• O que observar: abaixo de 70%. Acima de 90% o Windows passa a paginar intensamente no arquivo de paginação.\n• Ação em caso de problema: identificar os maiores consumidores com 'Get-Process | Sort-Object WS -Descending | Select -First 10' e conferir o Monitor de Recursos (resmon).",
           "links": [],
@@ -2346,10 +2079,10 @@
           }
         }
       },
-      "panel-21": {
+      "panel-18": {
         "kind": "Panel",
         "spec": {
-          "id": 21,
+          "id": 18,
           "title": "Filesystem Utilization (max %)",
           "description": "Ocupação da unidade de disco mais cheia do servidor.\n• O que observar: abaixo de 70%. Acima de 90% há risco de falha de escrita de aplicações e logs.\n• Ação em caso de problema: ver em Capacity qual unidade está cheio e localizar os maiores diretórios com o WinDirStat/TreeSize ou 'Get-ChildItem <unidade> -Directory | ForEach { ... }' e limpar com 'cleanmgr'.",
           "links": [],
@@ -2444,12 +2177,12 @@
           }
         }
       },
-      "panel-22": {
+      "panel-19": {
         "kind": "Panel",
         "spec": {
-          "id": 22,
+          "id": 19,
           "title": "Network Throughput (bits/s)",
-          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas.\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'Get-NetTCPConnection' ou o Monitor de Recursos (aba Rede).",
+          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas. Sem limiar de alarme: a capacidade do link varia por servidor e não é coletada (um limiar fixo não seria portável).\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'Get-NetTCPConnection' ou o Monitor de Recursos (aba Rede).",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2485,12 +2218,13 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "gauge",
+            "group": "stat",
             "version": "13.2.3",
             "spec": {
               "options": {
-                "minVizHeight": 75,
-                "minVizWidth": 75,
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "reduceOptions": {
                   "calcs": [
@@ -2499,41 +2233,26 @@
                   "fields": "",
                   "values": false
                 },
-                "showThresholdLabels": false,
-                "showThresholdMarkers": true,
-                "sizing": "auto",
-                "sparkline": true,
-                "textMode": "auto"
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "bps",
-                  "decimals": 1,
-                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 500000000.0,
-                        "color": "yellow"
-                      },
-                      {
-                        "value": 800000000.0,
-                        "color": "orange"
-                      },
-                      {
-                        "value": 950000000.0,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
-                  }
+                  },
+                  "unit": "bps",
+                  "decimals": 1
                 },
                 "overrides": []
               }
@@ -2541,10 +2260,10 @@
           }
         }
       },
-      "panel-23": {
+      "panel-20": {
         "kind": "Panel",
         "spec": {
-          "id": 23,
+          "id": 20,
           "title": "CPU - Load",
           "description": "Médias de carga (load average) de 1, 5 e 15 minutos comparadas com o número de CPUs lógicas (linha tracejada).\n• O que observar: a carga deve ficar abaixo do número de CPUs. Load de 15m acima da linha indica processos enfileirados aguardando CPU.\n• Ação em caso de problema: a carga no Windows é estimada pelo Collector a partir da fila do processador; conferir com 'Get-Counter \"\\System\\Processor Queue Length\"'.",
           "links": [],
@@ -2740,10 +2459,10 @@
           }
         }
       },
-      "panel-24": {
+      "panel-21": {
         "kind": "Panel",
         "spec": {
-          "id": 24,
+          "id": 21,
           "title": "Memory - Usage (bytes)",
           "description": "Memória em uso comparada com a memória total (linha tracejada).\n• O que observar: 'Used' crescendo sem parar indica vazamento de memória em algum processo ou serviço.\n• Ação em caso de problema: conferir no Monitor de Recursos (resmon, aba Memória) e com 'Get-Process | Sort-Object WS -Descending | Select -First 10'.",
           "links": [],
@@ -2898,10 +2617,10 @@
           }
         }
       },
-      "panel-25": {
+      "panel-22": {
         "kind": "Panel",
         "spec": {
-          "id": 25,
+          "id": 22,
           "title": "Page File - Usage (bytes)",
           "description": "Arquivo de paginação em uso comparado com o tamanho total (linha tracejada).\n• O que observar: uso crescente indica falta de memória RAM.\n• Ação em caso de problema: conferir o arquivo de paginação com 'Get-CimInstance Win32_PageFileUsage' e avaliar aumento de RAM.",
           "links": [],
@@ -3056,12 +2775,12 @@
           }
         }
       },
-      "panel-26": {
+      "panel-23": {
         "kind": "Panel",
         "spec": {
-          "id": 26,
-          "title": "Disk - Utilization by Drive (%)",
-          "description": "Ocupação de cada unidade de disco do servidor.\n• O que observar: nenhum deve passar de 90%. Crescimento linear constante permite prever quando vai encher.\n• Ação em caso de problema: localizar os maiores diretórios com o WinDirStat/TreeSize ou 'Get-ChildItem <unidade> -Directory | ForEach { ... }' e limpar com 'cleanmgr'.",
+          "id": 23,
+          "title": "Disk - Usage by Drive (bytes)",
+          "description": "Espaço usado em cada unidade de disco comparado com o tamanho total (linha tracejada); a distância entre as linhas é a folga livre.\n• O que observar: crescimento linear constante permite prever quando o espaço vai acabar.\n• Ação em caso de problema: localizar os maiores diretórios com o WinDirStat/TreeSize ou 'Get-ChildItem <unidade> -Directory | ForEach { ... }' e limpar com 'cleanmgr'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3079,12 +2798,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"})) / sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
-                        "legendFormat": "{{mountpoint}}",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} usado",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -3148,8 +2888,7 @@
                       "mode": "off"
                     }
                   },
-                  "unit": "percentunit",
-                  "max": 1
+                  "unit": "bytes"
                 },
                 "overrides": [
                   {
@@ -3194,10 +2933,10 @@
           }
         }
       },
-      "panel-27": {
+      "panel-24": {
         "kind": "Panel",
         "spec": {
-          "id": 27,
+          "id": 24,
           "title": "Disk - Throughput (bytes/s)",
           "description": "Volume de dados lidos e gravados por disco.\n• O que observar: picos coincidentes com lentidão das aplicações; o limite depende do tipo de disco (SSD/NVMe ou volume de bloco).\n• Ação em caso de problema: identificar o processo no Monitor de Recursos (resmon, aba Disco) e conferir latência e ocupação em Diagnostics.",
           "links": [],
@@ -3331,10 +3070,10 @@
           }
         }
       },
-      "panel-28": {
+      "panel-25": {
         "kind": "Panel",
         "spec": {
-          "id": 28,
+          "id": 25,
           "title": "Disk - IOPS",
           "description": "Operações de leitura e escrita por segundo em cada disco.\n• O que observar: valores próximos do limite de IOPS do volume causam fila e aumento de latência.\n• Ação em caso de problema: conferir com 'Get-Counter \"\\PhysicalDisk(*)\\Disk Transfers/sec\"' e, em nuvem, o limite de IOPS contratado do volume.",
           "links": [],
@@ -3468,10 +3207,10 @@
           }
         }
       },
-      "panel-29": {
+      "panel-26": {
         "kind": "Panel",
         "spec": {
-          "id": 29,
+          "id": 26,
           "title": "Network - Throughput (bytes/s)",
           "description": "Tráfego de entrada (receive) e saída (transmit) por interface de rede.\n• O que observar: assimetrias inesperadas ou picos fora do padrão diário.\n• Ação em caso de problema: identificar as conexões com 'Get-NetTCPConnection' ou o Monitor de Recursos (aba Rede).",
           "links": [],
@@ -3605,10 +3344,10 @@
           }
         }
       },
-      "panel-30": {
+      "panel-27": {
         "kind": "Panel",
         "spec": {
-          "id": 30,
+          "id": 27,
           "title": "CPU - Usage by State (%)",
           "description": "Distribuição do tempo de CPU por estado: user (aplicações), system (kernel) e interrupt (interrupções de hardware).\n• O que observar: 'system' ou 'interrupt' altos indicam problema de driver ou de hardware (rede, disco).\n• Ação em caso de problema: identificar o processo no Gerenciador de Tarefas ou com 'Get-Process | Sort-Object CPU -Descending | Select -First 10' e atualizar drivers se 'interrupt' estiver alto.",
           "links": [],
@@ -3742,10 +3481,10 @@
           }
         }
       },
-      "panel-31": {
+      "panel-28": {
         "kind": "Panel",
         "spec": {
-          "id": 31,
+          "id": 28,
           "title": "Disk - Busy Time (%)",
           "description": "Fração do tempo em que cada disco esteve ocupado atendendo requisições.\n• O que observar: valores próximos de 100% indicam disco saturado (em SSD/NVMe, confirmar pela latência).\n• Ação em caso de problema: conferir com 'Get-Counter \"\\PhysicalDisk(*)\\% Idle Time\"' e identificar o processo no Monitor de Recursos (aba Disco).",
           "links": [],
@@ -3880,10 +3619,10 @@
           }
         }
       },
-      "panel-32": {
+      "panel-29": {
         "kind": "Panel",
         "spec": {
-          "id": 32,
+          "id": 29,
           "title": "Disk - Latency (s)",
           "description": "Tempo médio de cada operação de leitura e escrita por disco.\n• O que observar: em SSD/NVMe, abaixo de 10 ms; latências sustentadas acima de 50 ms afetam bancos de dados e aplicações.\n• Ação em caso de problema: conferir com 'Get-Counter \"\\PhysicalDisk(*)\\Avg. Disk sec/Transfer\"' e verificar se o volume atingiu o limite de IOPS.",
           "links": [],
@@ -4017,10 +3756,10 @@
           }
         }
       },
-      "panel-33": {
+      "panel-30": {
         "kind": "Panel",
         "spec": {
-          "id": 33,
+          "id": 30,
           "title": "Network - Errors and Drops (pkt/s)",
           "description": "Pacotes com erro e pacotes descartados por interface e direção.\n• O que observar: deve ser zero ou próximo de zero. Erros indicam problema físico/driver; descartes indicam buffers cheios.\n• Ação em caso de problema: conferir com 'Get-NetAdapterStatistics' e o driver da placa de rede.",
           "links": [],
@@ -4175,10 +3914,10 @@
           }
         }
       },
-      "panel-34": {
+      "panel-31": {
         "kind": "Panel",
         "spec": {
-          "id": 34,
+          "id": 31,
           "title": "Uptime",
           "description": "Tempo desde a última inicialização do sistema operacional.\n• O que observar: crescimento contínuo. Queda repentina indica reinício da máquina.\n• Ação em caso de problema: se não foi reboot programado, consultar o motivo com 'Get-WinEvent -FilterHashtable @{LogName=\"System\"; Id=1074,6008}'.",
           "links": [],
@@ -4257,10 +3996,10 @@
           }
         }
       },
-      "panel-35": {
+      "panel-32": {
         "kind": "Panel",
         "spec": {
-          "id": 35,
+          "id": 32,
           "title": "CPUs",
           "description": "Número de CPUs lógicas (núcleos x threads) do host.\n• O que observar: referência para a carga (Load) em Capacity.\n• Ação em caso de problema: divergência do tamanho contratado indica VM provisionada incorretamente.",
           "links": [],
@@ -4339,10 +4078,10 @@
           }
         }
       },
-      "panel-36": {
+      "panel-33": {
         "kind": "Panel",
         "spec": {
-          "id": 36,
+          "id": 33,
           "title": "Memory Total",
           "description": "Memória RAM total do host.\n• O que observar: referência para o uso de memória.\n• Ação em caso de problema: divergência do tamanho contratado indica VM provisionada incorretamente.",
           "links": [],
@@ -4421,10 +4160,10 @@
           }
         }
       },
-      "panel-37": {
+      "panel-34": {
         "kind": "Panel",
         "spec": {
-          "id": 37,
+          "id": 34,
           "title": "Page File Total",
           "description": "Tamanho total do arquivo de paginação.\n• O que observar: referência para o uso de paginação em Capacity.\n• Ação em caso de problema: conferir com 'Get-CimInstance Win32_PageFileUsage'.",
           "links": [],
@@ -4503,10 +4242,10 @@
           }
         }
       },
-      "panel-38": {
+      "panel-35": {
         "kind": "Panel",
         "spec": {
-          "id": 38,
+          "id": 35,
           "title": "Disk Total",
           "description": "Capacidade somada das unidades de disco do servidor.\n• O que observar: referência para o planejamento de capacidade.\n• Ação em caso de problema: conferir com 'Get-Volume'.",
           "links": [],
@@ -4585,10 +4324,10 @@
           }
         }
       },
-      "panel-39": {
+      "panel-36": {
         "kind": "Panel",
         "spec": {
-          "id": 39,
+          "id": 36,
           "title": "OS",
           "description": "Sistema operacional e versão (atributo os.description do agente).\n• O que observar: todos os servidores de um mesmo papel devem rodar a mesma versão homologada.\n• Ação em caso de problema: hosts despadronizados devem ser atualizados via automação.",
           "links": [],
@@ -4669,10 +4408,10 @@
           }
         }
       },
-      "panel-40": {
+      "panel-37": {
         "kind": "Panel",
         "spec": {
-          "id": 40,
+          "id": 37,
           "title": "Security",
           "description": "Eventos de segurança do Windows: logon/logoff (4624, 4634, 4647), falhas de logon (4625), privilégios especiais (4672) e gestão de contas (criação, desativação, bloqueio).\n• O que observar: falhas de logon em sequência (4625, elevadas a WARN) e bloqueios de conta (4740).\n• Ação em caso de problema: identificar a origem pelos campos source.address e user.name e bloquear no firewall ou revisar a política de bloqueio de contas.",
           "links": [],
@@ -4732,12 +4471,12 @@
           }
         }
       },
-      "panel-41": {
+      "panel-38": {
         "kind": "Panel",
         "spec": {
-          "id": 41,
+          "id": 38,
           "title": "System",
-          "description": "Eventos Critical/Error/Warning do log System (drivers, disco, rede, hardware), exceto o Service Control Manager.\n• O que observar: erros de disco (provider disk/Ntfs), falhas de driver e desligamentos inesperados (6008).\n• Ação em caso de problema: abrir o evento no Visualizador de Eventos pelo ID (campo windows_eventlog_event_id) e conferir o provider.",
+          "description": "Eventos Critical/Error/Warning do sistema: log System (drivers, disco, rede, hardware), Service Control Manager (serviços falhando ou em loop) e Agendador de Tarefas (campo service_name).\n• O que observar: erros de disco (provider disk/Ntfs), desligamentos inesperados (6008), o mesmo serviço falhando repetidamente (7031, 7034, 7000) e tarefas com erro.\n• Ação em caso de problema: abrir o evento pelo ID (campo windows_eventlog_event_id); serviços com 'Get-Service <nome>'; tarefas com 'Get-ScheduledTaskInfo'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4795,12 +4534,12 @@
           }
         }
       },
-      "panel-42": {
+      "panel-39": {
         "kind": "Panel",
         "spec": {
-          "id": 42,
+          "id": 39,
           "title": "Application",
-          "description": "Eventos Critical/Error/Warning de aplicações (Agendador de Tarefas e, no template de banco, SQL Server).\n• O que observar: tarefas agendadas falhando de forma recorrente e erros de aplicação.\n• Ação em caso de problema: conferir a tarefa com 'Get-ScheduledTaskInfo' e o histórico no Agendador de Tarefas.",
+          "description": "Eventos Critical/Error/Warning de aplicações (no template de banco, SQL Server).\n• O que observar: erros de aplicação recorrentes.\n• Ação em caso de problema: abrir o evento no Visualizador de Eventos e o log da própria aplicação.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4820,69 +4559,6 @@
                         "direction": "backward",
                         "editorMode": "code",
                         "expr": "{host_name=\"$host\"} | category=\"application\"",
-                        "queryType": "range"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "logs",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "dedupStrategy": "none",
-                "enableLogDetails": true,
-                "prettifyLogMessage": true,
-                "showCommonLabels": false,
-                "showLabels": false,
-                "showTime": true,
-                "sortOrder": "Descending",
-                "wrapLogMessage": true,
-                "enableInfiniteScrolling": false
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-43": {
-        "kind": "Panel",
-        "spec": {
-          "id": 43,
-          "title": "Platform",
-          "description": "Eventos do Service Control Manager (serviços que falharam ao iniciar, pararam inesperadamente ou entraram em loop).\n• O que observar: o mesmo serviço falhando repetidamente (eventos 7031, 7034, 7000).\n• Ação em caso de problema: conferir com 'Get-Service <nome>' e as opções de recuperação do serviço.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "loki",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "loki"
-                      },
-                      "spec": {
-                        "direction": "backward",
-                        "editorMode": "code",
-                        "expr": "{host_name=\"$host\"} | category=\"platform\"",
                         "queryType": "range"
                       }
                     },
@@ -4951,10 +4627,53 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-19"
+                                    "name": "panel-16"
                                   }
                                 }
                               },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-17"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-18"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-19"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "kind": "TabsLayoutTab",
+                      "spec": {
+                        "title": "Capacity",
+                        "layout": {
+                          "kind": "AutoGridLayout",
+                          "spec": {
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
+                            "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -4981,6 +4700,15 @@
                                     "name": "panel-22"
                                   }
                                 }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-23"
+                                  }
+                                }
                               }
                             ]
                           }
@@ -4990,7 +4718,7 @@
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
-                        "title": "Capacity",
+                        "title": "Activity",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
@@ -4998,15 +4726,6 @@
                             "columnWidthMode": "standard",
                             "rowHeightMode": "standard",
                             "items": [
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-23"
-                                  }
-                                }
-                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5042,7 +4761,7 @@
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
-                        "title": "Activity",
+                        "title": "Diagnostics",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
@@ -5076,6 +4795,15 @@
                                     "name": "panel-29"
                                   }
                                 }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-30"
+                                  }
+                                }
                               }
                             ]
                           }
@@ -5085,23 +4813,14 @@
                     {
                       "kind": "TabsLayoutTab",
                       "spec": {
-                        "title": "Diagnostics",
+                        "title": "Inventory",
                         "layout": {
                           "kind": "AutoGridLayout",
                           "spec": {
-                            "maxColumnCount": 1,
-                            "columnWidthMode": "standard",
-                            "rowHeightMode": "standard",
+                            "maxColumnCount": 3,
+                            "columnWidthMode": "narrow",
+                            "rowHeightMode": "short",
                             "items": [
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-30"
-                                  }
-                                }
-                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5128,23 +4847,7 @@
                                     "name": "panel-33"
                                   }
                                 }
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "kind": "TabsLayoutTab",
-                      "spec": {
-                        "title": "Inventory",
-                        "layout": {
-                          "kind": "AutoGridLayout",
-                          "spec": {
-                            "maxColumnCount": 3,
-                            "columnWidthMode": "narrow",
-                            "rowHeightMode": "short",
-                            "items": [
+                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5171,7 +4874,23 @@
                                     "name": "panel-36"
                                   }
                                 }
-                              },
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "kind": "TabsLayoutTab",
+                      "spec": {
+                        "title": "Logs",
+                        "layout": {
+                          "kind": "AutoGridLayout",
+                          "spec": {
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
+                            "items": [
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5196,58 +4915,6 @@
                                   "element": {
                                     "kind": "ElementReference",
                                     "name": "panel-39"
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "kind": "TabsLayoutTab",
-                      "spec": {
-                        "title": "Logs",
-                        "layout": {
-                          "kind": "AutoGridLayout",
-                          "spec": {
-                            "maxColumnCount": 1,
-                            "columnWidthMode": "standard",
-                            "rowHeightMode": "standard",
-                            "items": [
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-40"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-41"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-42"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-43"
                                   }
                                 }
                               }
@@ -5289,33 +4956,6 @@
                                     "name": "panel-1"
                                   }
                                 }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-2"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-3"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-4"
-                                  }
-                                }
                               }
                             ]
                           }
@@ -5338,25 +4978,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-5"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-6"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-7"
+                                    "name": "panel-2"
                                   }
                                 }
                               }
@@ -5376,6 +4998,67 @@
                             "columnWidthMode": "standard",
                             "rowHeightMode": "standard",
                             "items": [
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-3"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-4"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-5"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "kind": "TabsLayoutTab",
+                      "spec": {
+                        "title": "Diagnostics",
+                        "layout": {
+                          "kind": "AutoGridLayout",
+                          "spec": {
+                            "maxColumnCount": 1,
+                            "columnWidthMode": "standard",
+                            "rowHeightMode": "standard",
+                            "items": [
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-6"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-7"
+                                  }
+                                }
+                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5402,23 +5085,7 @@
                                     "name": "panel-10"
                                   }
                                 }
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "kind": "TabsLayoutTab",
-                      "spec": {
-                        "title": "Diagnostics",
-                        "layout": {
-                          "kind": "AutoGridLayout",
-                          "spec": {
-                            "maxColumnCount": 1,
-                            "columnWidthMode": "standard",
-                            "rowHeightMode": "standard",
-                            "items": [
+                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -5434,33 +5101,6 @@
                                   "element": {
                                     "kind": "ElementReference",
                                     "name": "panel-12"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-13"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-14"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-15"
                                   }
                                 }
                               }
@@ -5485,7 +5125,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-16"
+                                    "name": "panel-13"
                                   }
                                 }
                               },
@@ -5494,7 +5134,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-17"
+                                    "name": "panel-14"
                                   }
                                 }
                               }
@@ -5519,7 +5159,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-18"
+                                    "name": "panel-15"
                                   }
                                 }
                               }

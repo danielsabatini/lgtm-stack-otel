@@ -328,7 +328,7 @@
         "spec": {
           "id": 4,
           "title": "Network Throughput (bits/s)",
-          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas.\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'ss -tunap' ou 'sudo iftop -i <interface>'.",
+          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas. Sem limiar de alarme: a capacidade do link varia por servidor e não é coletada (um limiar fixo não seria portável).\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'ss -tunap' ou 'sudo iftop -i <interface>'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -364,12 +364,13 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "gauge",
+            "group": "stat",
             "version": "13.2.3",
             "spec": {
               "options": {
-                "minVizHeight": 75,
-                "minVizWidth": 75,
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "reduceOptions": {
                   "calcs": [
@@ -378,41 +379,30 @@
                   "fields": "",
                   "values": false
                 },
-                "showThresholdLabels": false,
-                "showThresholdMarkers": true,
-                "sizing": "auto",
-                "sparkline": true,
-                "textMode": "auto"
+                "showPercentChange": false,
+                "textMode": "value_and_name",
+                "wideLayout": true,
+                "text": {
+                  "titleSize": 12,
+                  "valueSize": 28
+                }
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "bps",
-                  "decimals": 1,
-                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 500000000.0,
-                        "color": "yellow"
-                      },
-                      {
-                        "value": 800000000.0,
-                        "color": "orange"
-                      },
-                      {
-                        "value": 950000000.0,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
-                  }
+                  },
+                  "unit": "bps",
+                  "decimals": 1
                 },
                 "overrides": []
               }
@@ -960,8 +950,8 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Filesystem - Utilization by Mountpoint (%)",
-          "description": "Ocupação de cada filesystem gravável do host.\n• O que observar: nenhum deve passar de 90%. Crescimento linear constante permite prever quando vai encher.\n• Ação em caso de problema: localizar os maiores diretórios com 'sudo du -xh --max-depth=1 <mountpoint> | sort -h' e revisar rotação de logs.",
+          "title": "Filesystem - Usage by Mountpoint (bytes)",
+          "description": "Espaço usado em cada filesystem gravável do host comparado com o tamanho total (linha tracejada); a distância entre as linhas é a folga livre.\n• O que observar: crescimento linear constante permite prever quando o espaço vai acabar.\n• Ação em caso de problema: localizar os maiores diretórios com 'sudo du -xh --max-depth=1 <mountpoint> | sort -h' e revisar rotação de logs.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -979,12 +969,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=~\"$host\", state=\"used\", mode=\"rw\"})) / sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=~\"$host\", state=~\"used|free\", mode=\"rw\"}))",
-                        "legendFormat": "{{host.name}} {{mountpoint}}",
+                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=~\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{host.name}} {{mountpoint}} usado",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=~\"$host\", state=~\"used|free\", mode=\"rw\"}))",
+                        "legendFormat": "{{host.name}} {{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -1048,8 +1059,7 @@
                       "mode": "off"
                     }
                   },
-                  "unit": "percentunit",
-                  "max": 1
+                  "unit": "bytes"
                 },
                 "overrides": [
                   {
@@ -1098,8 +1108,8 @@
         "kind": "Panel",
         "spec": {
           "id": 9,
-          "title": "Filesystem - Inode Utilization by Mountpoint (%)",
-          "description": "Percentual de inodes (entradas de arquivos) usados em cada filesystem gravável.\n• O que observar: abaixo de 90%. Inodes esgotados impedem a criação de arquivos mesmo com espaço livre.\n• Ação em caso de problema: localizar diretórios com muitos arquivos pequenos com 'sudo find <mountpoint> -xdev -type f | cut -d/ -f2-3 | sort | uniq -c | sort -n | tail'.",
+          "title": "Filesystem - Inodes by Mountpoint",
+          "description": "Inodes (entradas de arquivos) usados em cada filesystem gravável comparados com o total (linha tracejada).\n• O que observar: a folga até o total. Inodes esgotados impedem a criação de arquivos mesmo com espaço livre.\n• Ação em caso de problema: localizar diretórios com muitos arquivos pequenos com 'sudo find <mountpoint> -xdev -type f | cut -d/ -f2-3 | sort | uniq -c | sort -n | tail'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1117,12 +1127,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=~\"$host\", state=\"used\", mode=\"rw\"})) / sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=~\"$host\", mode=\"rw\"}))",
-                        "legendFormat": "{{host.name}} {{mountpoint}}",
+                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=~\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{host.name}} {{mountpoint}} usados",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (\"host.name\", mountpoint) (max by (\"host.name\", device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=~\"$host\", mode=\"rw\"}))",
+                        "legendFormat": "{{host.name}} {{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -1155,7 +1186,7 @@
               },
               "fieldConfig": {
                 "defaults": {
-                  "decimals": 2,
+                  "decimals": 0,
                   "min": 0,
                   "thresholds": {
                     "mode": "absolute",
@@ -1185,9 +1216,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "unit": "percentunit",
-                  "max": 1
+                  }
                 },
                 "overrides": [
                   {
@@ -3059,7 +3088,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -3095,9 +3124,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -3234,7 +3260,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -3270,9 +3296,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -3377,11 +3400,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 1,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
@@ -3711,7 +3730,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -3747,9 +3766,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -3936,7 +3952,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -3972,9 +3988,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -4138,7 +4151,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -4174,9 +4187,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -4401,7 +4411,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -4437,9 +4447,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -4547,7 +4554,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -4583,9 +4590,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -4727,7 +4731,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -4763,9 +4767,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -4850,7 +4851,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -4886,9 +4887,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -5194,11 +5192,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 1,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
@@ -5526,7 +5520,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -5562,9 +5556,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -5720,7 +5711,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -5756,9 +5747,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -5843,7 +5831,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -5879,9 +5867,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -5966,7 +5951,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -6002,9 +5987,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -6089,7 +6071,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -6125,9 +6107,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -6212,7 +6191,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -6248,9 +6227,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -6521,17 +6497,12 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "red"
-                      },
-                      {
-                        "value": 1,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
                   "color": {
-                    "mode": "thresholds",
-                    "fixedColor": "#ad46ff"
+                    "mode": "thresholds"
                   }
                 },
                 "overrides": []
@@ -6700,7 +6671,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -6736,9 +6707,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -7301,7 +7269,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -7337,9 +7305,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -7558,7 +7523,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -7594,9 +7559,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -7681,7 +7643,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
+                        "color": "text"
                       }
                     ]
                   },
@@ -7717,9 +7679,6 @@
                     "stacking": {
                       "group": "A",
                       "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
                     }
                   }
                 },
@@ -7824,11 +7783,7 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 1,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
@@ -7917,139 +7872,6 @@
                       {
                         "value": 0,
                         "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "dns-panel-82": {
-        "kind": "Panel",
-        "spec": {
-          "id": 82,
-          "title": "Query Rate",
-          "description": "Quantidade de consultas DNS recebidas por segundo em cada servidor.\n• O que observar: O tráfego deve estar equilibrado entre os nós (~20 req/s por servidor). Se um nó cair para 0 req/s, ele parou de receber tráfego da rede.\n• Ação em caso de problema: Teste se a porta 53 está respondendo de outra máquina ('dig @<ip-do-no> google.com') e confira se o firewall ou security group não bloquearam a porta 53/UDP.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "sum by (\"host.name\") (max without (otel_scope_name, otel_scope_version) (rate(coredns_dns_requests_total{\"host.name\"=~\"$host\", \"service.name\"=\"coredns\"}[$__rate_interval])))",
-                        "instant": true,
-                        "legendFormat": "{{host.name}}",
-                        "range": false
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "colorMode": "background",
-                "graphMode": "none",
-                "justifyMode": "center",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value_and_name",
-                "wideLayout": false
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "reqps",
-                  "decimals": 1,
-                  "min": 0,
-                  "mappings": [
-                    {
-                      "type": "range",
-                      "options": {
-                        "from": 0,
-                        "to": 0.0001,
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 0
-                        }
-                      }
-                    },
-                    {
-                      "type": "value",
-                      "options": {
-                        "0": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 1
-                        }
-                      }
-                    },
-                    {
-                      "type": "special",
-                      "options": {
-                        "match": "null",
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 2
-                        }
-                      }
-                    },
-                    {
-                      "type": "special",
-                      "options": {
-                        "match": "nan",
-                        "result": {
-                          "text": "sem tráfego",
-                          "color": "#6E7B8B",
-                          "index": 3
-                        }
-                      }
-                    }
-                  ],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "#6E7B8B"
-                      },
-                      {
-                        "value": 0.001,
-                        "color": "green"
                       }
                     ]
                   },
@@ -8395,15 +8217,6 @@
                                   "element": {
                                     "kind": "ElementReference",
                                     "name": "dns-panel-75"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "dns-panel-82"
                                   }
                                 }
                               },

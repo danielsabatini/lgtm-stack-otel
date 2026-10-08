@@ -172,7 +172,7 @@ receivers:
     resource:
       service.name: container-engine
     attributes:
-      category: application
+      category: system
     operators: &engine_operators
       - type: move
         if: body._PID != nil
@@ -208,7 +208,7 @@ receivers:
     resource:
       service.name: containerd
     attributes:
-      category: application
+      category: system
     operators: *engine_operators
 
   journald/cron:
@@ -218,7 +218,7 @@ receivers:
     resource:
       service.name: cron
     attributes:
-      category: application
+      category: system
     operators: *journal_operators
 
   journald/systemd:
@@ -229,7 +229,7 @@ receivers:
     resource:
       service.name: systemd
     attributes:
-      category: platform
+      category: system
     operators: *journal_operators
 
   # ---------------------------------------------------------------------------

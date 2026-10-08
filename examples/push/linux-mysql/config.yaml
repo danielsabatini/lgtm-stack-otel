@@ -151,7 +151,7 @@ receivers:
     resource:
       service.name: cron
     attributes:
-      category: application
+      category: system
     operators: *journal_operators
 
   journald/systemd:
@@ -161,7 +161,7 @@ receivers:
     resource:
       service.name: systemd
     attributes:
-      category: platform
+      category: system
     operators: *journal_operators
 
   # ---------------------------------------------------------------------------

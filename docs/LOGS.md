@@ -15,7 +15,7 @@ Na LGTM Stack todo log chega em **OTLP** e segue o [OTel Logs Data Model](https:
 ## 2. Objetivo
 
 1. **Gravar com semântica OpenTelemetry:** severidade, corpo, identidade e correlação com traces nos campos padrão.
-2. **Categorizar:** todo log pertence a uma das 4 categorias canônicas.
+2. **Categorizar:** todo log pertence a uma das categorias canônicas da metodologia (segurança, sistema, aplicação e erros de negócio).
 3. **Coletar o mínimo necessário:** filtrar severidade e ruído **na origem**, por fonte.
 4. **Manter o índice enxuto:** só atributos de identidade de baixa cardinalidade viram labels de índice.
 
@@ -41,16 +41,16 @@ A lista de labels de índice é a padrão do Loki somada a `host.name` e `cloud.
 
 ---
 
-## 4. As 4 Categorias Canônicas
+## 4. As Categorias Canônicas
 
-Definidas na metodologia ([OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md)) e gravadas no atributo `category` (structured metadata — consulte com `| category="…"`):
+As 4 categorias da metodologia ([OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md) §5.1), gravadas no atributo `category` (structured metadata — consulte com `| category="…"`):
 
-| `category` | Contexto | Exemplos de fontes |
+| `category` | Contexto | Fontes coletadas |
 |---|---|---|
-| **`security`** | Autenticação e auditoria | SSH, eventos de logon/contas do Windows (Security) |
-| **`system`** | Sistema operacional e kernel | kernel (`dmesg`), Event Log System |
-| **`application`** | Aplicações, runtimes e bancos | cron, Docker/containerd, logs de containers, Task Scheduler, MySQL, PostgreSQL, SQL Server |
-| **`platform`** | Gerenciador de serviços | systemd, Service Control Manager do Windows |
+| **`security`** | Autenticação, autorização e auditoria | SSH, eventos de logon/contas do Windows (Security) |
+| **`system`** | SO, kernel, gerenciadores de serviço, daemons e tarefas agendadas | kernel (`dmesg`), systemd, cron, `dockerd`/`containerd`, Event Log System, Service Control Manager, Agendador de Tarefas |
+| **`application`** | Aplicações, runtimes e bancos | logs dos containers da stack, MySQL, PostgreSQL, SQL Server |
+| **`business`** | Erros de negócio (regras de domínio) | nenhuma fonte hoje — reservada para logs de aplicação; a aba é omitida nos dashboards (§9.2 da metodologia) |
 
 ---
 
@@ -64,8 +64,8 @@ Cada fonte do journald é um receiver `journald/<serviço>` que **filtra a sever
 |---|---|---|---|
 | `journald/ssh` (`ssh.service`) | `ssh` | `security` | `info` (todos os eventos de acesso) |
 | `journald/kernel` (`_TRANSPORT=kernel`) | `kernel` | `system` | `warning` |
-| `journald/cron` (`cron.service`) | `cron` | `application` | `warning` |
-| `journald/systemd` (`SYSLOG_IDENTIFIER=systemd`) | `systemd` | `platform` | `warning` |
+| `journald/cron` (`cron.service`) | `cron` | `system` | `warning` |
+| `journald/systemd` (`SYSLOG_IDENTIFIER=systemd`) | `systemd` | `system` | `warning` |
 
 Conversão comum (operadores compartilhados por âncora YAML): `PRIORITY` → severidade (0–2 `FATAL`, 3 `ERROR`, 4 `WARN`, 5 `INFO2`, 6 `INFO`, 7 `DEBUG`), `_PID` → `process.pid`, `_COMM` → `process.executable.name`, `MESSAGE` → `Body`. Pré-requisito: usuário `otelcol-contrib` no grupo `systemd-journal`.
 
@@ -89,8 +89,8 @@ Receivers `windows_event_log` com **filtro XPath na origem** (o XPath do Event L
 |---|---|---|---|
 | `windows_event_log/security` | Security — IDs 4624, 4625, 4634, 4647, 4648, 4672, 4720, 4725, 4726, 4740, 4767 | `windows-security` | `security` |
 | `windows_event_log/system` | System — Critical/Error/Warning, **exceto** o Service Control Manager | `windows-system` | `system` |
-| `windows_event_log/services` | System — Service Control Manager, Critical/Error/Warning | `windows-services` | `platform` |
-| `windows_event_log/task_scheduler` | TaskScheduler/Operational — Critical/Error/Warning | `windows-task-scheduler` | `application` |
+| `windows_event_log/services` | System — Service Control Manager, Critical/Error/Warning | `windows-services` | `system` |
+| `windows_event_log/task_scheduler` | TaskScheduler/Operational — Critical/Error/Warning | `windows-task-scheduler` | `system` |
 
 O `Body` é a mensagem do evento; viram atributos `windows.eventlog.event_id`/`provider`/`channel`, `process.pid` e, nos eventos de segurança, `user.name`, `source.address` e `windows.logon.type`. Falha de logon (4625) e bloqueio de conta (4740), registrados como Information pelo Windows, são elevados para `WARN`.
 
@@ -104,8 +104,8 @@ O `otel-agent` (`otel-agent/config.yaml`) usa as mesmas fontes de journald do Li
 
 | Fonte | `service.name` | `category` | Tratamento da severidade |
 |---|---|---|---|
-| `journald/docker` (`docker.service`) | `container-engine` | `application` | O `dockerd` grava **tudo** com `PRIORITY=6`, inclusive erros: o nível é extraído do texto (`level=error`) e o pipeline mantém só `WARN`+. |
-| `journald/containerd` (`containerd.service`) | `containerd` | `application` | Idem `docker`. |
+| `journald/docker` (`docker.service`) | `container-engine` | `system` | O `dockerd` grava **tudo** com `PRIORITY=6`, inclusive erros: o nível é extraído do texto (`level=error`) e o pipeline mantém só `WARN`+. |
+| `journald/containerd` (`containerd.service`) | `containerd` | `system` | Idem `docker`. |
 | `file_log/containers` (`/var/lib/docker/containers/*/*-json.log`) | nome do serviço no compose | `application` | Nível extraído de logfmt (`level=warn`), JSON (`"level":"error"`) ou do formato do Collector; mantém só `WARN`+ e linhas sem nível reconhecido. Containers sem o label `com.docker.compose.service` (fora do compose) são descartados. |
 
 Os containers da stack usam o driver `json-file` com rotação (`x-logging` no `compose.yaml`, `max-size: 10m` / `max-file: 3`) e a opção `labels: com.docker.compose.service`, que grava o nome do serviço em cada linha (vira `service.name` e `container.name`). A posição de leitura é persistida (`file_storage`). Os Collectors da stack registram erros sem *stack trace* (`service.telemetry.logs.disable_stacktrace`), já que cada linha do trace viraria um registro sem nível. Pré-requisito: journal persistente em `/var/log/journal` (padrão no Debian 12+).

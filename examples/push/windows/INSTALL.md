@@ -120,8 +120,8 @@ EFI de sistema e recuperação) e interfaces virtuais (`Loopback Pseudo-Interfac
 |---|---|---|---|
 | `windows_event_log/security` | Security — IDs 4624, 4625, 4634, 4647, 4648, 4672, 4720, 4725, 4726, 4740, 4767 | `windows-security` | `security` |
 | `windows_event_log/system` | System — Critical/Error/Warning, **exceto** Service Control Manager | `windows-system` | `system` |
-| `windows_event_log/services` | System — Service Control Manager, Critical/Error/Warning | `windows-services` | `platform` |
-| `windows_event_log/task_scheduler` | TaskScheduler/Operational — Critical/Error/Warning | `windows-task-scheduler` | `application` |
+| `windows_event_log/services` | System — Service Control Manager, Critical/Error/Warning | `windows-services` | `system` |
+| `windows_event_log/task_scheduler` | TaskScheduler/Operational — Critical/Error/Warning | `windows-task-scheduler` | `system` |
 
 Conversão para o OTel Logs Data Model: o Body é a mensagem do evento; viram
 atributos `windows.eventlog.event_id`, `windows.eventlog.provider`,

@@ -136,7 +136,7 @@ receivers:
     resource:
       service.name: windows-services
     attributes:
-      category: platform
+      category: system
 
   # Tarefas agendadas: Critical/Error/Warning
   windows_event_log/task_scheduler:
@@ -147,7 +147,7 @@ receivers:
     resource:
       service.name: windows-task-scheduler
     attributes:
-      category: application
+      category: system
 
   # ---------------------------------------------------------------------------
   # SQL SERVER (receiver nativo OpenTelemetry, contadores de desempenho)

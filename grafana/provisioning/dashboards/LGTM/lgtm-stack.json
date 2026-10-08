@@ -33,8 +33,8 @@
         "kind": "Panel",
         "spec": {
           "id": 1,
-          "title": "Coletores Ativos",
-          "description": "Coletores OpenTelemetry (Gateway e agentes, inclusive dos hosts monitorados) enviando a própria telemetria.\n• O que observar: deve corresponder ao número de agentes instalados + o Gateway; uma queda indica coletor parado ou sem conectividade com o Gateway.\n• Ação em caso de problema: no host, 'systemctl status otelcol-contrib' (Linux) ou 'Get-Service otelcol-contrib' (Windows); na stack, 'docker compose ps'.",
+          "title": "Dados Recusados (%)",
+          "description": "Percentual dos itens (métricas, logs e spans) recusados pelos receivers sobre o total recebido — em geral pelo memory_limiter, quando o coletor está sem memória.\n• O que observar: deve ser 0%. Recusas significam perda de dados na origem (o cliente pode reenviar).\n• Ação em caso de problema: ver em Diagnostics qual coletor/receiver recusa e a memória dele em Capacity; avaliar os limites de memória do coletor.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -52,7 +52,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "count(max without (otel_scope_name, otel_scope_version) ({\"otelcol_process_uptime\"}))",
+                        "expr": "(sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_receiver_refused_.+\"}[$__rate_interval]))) / clamp_min(sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_receiver_accepted_.+\"}[$__rate_interval]))) + sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_receiver_refused_.+\"}[$__rate_interval]))), 1e-9)) or vector(0)",
                         "legendFormat": "",
                         "range": true
                       }
@@ -96,14 +96,23 @@
                     "steps": [
                       {
                         "value": 0,
-                        "color": "text"
+                        "color": "green"
+                      },
+                      {
+                        "value": 0.0001,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 0.01,
+                        "color": "red"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
                   },
-                  "decimals": 0
+                  "unit": "percentunit",
+                  "decimals": 2
                 },
                 "overrides": []
               }
@@ -115,8 +124,8 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Dados Recusados (no período)",
-          "description": "Itens (métricas, logs e spans) recusados pelos receivers — em geral pelo memory_limiter, quando o coletor está sem memória.\n• O que observar: deve ser zero. Recusas significam perda de dados na origem (o cliente pode reenviar).\n• Ação em caso de problema: ver em Diagnostics qual coletor/receiver recusa e a memória dele em Capacity; avaliar os limites de memória do coletor.",
+          "title": "Falhas de Envio (%)",
+          "description": "Percentual dos itens que os exporters não conseguiram enviar (agentes → Gateway, Gateway → Mimir/Loki/Tempo) após esgotar as tentativas, sobre o total enviado.\n• O que observar: deve ser 0%. Falhas significam perda definitiva de dados.\n• Ação em caso de problema: conferir conectividade e o estado do destino (docker compose ps; logs do otel-gateway e do backend).",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -134,10 +143,9 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(max without (otel_scope_name, otel_scope_version) (increase({__name__=~\"otelcol_receiver_refused_.+\"}[$__range]))) or vector(0)",
+                        "expr": "(sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_exporter_send_failed_.+\"}[$__rate_interval]))) / clamp_min(sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_exporter_sent_.+\"}[$__rate_interval]))) + sum(max without (otel_scope_name, otel_scope_version) (rate({__name__=~\"otelcol_exporter_send_failed_.+\"}[$__rate_interval]))), 1e-9)) or vector(0)",
                         "legendFormat": "",
-                        "range": false,
-                        "instant": true
+                        "range": true
                       }
                     },
                     "refId": "A",
@@ -182,7 +190,11 @@
                         "color": "green"
                       },
                       {
-                        "value": 1,
+                        "value": 0.0001,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 0.01,
                         "color": "red"
                       }
                     ]
@@ -190,7 +202,8 @@
                   "color": {
                     "mode": "thresholds"
                   },
-                  "decimals": 0
+                  "unit": "percentunit",
+                  "decimals": 2
                 },
                 "overrides": []
               }
@@ -202,93 +215,6 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Falhas de Envio (no período)",
-          "description": "Itens que os exporters não conseguiram enviar (agentes → Gateway, Gateway → Mimir/Loki/Tempo) depois de esgotar as tentativas.\n• O que observar: deve ser zero. Falhas significam perda definitiva de dados.\n• Ação em caso de problema: conferir conectividade e o estado do destino (docker compose ps; logs do otel-gateway e do backend).",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "sum(max without (otel_scope_name, otel_scope_version) (increase({__name__=~\"otelcol_exporter_send_failed_.+\"}[$__range]))) or vector(0)",
-                        "legendFormat": "",
-                        "range": false,
-                        "instant": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "center",
-                "orientation": "auto",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 1,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "decimals": 0
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-4": {
-        "kind": "Panel",
-        "spec": {
-          "id": 4,
           "title": "Fila de Exportação (pico %)",
           "description": "Ocupação da fila de reenvio mais cheia entre todos os exporters (lotes na fila / capacidade).\n• O que observar: perto de zero em operação normal. Fila crescendo indica destino lento ou indisponível; cheia, novos dados são descartados.\n• Ação em caso de problema: ver em Diagnostics qual exporter enche a fila e verificar o destino (Gateway ou backend).",
           "links": [],
@@ -383,10 +309,10 @@
           }
         }
       },
-      "panel-5": {
+      "panel-4": {
         "kind": "Panel",
         "spec": {
-          "id": 5,
+          "id": 4,
           "title": "Recebido por Coletor (itens/s)",
           "description": "Itens aceitos pelos receivers de cada coletor, por sinal (pontos de métrica, registros de log e spans).\n• O que observar: estabilidade; quedas a zero indicam fonte parada, e no Gateway, agentes sem conectividade.\n• Ação em caso de problema: comparar com 'Enviado por Coletor' e conferir os logs do coletor afetado.",
           "links": [],
@@ -562,10 +488,10 @@
           }
         }
       },
-      "panel-6": {
+      "panel-5": {
         "kind": "Panel",
         "spec": {
-          "id": 6,
+          "id": 5,
           "title": "Enviado por Coletor (itens/s)",
           "description": "Itens enviados com sucesso pelos exporters de cada coletor (agentes → Gateway; Gateway → backends).\n• O que observar: deve acompanhar o recebido (descontados filtros e o tail sampling de traces no Gateway).\n• Ação em caso de problema: diferença persistente entre recebido e enviado indica filtro descartando, fila acumulando ou falhas de envio.",
           "links": [],
@@ -741,10 +667,10 @@
           }
         }
       },
-      "panel-7": {
+      "panel-6": {
         "kind": "Panel",
         "spec": {
-          "id": 7,
+          "id": 6,
           "title": "Recusados e Falhos por Receiver (itens/s)",
           "description": "Itens recusados (refused: memory_limiter) ou com falha (failed: erro no pipeline) por receiver.\n• O que observar: deve ser zero.\n• Ação em caso de problema: recusas → memória do coletor; falhas → logs do coletor (erro de processor/exporter).",
           "links": [],
@@ -899,10 +825,10 @@
           }
         }
       },
-      "panel-8": {
+      "panel-7": {
         "kind": "Panel",
         "spec": {
-          "id": 8,
+          "id": 7,
           "title": "Falhas de Envio por Exporter (itens/s)",
           "description": "Itens descartados por exporter após esgotar as tentativas de reenvio.\n• O que observar: deve ser zero.\n• Ação em caso de problema: verificar o destino do exporter (otlp_grpc/gateway → Gateway; otlp_http/mimir, otlp_http/loki, otlp_grpc/tempo → backends).",
           "links": [],
@@ -1036,10 +962,10 @@
           }
         }
       },
-      "panel-9": {
+      "panel-8": {
         "kind": "Panel",
         "spec": {
-          "id": 9,
+          "id": 8,
           "title": "Fila de Exportação (lotes)",
           "description": "Lotes aguardando envio na fila de reenvio de cada exporter, comparados com a capacidade (linha tracejada).\n• O que observar: perto de zero; crescimento indica destino lento ou fora do ar.\n• Ação em caso de problema: verificar o destino e a rede; a fila absorve indisponibilidades curtas sem perda.",
           "links": [],
@@ -1193,10 +1119,10 @@
           }
         }
       },
-      "panel-10": {
+      "panel-9": {
         "kind": "Panel",
         "spec": {
-          "id": 10,
+          "id": 9,
           "title": "Erros de Coleta por Scraper (pontos/s)",
           "description": "Pontos que os scrapers (host_metrics, docker_stats, receivers de banco) não conseguiram coletar.\n• O que observar: deve ser zero; erros indicam permissão, alvo fora do ar ou credencial inválida.\n• Ação em caso de problema: conferir os logs do coletor do host indicado.",
           "links": [],
@@ -1330,10 +1256,10 @@
           }
         }
       },
-      "panel-11": {
+      "panel-10": {
         "kind": "Panel",
         "spec": {
-          "id": 11,
+          "id": 10,
           "title": "Tail Sampling — Traces em Memória",
           "description": "Traces aguardando a decisão de amostragem no Gateway (decision_wait) e traces descartados antes da decisão por falta de espaço (num_traces).\n• O que observar: valor estável; descartes antes da decisão significam num_traces pequeno para o volume.\n• Ação em caso de problema: aumentar num_traces no tail_sampling do otel-gateway/config.yaml ou a memória do Gateway.",
           "links": [],
@@ -1487,10 +1413,10 @@
           }
         }
       },
-      "panel-12": {
+      "panel-11": {
         "kind": "Panel",
         "spec": {
-          "id": 12,
+          "id": 11,
           "title": "Tail Sampling — Avaliações por Política (/s)",
           "description": "Execuções de cada política de amostragem do Gateway: keep-errors (erros), keep-slow (> 1 s) e sample-ok (5% dos demais).\n• O que observar: as três políticas avaliando traces quando há tráfego; erros de avaliação devem ser zero.\n• Ação em caso de problema: conferir as políticas em otel-gateway/config.yaml e os logs do otel-gateway.",
           "links": [],
@@ -1645,10 +1571,10 @@
           }
         }
       },
-      "panel-13": {
+      "panel-12": {
         "kind": "Panel",
         "spec": {
-          "id": 13,
+          "id": 12,
           "title": "Memória por Coletor (RSS)",
           "description": "Memória física usada por cada coletor.\n• O que observar: estável após o aquecimento; crescimento contínuo indica fila acumulando ou volume acima do dimensionado. O memory_limiter recusa dados ao se aproximar do limite.\n• Ação em caso de problema: ver a fila de exportação em Diagnostics e o volume recebido em Activity.",
           "links": [],
@@ -1782,10 +1708,10 @@
           }
         }
       },
-      "panel-14": {
+      "panel-13": {
         "kind": "Panel",
         "spec": {
-          "id": 14,
+          "id": 13,
           "title": "CPU por Coletor (cores)",
           "description": "CPU consumida por cada coletor, em núcleos.\n• O que observar: proporcional ao volume recebido; picos sustentados indicam processamento pesado (transformações, tail sampling).\n• Ação em caso de problema: comparar com o volume em Activity e com o limite de CPU do container.",
           "links": [],
@@ -1913,6 +1839,88 @@
                     ]
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "panel-14": {
+        "kind": "Panel",
+        "spec": {
+          "id": 14,
+          "title": "Coletores Ativos",
+          "description": "Coletores OpenTelemetry (Gateway e agentes, inclusive dos hosts monitorados) enviando a própria telemetria.\n• O que observar: deve corresponder ao número de agentes instalados + o Gateway; uma queda indica coletor parado ou sem conectividade com o Gateway.\n• Ação em caso de problema: no host, 'systemctl status otelcol-contrib' (Linux) ou 'Get-Service otelcol-contrib' (Windows); na stack, 'docker compose ps'.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "count(max without (otel_scope_name, otel_scope_version) ({\"otelcol_process_uptime\"}))",
+                        "legendFormat": "",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.2.3",
+            "spec": {
+              "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "decimals": 0
+                },
+                "overrides": []
               }
             }
           }
@@ -2274,6 +2282,142 @@
         "kind": "Panel",
         "spec": {
           "id": 19,
+          "title": "CPU por Container (cores)",
+          "description": "CPU usada por container, em núcleos.\n• O que observar: comparar com o limite de CPU de cada serviço no .env.\n• Ação em caso de problema: ver throttling abaixo e avaliar o limite.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (\"container.name\") (max without (otel_scope_name, otel_scope_version) (rate({\"container.cpu.usage.total\", \"host.name\"=\"$host\", \"container.name\"=~\"$container\"}[$__rate_interval]))) / 1e9",
+                        "legendFormat": "{{container.name}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "interval": "30s"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.2.3",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 3,
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 2,
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "axisPlacement": "auto",
+                    "gradientMode": "none",
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".*Limite.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            10,
+                            10
+                          ],
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-20": {
+        "kind": "Panel",
+        "spec": {
+          "id": 20,
           "title": "Memória por Container (bytes)",
           "description": "Memória usada por container (sem cache) e o limite de cada um (linhas tracejadas).\n• O que observar: distância do limite; crescimento contínuo pode indicar retenção ou cardinalidade alta.\n• Ação em caso de problema: ver docs/SIZING.md e o limite no .env.",
           "links": [],
@@ -2428,10 +2572,10 @@
           }
         }
       },
-      "panel-20": {
+      "panel-21": {
         "kind": "Panel",
         "spec": {
-          "id": 20,
+          "id": 21,
           "title": "Rede por Container (bytes/s)",
           "description": "Tráfego recebido e enviado por container.\n• O que observar: o otel-gateway recebe todo o tráfego OTLP; Mimir/Loki/Tempo recebem do Gateway e respondem ao Grafana.\n• Ação em caso de problema: picos fora do padrão indicam cliente enviando volume anormal ou consultas pesadas.",
           "links": [],
@@ -2542,142 +2686,6 @@
                     }
                   },
                   "unit": "Bps"
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*Limite.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "dash": [
-                            10,
-                            10
-                          ],
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-21": {
-        "kind": "Panel",
-        "spec": {
-          "id": 21,
-          "title": "CPU por Container (cores)",
-          "description": "CPU usada por container, em núcleos.\n• O que observar: comparar com o limite de CPU de cada serviço no .env.\n• Ação em caso de problema: ver throttling abaixo e avaliar o limite.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "mimir"
-                      },
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "sum by (\"container.name\") (max without (otel_scope_name, otel_scope_version) (rate({\"container.cpu.usage.total\", \"host.name\"=\"$host\", \"container.name\"=~\"$container\"}[$__rate_interval]))) / 1e9",
-                        "legendFormat": "{{container.name}}",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "max"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "mode": "multi",
-                  "sort": "desc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "decimals": 3,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "lineInterpolation": "smooth",
-                    "lineWidth": 2,
-                    "showPoints": "never",
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "axisPlacement": "auto",
-                    "gradientMode": "none",
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
                 },
                 "overrides": [
                   {
@@ -3306,7 +3314,7 @@
         "spec": {
           "id": 28,
           "title": "Network Throughput (bits/s)",
-          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas.\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'ss -tunap' ou 'sudo iftop -i <interface>'.",
+          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas. Sem limiar de alarme: a capacidade do link varia por servidor e não é coletada (um limiar fixo não seria portável).\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'ss -tunap' ou 'sudo iftop -i <interface>'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3342,12 +3350,13 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "gauge",
+            "group": "stat",
             "version": "13.2.3",
             "spec": {
               "options": {
-                "minVizHeight": 75,
-                "minVizWidth": 75,
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "reduceOptions": {
                   "calcs": [
@@ -3356,41 +3365,26 @@
                   "fields": "",
                   "values": false
                 },
-                "showThresholdLabels": false,
-                "showThresholdMarkers": true,
-                "sizing": "auto",
-                "sparkline": true,
-                "textMode": "auto"
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "bps",
-                  "decimals": 1,
-                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 500000000.0,
-                        "color": "yellow"
-                      },
-                      {
-                        "value": 800000000.0,
-                        "color": "orange"
-                      },
-                      {
-                        "value": 950000000.0,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
-                  }
+                  },
+                  "unit": "bps",
+                  "decimals": 1
                 },
                 "overrides": []
               }
@@ -3938,8 +3932,8 @@
         "kind": "Panel",
         "spec": {
           "id": 32,
-          "title": "Filesystem - Utilization by Mountpoint (%)",
-          "description": "Ocupação de cada filesystem gravável do host.\n• O que observar: nenhum deve passar de 90%. Crescimento linear constante permite prever quando vai encher.\n• Ação em caso de problema: localizar os maiores diretórios com 'sudo du -xh --max-depth=1 <mountpoint> | sort -h' e revisar rotação de logs.",
+          "title": "Filesystem - Usage by Mountpoint (bytes)",
+          "description": "Espaço usado em cada filesystem gravável do host comparado com o tamanho total (linha tracejada); a distância entre as linhas é a folga livre.\n• O que observar: crescimento linear constante permite prever quando o espaço vai acabar.\n• Ação em caso de problema: localizar os maiores diretórios com 'sudo du -xh --max-depth=1 <mountpoint> | sort -h' e revisar rotação de logs.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3957,12 +3951,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"})) / sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
-                        "legendFormat": "{{mountpoint}}",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} usado",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -4026,8 +4041,7 @@
                       "mode": "off"
                     }
                   },
-                  "unit": "percentunit",
-                  "max": 1
+                  "unit": "bytes"
                 },
                 "overrides": [
                   {
@@ -4076,8 +4090,8 @@
         "kind": "Panel",
         "spec": {
           "id": 33,
-          "title": "Filesystem - Inode Utilization by Mountpoint (%)",
-          "description": "Percentual de inodes (entradas de arquivos) usados em cada filesystem gravável.\n• O que observar: abaixo de 90%. Inodes esgotados impedem a criação de arquivos mesmo com espaço livre.\n• Ação em caso de problema: localizar diretórios com muitos arquivos pequenos com 'sudo find <mountpoint> -xdev -type f | cut -d/ -f2-3 | sort | uniq -c | sort -n | tail'.",
+          "title": "Filesystem - Inodes by Mountpoint",
+          "description": "Inodes (entradas de arquivos) usados em cada filesystem gravável comparados com o total (linha tracejada).\n• O que observar: a folga até o total. Inodes esgotados impedem a criação de arquivos mesmo com espaço livre.\n• Ação em caso de problema: localizar diretórios com muitos arquivos pequenos com 'sudo find <mountpoint> -xdev -type f | cut -d/ -f2-3 | sort | uniq -c | sort -n | tail'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4095,12 +4109,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"})) / sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=\"$host\", mode=\"rw\"}))",
-                        "legendFormat": "{{mountpoint}}",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} usados",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.inodes.usage\", \"host.name\"=\"$host\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -4133,7 +4168,7 @@
               },
               "fieldConfig": {
                 "defaults": {
-                  "decimals": 2,
+                  "decimals": 0,
                   "min": 0,
                   "thresholds": {
                     "mode": "absolute",
@@ -4163,9 +4198,7 @@
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  },
-                  "unit": "percentunit",
-                  "max": 1
+                  }
                 },
                 "overrides": [
                   {
@@ -5753,7 +5786,7 @@
         "spec": {
           "id": 48,
           "title": "System",
-          "description": "Logs do kernel (avisos e erros: hardware, disco, rede, OOM killer).\n• O que observar: mensagens de I/O error, OOM ou falhas de driver.\n• Ação em caso de problema: consultar o contexto completo com 'sudo journalctl -k -p warning -e'.",
+          "description": "Logs do sistema operacional a partir de WARN: kernel (hardware, disco, rede, OOM killer), systemd (serviços falhando ao iniciar ou em loop), cron e, no servidor da stack, os daemons dockerd/containerd (campo service_name).\n• O que observar: I/O error, OOM, falhas de driver, serviços reiniciando em loop e tarefas agendadas com erro.\n• Ação em caso de problema: kernel com 'sudo journalctl -k -p warning -e'; serviços com 'systemctl --failed' e 'sudo journalctl -u <serviço> -e'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -5816,7 +5849,7 @@
         "spec": {
           "id": 49,
           "title": "Application",
-          "description": "Logs de aplicações e serviços (cron, bancos de dados, Docker e containers), a partir de WARN.\n• O que observar: erros recorrentes de um mesmo serviço (campo service_name).\n• Ação em caso de problema: abrir o serviço com 'sudo journalctl -u <serviço> -e' e correlacionar com o trace pelo campo trace_id.",
+          "description": "Logs de aplicações a partir de WARN: bancos de dados, containers e serviços de aplicação.\n• O que observar: erros recorrentes de um mesmo serviço (campo service_name).\n• Ação em caso de problema: abrir o serviço com 'sudo journalctl -u <serviço> -e' e correlacionar com o trace pelo campo trace_id.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -5836,69 +5869,6 @@
                         "direction": "backward",
                         "editorMode": "code",
                         "expr": "{host_name=\"$host\"} | category=\"application\"",
-                        "queryType": "range"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "logs",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "dedupStrategy": "none",
-                "enableLogDetails": true,
-                "prettifyLogMessage": true,
-                "showCommonLabels": false,
-                "showLabels": false,
-                "showTime": true,
-                "sortOrder": "Descending",
-                "wrapLogMessage": true,
-                "enableInfiniteScrolling": false
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-50": {
-        "kind": "Panel",
-        "spec": {
-          "id": 50,
-          "title": "Platform",
-          "description": "Logs do systemd (falhas de start/stop de serviços, avisos), a partir de WARN.\n• O que observar: serviços reiniciando em loop ou falhando ao iniciar.\n• Ação em caso de problema: conferir com 'systemctl --failed' e 'sudo journalctl -u <serviço> -e'.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "loki",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "loki"
-                      },
-                      "spec": {
-                        "direction": "backward",
-                        "editorMode": "code",
-                        "expr": "{host_name=\"$host\"} | category=\"platform\"",
                         "queryType": "range"
                       }
                     },
@@ -5988,15 +5958,6 @@
                                     "name": "panel-3"
                                   }
                                 }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-4"
-                                  }
-                                }
                               }
                             ]
                           }
@@ -6019,7 +5980,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-13"
+                                    "name": "panel-12"
                                   }
                                 }
                               },
@@ -6028,7 +5989,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-14"
+                                    "name": "panel-13"
                                   }
                                 }
                               }
@@ -6053,7 +6014,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-5"
+                                    "name": "panel-4"
                                   }
                                 }
                               },
@@ -6062,7 +6023,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-6"
+                                    "name": "panel-5"
                                   }
                                 }
                               }
@@ -6082,6 +6043,15 @@
                             "columnWidthMode": "standard",
                             "rowHeightMode": "standard",
                             "items": [
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-6"
+                                  }
+                                }
+                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -6126,15 +6096,6 @@
                                     "name": "panel-11"
                                   }
                                 }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-12"
-                                  }
-                                }
                               }
                             ]
                           }
@@ -6152,6 +6113,15 @@
                             "columnWidthMode": "standard",
                             "rowHeightMode": "standard",
                             "items": [
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-14"
+                                  }
+                                }
+                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -6242,6 +6212,15 @@
                                     "name": "panel-19"
                                   }
                                 }
+                              },
+                              {
+                                "kind": "AutoGridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-20"
+                                  }
+                                }
                               }
                             ]
                           }
@@ -6264,7 +6243,7 @@
                                 "spec": {
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-20"
+                                    "name": "panel-21"
                                   }
                                 }
                               }
@@ -6284,15 +6263,6 @@
                             "columnWidthMode": "standard",
                             "rowHeightMode": "standard",
                             "items": [
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-21"
-                                  }
-                                }
-                              },
                               {
                                 "kind": "AutoGridLayoutItem",
                                 "spec": {
@@ -6684,15 +6654,6 @@
                                   "element": {
                                     "kind": "ElementReference",
                                     "name": "panel-49"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-50"
                                   }
                                 }
                               }

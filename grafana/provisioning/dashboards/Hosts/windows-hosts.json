@@ -328,7 +328,7 @@
         "spec": {
           "id": 4,
           "title": "Network Throughput (bits/s)",
-          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas.\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'Get-NetTCPConnection' ou o Monitor de Recursos (aba Rede).",
+          "description": "Tráfego total de rede do host (entrada + saída) em bits por segundo, somando as interfaces físicas. Sem limiar de alarme: a capacidade do link varia por servidor e não é coletada (um limiar fixo não seria portável).\n• O que observar: o valor deve ficar bem abaixo da capacidade do link (ex.: 1 Gbps). Picos podem indicar backups, réplicas ou tráfego anômalo.\n• Ação em caso de problema: identificar as conexões com 'Get-NetTCPConnection' ou o Monitor de Recursos (aba Rede).",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -364,12 +364,13 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "gauge",
+            "group": "stat",
             "version": "13.2.3",
             "spec": {
               "options": {
-                "minVizHeight": 75,
-                "minVizWidth": 75,
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
                 "orientation": "auto",
                 "reduceOptions": {
                   "calcs": [
@@ -378,41 +379,26 @@
                   "fields": "",
                   "values": false
                 },
-                "showThresholdLabels": false,
-                "showThresholdMarkers": true,
-                "sizing": "auto",
-                "sparkline": true,
-                "textMode": "auto"
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "bps",
-                  "decimals": 1,
-                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
                       {
                         "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 500000000.0,
-                        "color": "yellow"
-                      },
-                      {
-                        "value": 800000000.0,
-                        "color": "orange"
-                      },
-                      {
-                        "value": 950000000.0,
-                        "color": "red"
+                        "color": "text"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
-                  }
+                  },
+                  "unit": "bps",
+                  "decimals": 1
                 },
                 "overrides": []
               }
@@ -939,8 +925,8 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Disk - Utilization by Drive (%)",
-          "description": "Ocupação de cada unidade de disco do servidor.\n• O que observar: nenhum deve passar de 90%. Crescimento linear constante permite prever quando vai encher.\n• Ação em caso de problema: localizar os maiores diretórios com o WinDirStat/TreeSize ou 'Get-ChildItem <unidade> -Directory | ForEach { ... }' e limpar com 'cleanmgr'.",
+          "title": "Disk - Usage by Drive (bytes)",
+          "description": "Espaço usado em cada unidade de disco comparado com o tamanho total (linha tracejada); a distância entre as linhas é a folga livre.\n• O que observar: crescimento linear constante permite prever quando o espaço vai acabar.\n• Ação em caso de problema: localizar os maiores diretórios com o WinDirStat/TreeSize ou 'Get-ChildItem <unidade> -Directory | ForEach { ... }' e limpar com 'cleanmgr'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -958,12 +944,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"})) / sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
-                        "legendFormat": "{{mountpoint}}",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=\"used\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} usado",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "mimir"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (mountpoint) (max by (device, mountpoint, state) ({\"system.filesystem.usage\", \"host.name\"=\"$host\", state=~\"used|free\", mode=\"rw\"}))",
+                        "legendFormat": "{{mountpoint}} (Limite)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -1027,8 +1034,7 @@
                       "mode": "off"
                     }
                   },
-                  "unit": "percentunit",
-                  "max": 1
+                  "unit": "bytes"
                 },
                 "overrides": [
                   {
@@ -2616,7 +2622,7 @@
         "spec": {
           "id": 23,
           "title": "System",
-          "description": "Eventos Critical/Error/Warning do log System (drivers, disco, rede, hardware), exceto o Service Control Manager.\n• O que observar: erros de disco (provider disk/Ntfs), falhas de driver e desligamentos inesperados (6008).\n• Ação em caso de problema: abrir o evento no Visualizador de Eventos pelo ID (campo windows_eventlog_event_id) e conferir o provider.",
+          "description": "Eventos Critical/Error/Warning do sistema: log System (drivers, disco, rede, hardware), Service Control Manager (serviços falhando ou em loop) e Agendador de Tarefas (campo service_name).\n• O que observar: erros de disco (provider disk/Ntfs), desligamentos inesperados (6008), o mesmo serviço falhando repetidamente (7031, 7034, 7000) e tarefas com erro.\n• Ação em caso de problema: abrir o evento pelo ID (campo windows_eventlog_event_id); serviços com 'Get-Service <nome>'; tarefas com 'Get-ScheduledTaskInfo'.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2679,7 +2685,7 @@
         "spec": {
           "id": 24,
           "title": "Application",
-          "description": "Eventos Critical/Error/Warning de aplicações (Agendador de Tarefas e, no template de banco, SQL Server).\n• O que observar: tarefas agendadas falhando de forma recorrente e erros de aplicação.\n• Ação em caso de problema: conferir a tarefa com 'Get-ScheduledTaskInfo' e o histórico no Agendador de Tarefas.",
+          "description": "Eventos Critical/Error/Warning de aplicações (no template de banco, SQL Server).\n• O que observar: erros de aplicação recorrentes.\n• Ação em caso de problema: abrir o evento no Visualizador de Eventos e o log da própria aplicação.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2699,69 +2705,6 @@
                         "direction": "backward",
                         "editorMode": "code",
                         "expr": "{host_name=\"$host\"} | category=\"application\"",
-                        "queryType": "range"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "interval": "30s"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "logs",
-            "version": "13.2.3",
-            "spec": {
-              "options": {
-                "dedupStrategy": "none",
-                "enableLogDetails": true,
-                "prettifyLogMessage": true,
-                "showCommonLabels": false,
-                "showLabels": false,
-                "showTime": true,
-                "sortOrder": "Descending",
-                "wrapLogMessage": true,
-                "enableInfiniteScrolling": false
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-25": {
-        "kind": "Panel",
-        "spec": {
-          "id": 25,
-          "title": "Platform",
-          "description": "Eventos do Service Control Manager (serviços que falharam ao iniciar, pararam inesperadamente ou entraram em loop).\n• O que observar: o mesmo serviço falhando repetidamente (eventos 7031, 7034, 7000).\n• Ação em caso de problema: conferir com 'Get-Service <nome>' e as opções de recuperação do serviço.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "loki",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "loki"
-                      },
-                      "spec": {
-                        "direction": "backward",
-                        "editorMode": "code",
-                        "expr": "{host_name=\"$host\"} | category=\"platform\"",
                         "queryType": "range"
                       }
                     },
@@ -3118,15 +3061,6 @@
                                   "element": {
                                     "kind": "ElementReference",
                                     "name": "panel-24"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "AutoGridLayoutItem",
-                                "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-25"
                                   }
                                 }
                               }

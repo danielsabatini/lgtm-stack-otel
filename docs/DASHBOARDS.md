@@ -220,7 +220,17 @@ Todo painel deve seguir estritamente o padrão em 3 blocos definido em [METRICS.
 
 ---
 
-### 9.6 Padrão de Consultas (OpenTelemetry no Mimir):
+### 9.6 Conformidade com a Metodologia
+
+Os dashboards seguem [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md), verificado por `python3 artifacts/scripts/check-dashboards-methodology.py grafana/provisioning/dashboards` (rode após qualquer mudança):
+
+* **Health:** só `%`, status UP/DOWN ou latência p99 de serviço, com os limiares (os limiares e cores de alarme vivem **apenas** no Health). Nos bancos: MySQL Status + Slow Queries (%); PostgreSQL Uso de Conexões (%) + Rollback (%); SQL Server Uso do Log de Transações (máx. %).
+* **Capacity:** unidades absolutas — usado × total (linha tracejada "Limite"), ex.: filesystem em bytes e inodes em contagem por mountpoint.
+* **Activity:** taxas (`/s`) sem limiares; **Diagnostics:** decomposição e causa raiz (cache hit, latência de disco, por rota, erros por tipo), sem limiares; **Inventory:** totais, versões, uptime.
+* **Aplicações (OBI)** é uma linha própria (Linux Hosts, Linux + MySQL e Linux + PostgreSQL) com os pilares do método RED: Health (taxa de erros % e latência **p99** por serviço), Activity (req/s), Diagnostics (por rota) e Traces. Ela só aparece para hosts com aplicações instrumentadas pelo OBI que tenham dados **em qualquer ponto do período selecionado** (renderização condicional por uma variável oculta com `last_over_time(...[$__range])`, recalculada ao trocar host ou período; §9.2 — sem compartimentos vazios).
+* **Logs:** abas Security, System e Application (categorias da metodologia); Erros de Negócio não tem fonte e é omitida (§9.2).
+
+### 9.7 Padrão de Consultas (OpenTelemetry no Mimir):
 * **Nomes UTF-8 entre aspas:** métricas e atributos com ponto vão dentro do seletor: `{"system.cpu.time", "host.name"="$host", state="idle"}`; em agregações, `sum by ("service.name") (...)`. Na legenda, `{{host.name}}` funciona normalmente.
 * **Variável de host:** `query_result(count by ("host.name") ({"system.uptime", "os.type"="linux"}) unless on ("host.name") count by ("host.name") ({"mysql.uptime"}) unless …)` com regex `/host\.name="([^"]+)"/` (o `os.type` separa Linux e Windows, que usam os mesmos nomes `system.*`).
 * **Deduplicação:** envolva gauges em `max by (<dimensões reais>)` e taxas em `max by (<dimensões>) (rate(...))` antes de somar. Um upgrade do Collector muda `otel_scope_version` e, por ~5 min, a série antiga e a nova coexistem — sem o `max by`, os valores dobram.
