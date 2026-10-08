@@ -8,7 +8,7 @@
 
 ## Pendências
 
-- **Dashboards:** todos migrados para OTel e unificados por tipo de servidor (push e pull no mesmo dashboard), incluindo o `lgtm-stack` (pipeline OTel, containers, servidor da stack). Regras de consulta em `docs/DASHBOARDS.md` §9.6–9.7. Próximo: Service Graph (OBI) e regras de alerta.
+- **Dashboards:** gerados por `artifacts/dashboards/` (`python3 artifacts/dashboards/build.py` regenera os 7 e verifica a metodologia); unificados por tipo de servidor e em conformidade com `docs/OBSERVABILITY-METHODOLOGY.md`. Próximos: Service Graph (OBI); depois alertas como código, release (merge dev→main + tag) e troca das senhas dos hosts de teste.
 - **Service Graph:** feature `application_service_graph` do OBI desligada (Lean); avaliar junto com os dashboards.
 - **Regras de alerta** como código, depois dos dashboards.
 - Hosts de teste: Windows com o `windows-mssql` atual (agente reabilitado); VM Debian com o `linux-pgsql` atual (o `linux-mysql` foi validado antes e está desligado — só um template por vez no mesmo serviço).

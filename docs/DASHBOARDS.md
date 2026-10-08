@@ -10,7 +10,7 @@
 
 No Grafana, a edição visual de painéis pela interface web é ágil e intuitiva, mas sujeita à perda de alterações caso os containers sejam recriados ou atualizados. Por outro lado, manter os dashboards como arquivos JSON versionados no Git (*Dashboard-as-Code*) garante rastreabilidade, auditoria e recuperação instantânea.
 
-A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Truth)** onde todos os dashboards são armazenados exclusivamente na pasta canônica de provisioning `grafana/provisioning/dashboards/`.
+A LGTM Stack adota *Dashboard-as-Code* com **fonte única da verdade nos geradores** de `artifacts/dashboards/`: scripts Python que montam cada dashboard a partir de módulos compartilhados (a linha de host, a linha de aplicações OBI, os padrões de painel) e gravam os JSONs em `grafana/provisioning/dashboards/`, de onde o Grafana os carrega. Assim, uma regra muda num lugar só e vale para todos os dashboards.
 
 ---
 
@@ -18,7 +18,7 @@ A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Trut
 
 1. **Eliminar Duplicação de Arquivos:** Manter apenas uma pasta oficial de dashboards no repositório (`grafana/provisioning/dashboards/`).
 2. **Preservar a Hierarquia de Tabs e Rows do Grafana 13:** Documentar o uso obrigatório da API nativa v2 (`dashboard.grafana.app/v2`) para que as abas (`TabsLayout`) nunca sejam desfeitas.
-3. **Padronizar o Fluxo GitOps:** Fornecer os comandos simples para exportar alterações da UI diretamente para o arquivo versionado no Git.
+3. **Padronizar o Fluxo GitOps:** Toda mudança passa pelos geradores (`artifacts/dashboards/`) e é verificada contra a metodologia antes do commit.
 4. **Documentar a Arquitetura da Solução DNS:** Especificar a decomposição em 3 camadas (*Linux, CoreDNS e etcd*) e os pilares de observabilidade do cluster DNS.
 
 ---
@@ -28,7 +28,7 @@ A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Trut
 Cada tipo de servidor tem **um dashboard só**, que lista todos os hosts daquele tipo — com agente (push) ou coletados por pull. Isso é possível porque o pull é convertido no `otel-agent` para os mesmos nomes, atributos e semântica do agente (ver [METRICS.md](METRICS.md) §7.1): as consultas são as mesmas para os dois métodos. Cada servidor aparece **só no dashboard mais específico** para ele (onde a linha do host também está): com banco de dados → **Hosts + Database**; nó DNS → **DNS**; servidor da stack → **LGTM**. A variável `host` de Linux Hosts e Windows Hosts exclui esses servidores pelas métricas que os identificam (`mysql.uptime`, `postgresql.connection.max`, `sqlserver.user.connection.count`, `coredns_build_info`, `container.cpu.usage.total`), então nelas ficam só os servidores sem dashboard dedicado. Painéis cuja métrica não existe na origem do pull (ex.: logs, traces, load average no Windows) ficam sem dados para esses hosts.
 
 ```text
-grafana/provisioning/dashboards/          ← Fonte Única da Verdade dos Dashboards
+grafana/provisioning/dashboards/          ← JSONs gerados por artifacts/dashboards/ (não editar à mão)
 ├── Hosts/
 │   ├── linux-hosts.json                  Linux Hosts (system.*, journald, OBI) — agente e node_exporter
 │   └── windows-hosts.json                Windows Hosts (system.*, Event Log) — agente e windows_exporter
@@ -48,100 +48,46 @@ grafana/provisioning/dashboards/          ← Fonte Única da Verdade dos Dashbo
 ## 4. Fluxo de Trabalho GitOps (Workflow)
 
 ```text
-  [1. Edição e Ajuste Visual na UI do Grafana]
+  [1. Alterar o gerador em artifacts/dashboards/]
                        │
                        ▼
-  [2. Exportar Diretamente via API v2 Nativa para o Arquivo de Provisioning]
-  (curl -u admin:senha "http://localhost:3000/apis/dashboard.grafana.app/v2/...")
+  [2. python3 artifacts/dashboards/build.py]
+      regenera os 7 JSONs + verifica a metodologia (saída não-zero se violar)
                        │
                        ▼
-  [3. Salvar o JSON em grafana/provisioning/dashboards/<Pasta>/<nome>.json]
+  [3. Conferir no Grafana (recarrega em até 30 s; recarregue a página)]
                        │
                        ▼
-  [4. Git Commit + Push (O Grafana recarrega as mudanças em até 30s)]
+  [4. Git Commit + Push]
 ```
+
+| Módulo | Papel |
+|---|---|
+| `lib.py` | Construtores de painéis (gauge, stat, timeseries, logs, traces), variáveis e o layout (linhas/abas, renderização condicional) no schema `dashboard.grafana.app/v2` |
+| `hosts.py` | Linha de host Linux/Windows (5 pilares, modos single e multi-host), aba Logs, linha Aplicações (OBI) e a variável de host com exclusão dos servidores com dashboard dedicado |
+| `linux_hosts.py`, `windows_hosts.py`, `linux_mysql.py`, `linux_pgsql.py`, `windows_mssql.py`, `lgtm_stack.py`, `dns.py` | Um gerador por dashboard (o `dns.py` regera a linha Linux e mantém as linhas CoreDNS/etcd do próprio arquivo) |
+| `build.py` | Roda todos os geradores e o verificador `artifacts/scripts/check-dashboards-methodology.py` |
 
 ---
 
-## 5. Como Exportar e Persistir Alterações da UI
+## 5. Edição pela UI (Protótipos)
 
-Com o Grafana 13, não é necessário fazer conversões manuais de JSON. Basta realizar uma chamada `GET` na API nativa v2 para obter o arquivo pronto no formato de provisioning:
+A UI do Grafana é útil para **experimentar** um painel (consulta, visualização, layout). Uma mudança feita só na UI é **sobrescrita** na próxima execução do `build.py` e no próximo reload do provisioning: depois de validado, o painel deve ser levado ao gerador correspondente. Para inspecionar o JSON que a UI produziu:
 
 ```bash
-# Exemplo para salvar o dashboard MGC Internal DNS (UID: adth4vt):
-curl -s -u admin:changeme \
-  "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/adth4vt" \
-  | jq . > grafana/provisioning/dashboards/DNS/mgc-internal-dns.json
-
-# Exemplo para salvar o dashboard Linux Hosts (UID: linux-hosts):
-curl -s -u admin:changeme \
-  "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/linux-hosts" \
-  | jq . > grafana/provisioning/dashboards/Hosts/linux-hosts.json
+curl -s -u admin:<senha> \
+  "http://localhost:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>" | jq '.spec.elements'
 ```
 
 ---
 
-## 6. Como Incluir um Novo Dashboard Manualmente (Guia Passo a Passo)
+## 6. Como Incluir um Novo Dashboard
 
-Para adicionar um novo dashboard à stack de forma que ele seja carregado automaticamente pelo Grafana e versionado no Git, siga o procedimento abaixo:
-
-### Passo 1: Definir a Pasta e Nome do Arquivo
-Crie o arquivo JSON dentro de `grafana/provisioning/dashboards/<Categoria>/<nome-do-dashboard>.json`.
-* A pasta onde o arquivo for colocado virará automaticamente uma pasta organizada no menu do Grafana (graças ao parâmetro `foldersFromFilesStructure: true` no `dashboards.yaml`).
-* **Exemplos de Pastas:** `Hosts/`, `DNS/`, `Hosts + Database/`, `Applications/`.
-
-```bash
-# Exemplo: criar uma nova pasta para microsserviços
-mkdir -p grafana/provisioning/dashboards/Applications
-```
-
-### Passo 2: Estruturar o JSON com o Envelope Kubernetes v2
-Todo novo dashboard **deve obrigatoriamente** conter o envelope de recurso nativo do Grafana 13 (`dashboard.grafana.app/v2`):
-
-```json
-{
-  "apiVersion": "dashboard.grafana.app/v2",
-  "kind": "Dashboard",
-  "metadata": {
-    "name": "meu-novo-dashboard"
-  },
-  "spec": {
-    "uid": "meu-novo-dashboard",
-    "title": "Meu Novo Dashboard",
-    "schemaVersion": 41,
-    "timezone": "browser",
-    "editable": true,
-    "tags": ["meu-servico", "producao"],
-    "layout": {
-      "kind": "RowsLayout",
-      "spec": {
-        "rows": []
-      }
-    },
-    "elements": {}
-  }
-}
-```
-
-> ⚠️ **Regras Críticas de Identidade:**
-> 1. `metadata.name` e `spec.uid` **devem ter exatamente o mesmo valor** (ex: `meu-novo-dashboard`).
-> 2. O `uid` deve ser único em toda a instância do Grafana (use apenas letras minúsculas e hifens).
-> 3. Nunca altere o `uid` após colocar o dashboard em produção.
-
-### Passo 3: Registrar o UID na Tabela de Governança
-Adicione o novo dashboard na tabela de UIDs Canônicos (Seção 7 deste documento) para evitar colisões e manter o catálogo atualizado.
-
-### Passo 4: Validação do Hot-Reload Automático (Sem Reiniciar)
-O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 30 segundos** (`updateIntervalSeconds: 30` no `dashboards.yaml`).
-
-1. Salve o arquivo JSON na pasta.
-2. Acompanhe os logs do Grafana para confirmar a detecção e importação:
-   ```bash
-   docker compose logs -f grafana | grep -i "dashboard"
-   ```
-3. Abra a interface web do Grafana (`http://localhost:3000/dashboards`) e confirme que o dashboard apareceu na pasta correspondente.
-
----
+1. **Criar o gerador** em `artifacts/dashboards/<nome>.py`, reaproveitando `lib.Dash` e os módulos compartilhados (ex.: `hosts.host_tabs` para a linha de host, `hosts.app_row` para aplicações OBI). A pasta do arquivo de saída vira a pasta no Grafana (`foldersFromFilesStructure: true`).
+2. **Registrar no `build.py`** (lista `TARGETS`: gerador → arquivo em `grafana/provisioning/dashboards/<Pasta>/<nome>.json`).
+3. **Identidade:** `metadata.name` e `spec.uid` iguais, únicos na instância, em minúsculas com hífens — e nunca alterados depois de publicados (quebram favoritos, links e alertas).
+4. **Registrar o UID** na tabela da seção 7.
+5. **Rodar** `python3 artifacts/dashboards/build.py` e conferir no Grafana (`docker compose logs -f grafana | grep -i dashboard` mostra a importação).
 
 ## 7. UIDs Canônicos dos Dashboards
 
@@ -222,7 +168,7 @@ Todo painel deve seguir estritamente o padrão em 3 blocos definido em [METRICS.
 
 ### 9.6 Conformidade com a Metodologia
 
-Os dashboards seguem [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md), verificado por `python3 artifacts/scripts/check-dashboards-methodology.py grafana/provisioning/dashboards` (rode após qualquer mudança):
+Os dashboards seguem [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md), verificado por `artifacts/scripts/check-dashboards-methodology.py` (executado automaticamente pelo `artifacts/dashboards/build.py`):
 
 * **Health:** só `%`, status UP/DOWN ou latência p99 de serviço, com os limiares (os limiares e cores de alarme vivem **apenas** no Health). Nos bancos: MySQL Status + Slow Queries (%); PostgreSQL Uso de Conexões (%) + Rollback (%); SQL Server Uso do Log de Transações (máx. %).
 * **Capacity:** unidades absolutas — usado × total (linha tracejada "Limite"), ex.: filesystem em bytes e inodes em contagem por mountpoint.

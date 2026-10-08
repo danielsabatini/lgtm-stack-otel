@@ -27,7 +27,7 @@ O repositório é organizado de forma modular e determinística:
 * **`compose.yaml`:** Declaração principal dos serviços da stack central (Loki, Mimir, Tempo, Grafana, OTel Gateway e `otel-agent`).
 * **`otel-agent/`:** Agente OpenTelemetry Collector (container) do próprio servidor da stack: métricas de host e de containers, logs do journald e dos containers.
 * **`otel-gateway/config.yaml`:** OpenTelemetry Collector Contrib — ponto único de ingestão de rede, somente OTLP (4317/4318), gravando em OTLP nativo no Mimir, Loki e Tempo.
-* **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
+* **`grafana/provisioning/`:** Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`); os dashboards são gerados por `artifacts/dashboards/` (`python3 artifacts/dashboards/build.py`).
 * **`examples/push/`:** Templates de instalação de agentes nos servidores monitorados (OpenTelemetry Collector; + OBI no Linux) (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
 * **`examples/pull/`:** Templates de coleta remota (modo Pull) para servidores sem agente, carregados pelo `otel-agent` da stack em `otel-agent/pull.d/`: Linux e Windows legados (`node_exporter`, `windows_exporter`, inclusive SQL Server), DBaaS MySQL e PostgreSQL e o cluster DNS (CoreDNS + etcd).
 * **`artifacts/`:** Scripts de teste de carga (DNS, MySQL, PostgreSQL), automação de túneis e planilhas de referência.

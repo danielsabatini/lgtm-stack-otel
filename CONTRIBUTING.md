@@ -24,6 +24,13 @@ python3 artifacts/scripts/check-examples-consistency.py
 ```
 Ele valida as configs (via `otelcol-contrib validate`) e verifica se as edições foram replicadas nos arquivos-espelho, evitando o tipo de drift silencioso que esse script foi criado para pegar.
 
+### 1.2 Dashboards
+Os dashboards são gerados por `artifacts/dashboards/` (não edite os JSONs de `grafana/provisioning/dashboards/` nem salve mudanças feitas na UI — elas são sobrescritas). Altere o gerador e rode:
+```bash
+python3 artifacts/dashboards/build.py
+```
+Ele regenera todos os dashboards e verifica a conformidade com `docs/OBSERVABILITY-METHODOLOGY.md` (detalhes em `docs/DASHBOARDS.md`).
+
 ### 2. Documentação
 A regra de ouro é: **Single Source of Truth** com **Linguagem Simples, Direta e Numerada**.
 - Toda documentação em `docs/` deve ser **estruturada e numerada** (`1. Introdução`, `2. Objetivo`, etc.) e escrita em **linguagem simples, direta e de fácil entendimento**, evitando termos obscuros sem explicação prática.
