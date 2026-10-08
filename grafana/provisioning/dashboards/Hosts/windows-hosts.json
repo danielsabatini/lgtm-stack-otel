@@ -3189,11 +3189,11 @@
             },
             "spec": {
               "qryType": 3,
-              "query": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"windows\"}))",
+              "query": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"windows\"}) unless on (\"host.name\") count by (\"host.name\") ({\"sqlserver.user.connection.count\"}))",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             }
           },
-          "definition": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"windows\"}))",
+          "definition": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"windows\"}) unless on (\"host.name\") count by (\"host.name\") ({\"sqlserver.user.connection.count\"}))",
           "regex": "/host\\.name=\"([^\"]+)\"/",
           "regexApplyTo": "value",
           "sort": "alphabeticalAsc",

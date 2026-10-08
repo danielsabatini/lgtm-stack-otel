@@ -96,6 +96,10 @@ receivers:
   docker_stats:
     endpoint: unix:///var/run/docker.sock
     collection_interval: 30s
+    # Projeto compose de cada container: o filter/stack_containers mantém só os
+    # containers da stack (outros projetos do mesmo host não são gravados).
+    container_labels_to_metric_labels:
+      com.docker.compose.project: docker.compose.project
     metrics:
       container.cpu.usage.total: { enabled: true }
       container.cpu.throttling_data.periods: { enabled: true }
@@ -307,6 +311,14 @@ processors:
 
   # Política Lean nos logs de container e do container engine: descarta
   # INFO/DEBUG (mantém WARN+ e linhas sem nível reconhecido).
+  # Política Lean: métricas de containers só dos containers da stack (mesmo
+  # projeto compose); containers de outros projetos no host são descartados.
+  filter/stack_containers:
+    error_mode: ignore
+    metrics:
+      metric:
+        - resource.attributes["container.name"] != nil and resource.attributes["docker.compose.project"] != "${env:LGTM_COMPOSE_PROJECT}"
+
   filter/min_warn:
     error_mode: ignore
     logs:
@@ -350,7 +362,7 @@ service:
   pipelines:
     metrics:
       receivers: [host_metrics, docker_stats, otlp]
-      processors: [memory_limiter, resource_detection, batch]
+      processors: [memory_limiter, filter/stack_containers, resource_detection, batch]
       exporters: [otlp_grpc/gateway]
 
     # Severidade já filtrada na origem (priority do journalctl)

@@ -83,7 +83,7 @@ A identidade é definida **uma vez no agente** (`OTEL_RESOURCE_ATTRIBUTES` + det
 
 | Label | Origem | Exemplo |
 |---|---|---|
-| `host.name` | detector `system` (agente) ou `host_name` do alvo (pull) | `web-01` |
+| `host.name` | detector `system` (agente) ou `host_name` do alvo (pull); no servidor da stack, `LGTM_HOST_NAME` (padrão `lgtm-stack`) | `web-01`, `lgtm-stack` |
 | `deployment.environment.name` | `OTEL_RESOURCE_ATTRIBUTES` ou alvo | `prd` |
 | `os.type` | detector `system` (agente) ou conversão do pull (`otel-agent/pull-semconv.yaml`) | `linux`, `windows` — separa hosts Linux e Windows, que usam os mesmos nomes `system.*` |
 | `cloud.provider` / `cloud.region` / `cloud.availability_zone` | `OTEL_RESOURCE_ATTRIBUTES` ou alvo | `mgc` / `br-se1` / `a` |
@@ -124,7 +124,7 @@ Referências medidas nos testes de validação de cada template (detalhes de con
 |---|---|---|---|---|
 | Host Linux | [push/linux](../examples/push/linux/INSTALL.md) | `host_metrics` | `system.*` | ~67 por host |
 | Host Windows | [push/windows](../examples/push/windows/INSTALL.md) | `host_metrics` | `system.*` | ~30 por host |
-| Containers do servidor da stack | `otel-agent` | `docker_stats` | `container.*` | 7 por container |
+| Containers do servidor da stack | `otel-agent` | `docker_stats` (só o projeto compose da stack) | `container.*` | 7 por container |
 | Aplicações HTTP/gRPC | [push/linux](../examples/push/linux/INSTALL.md) (OBI) | eBPF | `http.server.request.duration`, `http.client.request.duration`, `rpc.server.call.duration` | por serviço/rota |
 | MySQL | [push/linux-mysql](../examples/push/linux-mysql/INSTALL.md) | receiver `mysql` | `mysql.*` | ~38 por instância |
 | PostgreSQL | [push/linux-pgsql](../examples/push/linux-pgsql/INSTALL.md) | receiver `postgresql` (gate `useOTelSemconv`) | `postgresql.*` + `db.namespace` | ~14 por banco |

@@ -4123,11 +4123,11 @@
             },
             "spec": {
               "qryType": 3,
-              "query": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"linux\"}))",
+              "query": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"linux\"}) unless on (\"host.name\") count by (\"host.name\") ({\"mysql.uptime\"}) unless on (\"host.name\") count by (\"host.name\") ({\"postgresql.connection.max\"}) unless on (\"host.name\") count by (\"host.name\") ({\"coredns_build_info\"}) unless on (\"host.name\") count by (\"host.name\") ({\"container.cpu.usage.total\"}))",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             }
           },
-          "definition": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"linux\"}))",
+          "definition": "query_result(count by (\"host.name\") ({\"system.uptime\", \"os.type\"=\"linux\"}) unless on (\"host.name\") count by (\"host.name\") ({\"mysql.uptime\"}) unless on (\"host.name\") count by (\"host.name\") ({\"postgresql.connection.max\"}) unless on (\"host.name\") count by (\"host.name\") ({\"coredns_build_info\"}) unless on (\"host.name\") count by (\"host.name\") ({\"container.cpu.usage.total\"}))",
           "regex": "/host\\.name=\"([^\"]+)\"/",
           "regexApplyTo": "value",
           "sort": "alphabeticalAsc",

@@ -159,9 +159,12 @@ services:
     security_opt: ["no-new-privileges=true"]
     environment:
       # Identidade OpenTelemetry deste servidor (OTel Semantic Conventions)
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=${ENVIRONMENT:-prd},cloud.provider=${CLOUD_PROVIDER:-mgc},cloud.region=${CLOUD_REGION:-br-se1},cloud.availability_zone=${CLOUD_AVAILABILITY_ZONE:-a}
+      # host.name fixo (o detector env vem antes do system em otel-agent/config.yaml)
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=${LGTM_HOST_NAME:-lgtm-stack},deployment.environment.name=${ENVIRONMENT:-prd},cloud.provider=${CLOUD_PROVIDER:-mgc},cloud.region=${CLOUD_REGION:-br-se1},cloud.availability_zone=${CLOUD_AVAILABILITY_ZONE:-a}
       # otel-gateway publicado no host (network_mode: host)
       - LGTM_GATEWAY_ENDPOINT=127.0.0.1:4317
+      # Métricas de containers só deste projeto compose (filter/stack_containers)
+      - LGTM_COMPOSE_PROJECT=${COMPOSE_PROJECT_NAME:-lgtm-stack-otel}
     volumes:
       - ./otel-agent/config.yaml:/etc/otelcol-contrib/config.yaml:ro
       # Conversão das coletas pull para a OTel Semantic Conventions (processors compartilhados)
