@@ -95,11 +95,11 @@ processors:
           - {action: update_label, label: fstype, new_label: type}
           - {action: add_label, new_label: mode, new_value: rw}
       # --- system.cpu.* (agregado por estado, como o host_metrics) ---
+      # um ponto por núcleo (só o estado idle); a contagem é feita no transform
       - include: node_cpu_seconds_total
         action: insert
         new_name: system.cpu.logical.count
         experimental_match_labels: {mode: idle}
-        operations: [{action: aggregate_labels, label_set: [], aggregation_type: count}]
       - include: node_cpu_seconds_total
         action: update
         new_name: system.cpu.time
@@ -145,6 +145,9 @@ processors:
     metric_statements:
       - context: datapoint
         statements:
+          # contagem de CPUs = soma de 1 por núcleo (o aggregation_type count do
+          # metrics_transform não agrega quando há um único núcleo)
+          - set(value_double, 1.0) where metric.name == "system.cpu.logical.count"
           - set(resource.attributes["os.description"], attributes["pretty_name"]) where metric.name == "node_os_info"
           - set(resource.attributes["tmp.kernel"], Concat(["Linux", attributes["nodename"], attributes["release"], attributes["version"], attributes["machine"]], " ")) where metric.name == "node_uname_info"
           - set(value_double, Double(UnixSeconds(Now())) - value_double) where metric.name == "node_boot_time_seconds"
@@ -156,6 +159,7 @@ processors:
       - context: metric
         statements:
           - set(metric.name, "system.uptime") where metric.name == "node_boot_time_seconds"
+          - aggregate_on_attributes("sum", []) where metric.name == "system.cpu.logical.count"
           - convert_sum_to_gauge() where metric.name == "system.cpu.logical.count"
 
   # Sobras da conversão (insumos node_* e temporários)
@@ -250,11 +254,11 @@ processors:
           - {action: update_label, label: nic, new_label: device}
           - {action: update_label, label: direction, value_actions: [{value: received, new_value: receive}, {value: outbound, new_value: transmit}]}
       # system.cpu.*
+      # um ponto por núcleo (só o estado idle); a contagem é feita no transform
       - include: windows_cpu_time_total
         action: insert
         new_name: system.cpu.logical.count
         experimental_match_labels: {mode: idle}
-        operations: [{action: aggregate_labels, label_set: [], aggregation_type: count}]
       - include: windows_cpu_time_total
         action: update
         new_name: system.cpu.time
@@ -270,6 +274,9 @@ processors:
     metric_statements:
       - context: datapoint
         statements:
+          # contagem de CPUs = soma de 1 por núcleo (o aggregation_type count do
+          # metrics_transform não agrega quando há um único núcleo)
+          - set(value_double, 1.0) where metric.name == "system.cpu.logical.count"
           - set(resource.attributes["os.description"], Concat([attributes["product"], " [Version ", attributes["version"], ".", attributes["revision"], "]"], "")) where metric.name == "windows_os_info"
           - set(value_double, Double(UnixSeconds(Now())) - value_double) where metric.name == "windows_system_boot_time_timestamp"
       - context: resource
@@ -278,6 +285,7 @@ processors:
       - context: metric
         statements:
           - set(metric.name, "system.uptime") where metric.name == "windows_system_boot_time_timestamp"
+          - aggregate_on_attributes("sum", []) where metric.name == "system.cpu.logical.count"
           - convert_sum_to_gauge() where metric.name == "system.cpu.logical.count"
 
   # Sobras da conversão (insumos windows_* do host e temporários). As métricas

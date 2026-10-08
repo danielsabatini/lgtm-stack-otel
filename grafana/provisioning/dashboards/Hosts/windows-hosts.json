@@ -3175,7 +3175,6 @@
           "name": "host",
           "label": "Host",
           "hide": "dontHide",
-          "refresh": "onDashboardLoad",
           "skipUrlSync": false,
           "current": {
             "text": "",
@@ -3198,6 +3197,7 @@
           "regex": "/host\\.name=\"([^\"]+)\"/",
           "regexApplyTo": "value",
           "sort": "alphabeticalAsc",
+          "refresh": "onDashboardLoad",
           "options": [],
           "multi": false,
           "includeAll": false,

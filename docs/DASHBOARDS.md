@@ -161,11 +161,11 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 30 segund
 
 ## 8. Arquitetura da Solução MGC Internal DNS (`adth4vt`)
 
-O dashboard **MGC Internal DNS** monitora a infraestrutura de resolução de nomes interna em 3 camadas interdependentes, organizadas em linhas colapsáveis (*Rows*) e abas metodológicas (*Tabs*):
+O dashboard **MGC Internal DNS** é uma visão de **cluster**: a variável `host` aceita vários nós e abre em **All**, com um valor ou uma linha por nó em todos os painéis (selecionar um nó vira um *zoom*). Ele monitora a infraestrutura de resolução de nomes interna em 3 camadas interdependentes, organizadas em linhas colapsáveis (*Rows*) e abas metodológicas (*Tabs*):
 
 ```text
 MGC Internal DNS (adth4vt)
-├── 1. Linha Linux (Sistema Operacional dos Servidores DNS — system.*, mesmas abas do Linux Hosts)
+├── 1. Linha Linux (Sistema Operacional dos Servidores DNS — system.*, mesmas abas do Linux Hosts em modo multi-host)
 │   ├── Health: CPU, Memória, Filesystem e Rede em percentual normalizado.
 │   ├── Capacity: Load x CPUs, Memória, Swap, Filesystem e Inodes por ponto de montagem.
 │   ├── Activity: Throughput e IOPS de Disco e Tráfego de Rede.
