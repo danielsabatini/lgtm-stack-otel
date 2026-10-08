@@ -50,6 +50,11 @@ limits_config:
           attributes:
             - host.name
             - cloud.provider
+        # os.description (inventário do SO) só é útil no target_info do Mimir;
+        # nos logs seria repetido como structured metadata em toda linha.
+        - action: drop
+          attributes:
+            - os.description
 
 compactor:
   working_directory: /loki/compactor

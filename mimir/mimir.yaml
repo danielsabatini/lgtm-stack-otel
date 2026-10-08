@@ -60,7 +60,8 @@ limits:
   # target_info). Todo atributo que IDENTIFICA a origem de uma série precisa
   # estar aqui: sem container.name, as séries container.* de todos os
   # containers de um host ficariam com labels idênticas e se misturariam.
-  promote_otel_resource_attributes: "service.name,service.namespace,service.version,service.instance.id,deployment.environment.name,host.name,cloud.provider,cloud.region,cloud.availability_zone,container.name,container.image.name"
+  # sqlserver.instance.name: filtro/legenda por instância do SQL Server.
+  promote_otel_resource_attributes: "service.name,service.namespace,service.version,service.instance.id,deployment.environment.name,host.name,os.type,cloud.provider,cloud.region,cloud.availability_zone,container.name,container.image.name,sqlserver.instance.name"
   otel_keep_identifying_resource_attributes: true
   # Instrumentation scope -> labels otel_scope_name / otel_scope_version
   otel_promote_scope_metadata: true

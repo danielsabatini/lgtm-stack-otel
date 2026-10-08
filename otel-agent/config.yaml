@@ -37,6 +37,8 @@ receivers:
       cpu:
         metrics:
           system.cpu.time: { enabled: true }
+          # Nº de CPUs lógicas: referência de Load x Cores e inventário (1 série)
+          system.cpu.logical.count: { enabled: true }
       load:
         metrics:
           system.cpu.load_average.1m: { enabled: true }
@@ -299,6 +301,9 @@ processors:
     override: true
     system:
       hostname_sources: [os]
+      # Distribuição/versão do SO no target_info (inventário; não gera série nova)
+      resource_attributes:
+        os.description: { enabled: true }
 
   # Política Lean nos logs de container e do container engine: descarta
   # INFO/DEBUG (mantém WARN+ e linhas sem nível reconhecido).
@@ -307,6 +312,9 @@ processors:
     logs:
       log_record:
         - severity_number != SEVERITY_NUMBER_UNSPECIFIED and severity_number < SEVERITY_NUMBER_WARN
+        # Só containers do compose (label com.docker.compose.service -> service.name);
+        # containers de fora (ex.: internos do Docker Desktop) não têm identidade.
+        - resource.attributes["service.name"] == nil
 
   batch: {}
 
@@ -320,6 +328,10 @@ service:
   extensions: [file_storage]
 
   telemetry:
+    # Sem stack trace: no log do container cada linha do trace viraria um
+    # registro sem nível (furando o filtro WARN+ do otel-agent).
+    logs:
+      disable_stacktrace: true
     resource:
       attributes:
         - name: service.name

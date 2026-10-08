@@ -28,8 +28,8 @@ O repositório é organizado de forma modular e determinística:
 * **`otel-agent/`:** Agente OpenTelemetry Collector (container) do próprio servidor da stack: métricas de host e de containers, logs do journald e dos containers.
 * **`otel-gateway/config.yaml`:** OpenTelemetry Collector Contrib — ponto único de ingestão de rede, somente OTLP (4317/4318), gravando em OTLP nativo no Mimir, Loki e Tempo.
 * **`grafana/provisioning/`:** Fonte única da verdade para Datasources (Mimir, Loki, Tempo) e Dashboards nativos do Grafana 13 (`dashboard.grafana.app/v2`).
-* **`examples/push/`:** Templates de instalação de agentes nos servidores monitorados (`linux`, `linux-mysql` e `linux-pgsql`: OpenTelemetry Collector + OBI; demais ainda em Alloy, em migração) (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
-* **`examples/pull/`:** Templates de coleta remota (modo Pull) para servidores sem agente, carregados pelo `otel-agent` da stack em `otel-agent/pull.d/` (`linux`, `linux-dbaas-mysql` e `linux-dbaas-pgsql` já em OpenTelemetry Collector; demais ainda em Alloy, em migração) (Linux Host, Linux DNS, CoreDNS, etcd, DBaaS MySQL, DBaaS PostgreSQL, Windows).
+* **`examples/push/`:** Templates de instalação de agentes nos servidores monitorados (OpenTelemetry Collector; + OBI no Linux) (Linux, Windows, Linux MySQL, Linux PostgreSQL, Windows MSSQL).
+* **`examples/pull/`:** Templates de coleta remota (modo Pull) para servidores sem agente, carregados pelo `otel-agent` da stack em `otel-agent/pull.d/`: Linux e Windows legados (`node_exporter`, `windows_exporter`, inclusive SQL Server), DBaaS MySQL e PostgreSQL e o cluster DNS (CoreDNS + etcd).
 * **`artifacts/`:** Scripts de teste de carga (DNS, MySQL, PostgreSQL), automação de túneis e planilhas de referência.
 * **`docs/`:** Documentação oficial, técnica e operacional da stack.
 
@@ -43,8 +43,8 @@ Para subir a stack central em ambiente local ou de desenvolvimento:
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/danielsabatini/lgtm-stack.git
-cd lgtm-stack
+git clone https://github.com/danielsabatini/lgtm-stack-otel.git
+cd lgtm-stack-otel
 
 # 2. Configurar as variáveis de ambiente
 cp .env.example .env
@@ -71,11 +71,11 @@ Para monitorar instâncias remotas, consulte o guia de instalação corresponden
 | **Windows Server** | Push (Agente Local) | [examples/push/windows/INSTALL.md](examples/push/windows/INSTALL.md) |
 | **Windows + SQL Server (MSSQL)** | Push (Agente Local) | [examples/push/windows-mssql/INSTALL.md](examples/push/windows-mssql/INSTALL.md) |
 | **Linux Host Legado (Node Exporter)** | Pull Remoto (`otel-agent`) | [examples/pull/linux/INSTALL.md](examples/pull/linux/INSTALL.md) |
-| **Windows Server (Windows Exporter)** | Pull Remoto (Gateway) | [examples/pull/windows/INSTALL.md](examples/pull/windows/INSTALL.md) |
-| **Windows + SQL Server (MSSQL)** | Pull Remoto (Gateway) | [examples/pull/windows-mssql/INSTALL.md](examples/pull/windows-mssql/INSTALL.md) |
+| **Windows Server (Windows Exporter)** | Pull Remoto (`otel-agent`) | [examples/pull/windows/INSTALL.md](examples/pull/windows/INSTALL.md) |
+| **Windows + SQL Server (MSSQL)** | Pull Remoto (`otel-agent`) | [examples/pull/windows-mssql/INSTALL.md](examples/pull/windows-mssql/INSTALL.md) |
 | **Linux + DBaaS MySQL** | Pull Remoto (`otel-agent`) | [examples/pull/linux-dbaas-mysql/INSTALL.md](examples/pull/linux-dbaas-mysql/INSTALL.md) |
 | **Linux + DBaaS PostgreSQL** | Pull Remoto (`otel-agent`) | [examples/pull/linux-dbaas-pgsql/INSTALL.md](examples/pull/linux-dbaas-pgsql/INSTALL.md) |
-| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (Gateway) | [examples/pull/dns/INSTALL.md](examples/pull/dns/INSTALL.md) |
+| **Cluster DNS Interno (CoreDNS + etcd)** | Pull Remoto (`otel-agent`) | [examples/pull/dns/INSTALL.md](examples/pull/dns/INSTALL.md) |
 
 > 🔍 **Auto-Instrumentação de Traces e Métricas HTTP (OBI eBPF):** Disponível como módulo sem código no guia Linux ([examples/push/linux/INSTALL.md](examples/push/linux/INSTALL.md#6-traces-e-métricas-http-com-obi-opcional)). Para arquitetura de traces, consulte [docs/TRACES.md](docs/TRACES.md).
 
@@ -98,7 +98,7 @@ A stack opera com isolamento estrito de portas. Nenhum banco de dados (TSDB) é 
 
 ## 7. Catálogo da Documentação Oficial (Governança)
 
-> 🔒 **Regra de Fonte Única da Verdade (`AGENTS.md` §11.1.6):** Cada documento abaixo é a referência normativa exclusiva sobre o seu respectivo tema. Informações técnicas não são duplicadas entre arquivos.
+> 🔒 **Regra de Fonte Única da Verdade (`AGENTS.md` §5 e `BOOTSTRAP.md` §4):** Cada documento abaixo é a referência normativa exclusiva sobre o seu respectivo tema. Informações técnicas não são duplicadas entre arquivos.
 
 ### 7.1 Arquitetura, Infraestrutura e Operação
 * **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):** Topologia de rede, modelo Gateway-Agent e isolamento de segurança.

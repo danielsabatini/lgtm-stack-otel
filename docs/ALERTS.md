@@ -89,7 +89,7 @@ Conforme detalhado na metodologia de observabilidade ([OBSERVABILITY-METHODOLOGY
 
 ## 5. Status de Implementação e Roadmap
 
-* **Status Atual:** Baseline de métricas e dashboards operacionais 100% integrados. Regras de alerta padrão estão sendo formalizadas como código no Grafana Provisioning.
+* **Status Atual:** Coleta 100% OpenTelemetry concluída (métricas no Mimir com os nomes da OTel Semantic Conventions). Os dashboards estão sendo reescritos sobre esses nomes; as regras de alerta como código (Grafana Provisioning) virão depois, já sobre as consultas novas.
 * **Próximas Entregas:** Regras unificadas para detecção de queda de nós, saturação de discos e quebra de latência em serviços de banco de dados e DNS.
 
 ---

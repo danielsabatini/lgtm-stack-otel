@@ -339,7 +339,7 @@ flowchart TB
             direction TB
             MetricsInfo["<b>Objetivo:</b> Identificar anomalias e delimitar a janela temporal do incidente<br/><i>Foco: Séries temporais numéricas contínuas e agregações estatísticas</i>"]
 
-            subgraph MetricsComponents ["Visão de Painéis de Métricas (Mimir / Prometheus)"]
+            subgraph MetricsComponents ["Visão de Painéis de Métricas (Mimir / PromQL)"]
                 direction LR
                 Alerts["<b>Alertas & SLOs</b><br/>• Disparo via Alertmanager<br/>• Violação de limiares (Health)<br/>• Saturação e aumento de erro %"]
                 TimeSeries["<b>Gráfico de Séries Temporais</b><br/>• Latência p95/p99 e Throughput<br/>• Ponto de pico e anomalia temporal<br/>• Janela exata da ocorrência"]
@@ -377,7 +377,7 @@ flowchart TB
 
             subgraph LogsComponents ["Visão de Eventos Estruturados (Grafana Loki)"]
                 direction LR
-                LogStreams["<b>Streams Filtrados</b><br/>• Labels: <code>service_name</code>, <code>instance</code><br/>• Filtro por severidade (<code>level=error</code>)<br/>• Alinhamento na janela temporal"]
+                LogStreams["<b>Streams Filtrados</b><br/>• Labels: <code>service_name</code>, <code>host_name</code><br/>• Filtro por severidade (<code>severity_text=#quot;ERROR#quot;</code>)<br/>• Alinhamento na janela temporal"]
                 LogDetails["<b>Linha de Log & Stack Trace</b><br/>• Exceção detalhada do runtime<br/>• Query SQL exata / Payload de falha<br/>• Causa raiz definitiva do incidente"]
                 LogCorrelation["<b>Campos de Correlação</b><br/>• Tags estruturadas no JSON<br/>• <code>trace_id: 4bf92f35...</code><br/>• <code>span_id: 00f067aa...</code>"]
             end
@@ -448,7 +448,7 @@ flowchart TB
 | **1. Exemplar Click** | Métricas → Traces | `TraceID` | Salta do ponto de anomalia ou pico no gráfico para a transação exata que causou o desvio. |
 | **2. Trace to Logs** | Traces → Logs | `TraceID` + `SpanID` | Abre apenas os logs emitidos no escopo daquele span com erro (eliminando ruído irrelevante). |
 | **3. Logs to Trace** | Logs → Traces | `trace_id` (Derived Fields) | Permite reconstituir a jornada completa da requisição a partir de uma linha isolada de log de erro. |
-| **4. Data Links de Contexto** | Métricas → Logs | `time_range`, `service_name`, `instance` | Filtra o stream de logs alinhado à janela temporal e ao host degradado quando não há trace disponível. |
+| **4. Data Links de Contexto** | Métricas → Logs | `time_range`, `service.name`, `host.name` | Filtra o stream de logs alinhado à janela temporal e ao host degradado quando não há trace disponível. |
 
 ---
 
@@ -553,10 +553,10 @@ A cardinalidade é a quantidade de combinações únicas de valores que as etiqu
   ├──────────────────────────────────────┬──────────────────────────────────────┤
   │ 1. EM MÉTRICAS (Baixa Cardinalidade) │ 2. EM LOGS E TRACES (Alta Cardinal.) │
   │ Agregações numéricas contínuas       │ Dados detalhados e eventos discretos │
-  │ • environment: prd / stg / dev       │ • user_id / account_number           │
-  │ • service_name: coredns / auth       │ • trace_id / span_id                 │
-  │ • status_code: 200 / 500             │ • payload JSON / query SQL completa  │
-  │ • instance: host-01                  │ • ip_origem_cliente (efêmero)        │
+  │ • deployment.environment.name: prd   │ • user_id / account_number           │
+  │ • service.name: coredns / auth       │ • trace_id / span_id                 │
+  │ • http.response.status_code: 500     │ • payload JSON / query SQL completa  │
+  │ • host.name: host-01                 │ • ip_origem_cliente (efêmero)        │
   └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
 
@@ -608,7 +608,7 @@ flowchart TD
         %% FASE 4
         subgraph Phase4 ["FASE 4: CAUSA RAIZ & RESOLUÇÃO (2m a 3m) — Pilar Logs & Ação Corretiva"]
             direction LR
-            P4_Logs["<b>📜 Evidência Textual (Logs via TraceID)</b><br/>• Salto direto: <i>Trace to Logs</i> via <code>trace_id</code><br/>• Filtro por <code>level=error</code> no Grafana Loki<br/>• Visualização da stack trace exata e payload da falha"]
+            P4_Logs["<b>📜 Evidência Textual (Logs via TraceID)</b><br/>• Salto direto: <i>Trace to Logs</i> via <code>trace_id</code><br/>• Filtro por <code>severity_text=#quot;ERROR#quot;</code> no Grafana Loki<br/>• Visualização da stack trace exata e payload da falha"]
             P4_Remediation["<b>✅ Resolução & Recuperação (MTTR)</b><br/>• Rollback de versão, ajuste de escala ou patch<br/>• Validação do retorno dos sinais vitais no Health<br/>• Fechamento do incidente e abertura de post-mortem"]
             P4_Logs --> P4_Remediation
         end

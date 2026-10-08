@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Valida os templates em examples/: sintaxe + identidade + consistência entre arquivos-irmãos.
+"""Valida os templates do OpenTelemetry Collector em examples/.
 
 Uso:
     python3 artifacts/scripts/check-examples-consistency.py
 
-Durante a migração Alloy -> OpenTelemetry Collector convivem dois formatos:
-  - OpenTelemetry Collector (YAML com bloco `receivers:`): `otelcol-contrib validate`
-    contra OTELCOL_CONTRIB_VERSION e checagem da identidade OTel
-    (resource_detection env+system com override, saída para o Gateway).
-  - Alloy legado (*.alloy): `alloy validate` contra GRAFANA_ALLOY_VERSION e os
-    5 labels de identidade antigos.
+Verificações (contra OTELCOL_CONTRIB_VERSION do .env.example; requer Docker):
+  1. Agentes (examples/push): `otelcol-contrib validate`.
+  2. Identidade OpenTelemetry dos agentes (resource_detection env+system com
+     override, saída para o Gateway).
+  3. Política Lean de métricas de host idêntica entre agentes e otel-agent.
+  4. Coletas pull (examples/pull): validação mesclada com otel-agent/config.yaml e
+     otel-agent/pull-semconv.yaml, identidade por alvo, ausência de
+     resource_detection e conversão OTel de cada exporter no pipeline.
+  5. Allowlists idênticas entre templates pull que coletam o mesmo exporter.
 
-Requer Docker. Saída não-zero se qualquer verificação falhar.
+Saída não-zero se qualquer verificação falhar.
 """
 import re
 import subprocess
@@ -23,27 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 EXAMPLES = ROOT / "examples"
 ENV_EXAMPLE = ROOT / ".env.example"
 
-IDENTITY_LABELS = [
-    "instance",
-    "environment",
-    "cloud_provider",
-    "cloud_region",
-    "cloud_availability_zone",
-]
-
-# Arquivos que enviam dados ao gateway central e, portanto, precisam carregar
-# os 5 labels de identidade global em algum ponto do pipeline (via rule
-# target_label=... ou via targets=[{...}] no modelo pull).
-GATEWAY_FILES = [
-    "push/windows/config.alloy",
-    "push/windows-mssql/config.alloy",
-    "pull/windows/windows-hosts.alloy",
-    "pull/windows-mssql/windows-mssql-hosts.alloy",
-]
-
-# Grupos de arquivos cuja allowlist de métricas (mesmo prefixo) deve ser
-# idêntica, porque o próprio repositório documenta que um espelha o outro
-# (agente vs. pull do mesmo host/coletor).
+# Templates pull que coletam o mesmo exporter (mesmo prefixo de métrica) e
+# precisam manter a mesma allowlist Lean.
 METRIC_GROUPS = [
     {
         "name": "Linux host (node_*)",
@@ -54,20 +38,7 @@ METRIC_GROUPS = [
         "name": "Windows host (windows_* exceto windows_mssql_*)",
         "prefix": "windows_",
         "exclude_prefix": "windows_mssql_",
-        "files": [
-            "push/windows/config.alloy",
-            "push/windows-mssql/config.alloy",
-            "pull/windows/windows-hosts.alloy",
-            "pull/windows-mssql/windows-mssql-hosts.alloy",
-        ],
-    },
-    {
-        "name": "Windows MSSQL (windows_mssql_*)",
-        "prefix": "windows_mssql_",
-        "files": [
-            "push/windows-mssql/config.alloy",
-            "pull/windows-mssql/windows-mssql-hosts.alloy",
-        ],
+        "files": ["pull/windows/windows-hosts.yaml", "pull/windows-mssql/windows-mssql-hosts.yaml"],
     },
 ]
 
@@ -75,10 +46,6 @@ METRIC_GROUPS = [
 def env_version(var: str, default: str = "latest") -> str:
     m = re.search(rf"^{var}=(\S+)", ENV_EXAMPLE.read_text(), re.MULTILINE)
     return m.group(1) if m else default
-
-
-def alloy_image() -> str:
-    return f"grafana/alloy:{env_version('GRAFANA_ALLOY_VERSION')}"
 
 
 def otelcol_image() -> str:
@@ -102,10 +69,21 @@ def pull_configs() -> list[Path]:
 
 
 OTEL_AGENT_CONFIG = ROOT / "otel-agent/config.yaml"
+PULL_SEMCONV = ROOT / "otel-agent/pull-semconv.yaml"
+
+# Cada exporter coletado por pull precisa da conversão para a OTel Semantic
+# Conventions no pipeline (push e pull gravam o mesmo formato).
+PULL_CONVERSIONS = {
+    "job_name: node-exporter": "filter/node_semconv",
+    "job_name: windows-exporter": "filter/windows_semconv",
+    "windows_mssql_": "filter/mssql_semconv",
+    "job_name: mysqld-exporter": "filter/mysql_semconv",
+    "job_name: postgres-exporter": "filter/pgsql_semconv",
+}
 
 
 def validate_pull() -> bool:
-    """Valida cada template pull MESCLADO com o otel-agent/config.yaml (como roda)."""
+    """Valida cada template pull MESCLADO com config.yaml + pull-semconv.yaml (como roda)."""
     image = otelcol_image()
     ok = True
     with tempfile.TemporaryDirectory() as hostfs:
@@ -114,9 +92,11 @@ def validate_pull() -> bool:
                 ["docker", "run", "--rm",
                  "-v", f"{hostfs}:/hostfs:ro",
                  "-v", f"{OTEL_AGENT_CONFIG}:/etc/otelcol-contrib/config.yaml:ro",
+                 "-v", f"{PULL_SEMCONV}:/etc/otelcol-contrib/pull-semconv.yaml:ro",
                  "-v", f"{f}:/etc/otelcol-contrib/pull.d/pull.yaml:ro",
                  image, "validate",
                  "--config=/etc/otelcol-contrib/config.yaml",
+                 "--config=/etc/otelcol-contrib/pull-semconv.yaml",
                  "--config=/etc/otelcol-contrib/pull.d/pull.yaml"],
                 capture_output=True, text=True,
             )
@@ -129,13 +109,16 @@ def validate_pull() -> bool:
                 problems.append("pipeline pull não pode usar resource_detection (atribuiria a identidade da stack)")
             if "host_name:" not in text:
                 problems.append("alvos sem identidade host_name")
+            for marker, proc in PULL_CONVERSIONS.items():
+                if marker in text and proc not in text:
+                    problems.append(f"falta a conversão OTel ({proc} de otel-agent/pull-semconv.yaml) no pipeline")
             if problems:
                 ok = False
                 print(f"FAIL {rel}")
                 for pr in problems:
                     print(f"     {pr}")
             else:
-                print(f"OK   {rel} (mesclado com otel-agent/config.yaml; identidade por alvo)")
+                print(f"OK   {rel} (mesclado com config.yaml + pull-semconv.yaml; identidade por alvo; conversão OTel)")
     return ok
 
 
@@ -153,6 +136,8 @@ HOST_METRICS_MIRRORS = [
     ROOT / "examples/push/linux/config.yaml",
     ROOT / "examples/push/linux-mysql/config.yaml",
     ROOT / "examples/push/linux-pgsql/config.yaml",
+    ROOT / "examples/push/windows/config.yaml",
+    ROOT / "examples/push/windows-mssql/config.yaml",
     ROOT / "otel-agent/config.yaml",
 ]
 
@@ -195,10 +180,20 @@ def validate_otelcol() -> bool:
             capture_output=True, text=True,
         )
         rel = f.relative_to(ROOT)
-        if result.returncode != 0:
+        # Configs Windows: o validate roda em container Linux, onde o receiver
+        # windows_event_log se recusa a ser criado. Se esse for o ÚNICO erro, a
+        # estrutura foi interpretada inteira (o validate real roda no Windows).
+        windows_only = (
+            result.returncode != 0
+            and "windows eventlog receiver is only supported on Windows" in result.stderr
+            and result.stderr.count("Error:") == 1
+        )
+        if result.returncode != 0 and not windows_only:
             ok = False
             print(f"FAIL {rel}")
             print(result.stderr.strip()[-2000:])
+        elif windows_only:
+            print(f"OK   {rel} (estrutura OK; receivers do Event Log só são criados no Windows)")
         else:
             print(f"OK   {rel}")
     return ok
@@ -218,77 +213,15 @@ def check_otel_identity() -> bool:
     return ok
 
 
-def validate_syntax() -> bool:
-    image = alloy_image()
-    ok = True
-    for f in sorted(EXAMPLES.rglob("*.alloy")):
-        result = subprocess.run(
-            [
-                "docker", "run", "--rm",
-                "-v", f"{f}:/etc/alloy/config.alloy:ro",
-                image, "validate", "/etc/alloy/config.alloy",
-            ],
-            capture_output=True, text=True,
-        )
-        rel = f.relative_to(ROOT)
-        if result.returncode != 0:
-            ok = False
-            print(f"FAIL {rel}")
-            print(result.stderr.strip())
-        else:
-            print(f"OK   {rel}")
-    return ok
-
-
-def check_identity_labels() -> bool:
-    ok = True
-    for rel in GATEWAY_FILES:
-        path = EXAMPLES / rel
-        if not path.exists():
-            print(f"FAIL {rel}: arquivo não encontrado")
-            ok = False
-            continue
-        text = path.read_text()
-        missing = [label for label in IDENTITY_LABELS if f'"{label}"' not in text]
-        if missing:
-            ok = False
-            print(f"FAIL examples/{rel}: labels de identidade ausentes: {', '.join(missing)}")
-        else:
-            print(f"OK   examples/{rel}: 5 labels de identidade presentes")
-    return ok
-
-
 def extract_keep_metric_names_yaml(text: str, prefix: str, exclude_prefix: str | None = None) -> set[str]:
     """Extrai a allowlist de um metric_relabel_configs (action: keep) em YAML."""
     names: set[str] = set()
     for m in re.finditer(r"action:\s*keep\s*\n\s*regex:\s*>-?\s*\n\s*(\S+)", text):
         for name in m.group(1).split("|"):
-            # Mesmo critério do extrator .alloy: entradas com curinga (ex.:
-            # node_disk_read.*) não entram na comparação.
+            # Entradas com curinga (ex.: node_disk_read.*) não entram na comparação.
             if "*" in name:
                 continue
             if name.startswith(prefix) and not (exclude_prefix and name.startswith(exclude_prefix)):
-                names.add(name)
-    return names
-
-
-def extract_keep_metric_names(text: str, prefix: str, exclude_prefix: str | None = None) -> set[str]:
-    """Extrai nomes de métrica dentro de blocos `rule { ... action = "keep" ... regex = ... }`.
-
-    Restrito a esses blocos (em vez do arquivo inteiro) para não capturar
-    nomes de componentes Alloy (ex: `prometheus.relabel "windows_host_labels"`),
-    que colidem com o mesmo prefixo das métricas.
-    """
-    names: set[str] = set()
-    for m in re.finditer(r"rule\s*\{([^{}]*)\}", text, re.DOTALL):
-        block = m.group(1)
-        if '"keep"' in block and "regex" in block:
-            # Itens de allowlist concatenados via `+` terminam em "|" dentro
-            # das aspas (ex: "node_boot_time_seconds|"), exceto o último item
-            # da lista — por isso o "|" opcional antes do fechamento.
-            for name in re.findall(rf'"({re.escape(prefix)}[a-zA-Z0-9_.]*)\|?"', block):
-                if exclude_prefix and name.startswith(exclude_prefix):
-                    continue
                 names.add(name)
     return names
 
@@ -300,8 +233,7 @@ def check_metric_groups() -> bool:
         for rel in group["files"]:
             path = EXAMPLES / rel
             text = path.read_text()
-            extract = extract_keep_metric_names_yaml if rel.endswith(".yaml") else extract_keep_metric_names
-            sets[rel] = extract(text, group["prefix"], group.get("exclude_prefix"))
+            sets[rel] = extract_keep_metric_names_yaml(text, group["prefix"], group.get("exclude_prefix"))
 
         union: set[str] = set()
         for names in sets.values():
@@ -321,28 +253,22 @@ def check_metric_groups() -> bool:
 
 
 def main() -> None:
-    print("== 1. Sintaxe OpenTelemetry Collector (otelcol-contrib validate) ==")
-    ok0 = validate_otelcol()
+    print("== 1. Agentes: sintaxe (otelcol-contrib validate) ==")
+    ok = validate_otelcol()
 
-    print("\n== 2. Identidade OpenTelemetry (configs do Collector) ==")
-    ok00 = check_otel_identity()
+    print("\n== 2. Agentes: identidade OpenTelemetry ==")
+    ok = check_otel_identity() and ok
 
-    print("\n== 2b. Política Lean de métricas de host espelhada (template x otel-agent) ==")
-    ok00 = check_host_metrics_mirrors() and ok00
+    print("\n== 3. Política Lean de métricas de host (agentes x otel-agent) ==")
+    ok = check_host_metrics_mirrors() and ok
 
-    print("\n== 2c. Coletas pull (otel-agent/pull.d) ==")
-    ok00 = validate_pull() and ok00
+    print("\n== 4. Coletas pull (otel-agent/pull.d) ==")
+    ok = validate_pull() and ok
 
-    print("\n== 3. Sintaxe Alloy legado (alloy validate) ==")
-    ok1 = validate_syntax()
+    print("\n== 5. Allowlists dos templates pull ==")
+    ok = check_metric_groups() and ok
 
-    print("\n== 4. Labels de identidade global (Alloy legado) ==")
-    ok2 = check_identity_labels()
-
-    print("\n== 5. Consistência de allowlists entre arquivos espelhados (Alloy legado) ==")
-    ok3 = check_metric_groups()
-
-    if not (ok0 and ok00 and ok1 and ok2 and ok3):
+    if not ok:
         print("\nFALHOU — corrija os itens acima antes de finalizar a edição.")
         sys.exit(1)
 

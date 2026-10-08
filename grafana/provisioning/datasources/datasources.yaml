@@ -12,6 +12,10 @@ datasources:
       httpMethod: POST
       prometheusType: Mimir
       manageAlerts: true
+      # Maior intervalo de coleta da stack (receivers de banco e coletas pull):
+      # $__rate_interval = max(intervalo + 60s, 4 x 60s), garantindo amostras
+      # suficientes no rate() de qualquer fonte.
+      timeInterval: "60s"
       # Querying incremental: reutiliza cache de janelas anteriores em ranges longos (v13+)
       incrementalQuerying: true
       incrementalQueryOverlapWindow: "10m"

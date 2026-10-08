@@ -3,12 +3,13 @@
 # LGTM Stack - Túneis SSH para os hosts de DNS interno (br-ne1)
 #
 # Os três hosts de DNS ficam em rede privada, alcançáveis só pelo bastion.
-# O alloy-gateway roda em container e coleta via "host.docker.internal:<porta>",
-# então cada endpoint remoto precisa de um forward local com porta única.
+# O otel-agent (rede do host) coleta via "host.docker.internal:<porta>", então
+# cada endpoint remoto precisa de um forward local com porta única.
 #
-# O mapa de portas abaixo é a contraparte de alloy-gateway/conf.d/90{1,2,3}-*.alloy:
-# mudar uma porta aqui exige mudar o __address__ correspondente lá, senão o
-# scrape falha silenciosamente (up=0) e o dashboard fica cego sem erro visível.
+# O mapa de portas abaixo é a contraparte dos alvos de otel-agent/pull.d/dns-hosts.yaml:
+# mudar uma porta aqui exige mudar o alvo correspondente lá, senão o scrape
+# falha silenciosamente (up=0) e o dashboard fica cego sem erro visível.
+# Alternativa sem túnel por porta: proxy SOCKS (ver examples/pull/dns/INSTALL.md).
 #
 # Convenção: <n><porta-original>, onde <n> é o número do nó.
 # A porta 2380 é deliberadamente evitada — é a porta de peer do etcd, e reusá-la

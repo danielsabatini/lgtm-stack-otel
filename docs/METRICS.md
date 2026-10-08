@@ -1,125 +1,179 @@
 # Métricas (Mimir e OpenTelemetry)
 
-Este documento cobre somente a política de métricas da stack.
+> **Referência Técnica:** Este documento é a fonte única da política de métricas da stack: como as métricas entram, como são gravadas no Mimir com a semântica OpenTelemetry, como cada série é identificada, o que é coletado (Política Lean) e por quanto tempo é guardado.
 
-## Endpoints de Ingestão
+---
 
-Toda métrica entra na stack em OTLP pelo OTel Gateway (portas 4317/4318) e é gravada no Mimir pelo endpoint OTLP nativo. Não há ingestão Prometheus `remote_write`.
+## 1. Introdução
 
-Para consultar as portas exatas e o roteamento de rede, consulte a matriz oficial em:
-👉 **[ARCHITECTURE.md (Fronteiras de Rede)](ARCHITECTURE.md)**
+Toda métrica da LGTM Stack chega em **OTLP** ao `otel-gateway` e é gravada no Mimir pelo endpoint OTLP nativo, **sem conversão para o padrão Prometheus**. Os nomes das métricas e dos atributos seguem a [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) — por isso uma consulta usa `{"system.cpu.time", "host.name"="web-01"}` em vez de `node_cpu_seconds_total{instance="web-01"}`.
 
-## OTLP Nativo e Semântica OpenTelemetry
+Métricas sem filtro crescem de forma descontrolada (um `node_exporter` expõe ~1.500 séries por host, um `mysqld_exporter` ~3.000). A stack coleta **só o necessário**, com cada métrica declarada explicitamente na origem.
 
-Métricas que chegam ao Gateway (sempre OTLP, portas 4317/4318) são gravadas no Mimir pelo endpoint OTLP nativo (`otelcol.exporter.otlphttp "mimir"` → `http://mimir:9009/otlp/v1/metrics`), **sem conversão para o padrão Prometheus**. Os nomes de métricas e de atributos são preservados exatamente como na [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) (bloco `limits` de `mimir/mimir.yaml`):
+---
 
-| Configuração (`mimir.yaml`) | Efeito |
-|---|---|
-| `name_validation_scheme: utf8` + `otel_translation_strategy: NoTranslation` | Nome da métrica e dos labels com pontos, sem sufixos `_total`/`_seconds` (ex.: `http.server.request.duration`). |
-| `otel_convert_histograms_to_nhcb: true` | Histogramas OTel viram *native histograms* (uma série por histograma, sem `_bucket`/`_sum`/`_count`). |
-| `promote_otel_resource_attributes` | `service.name`, `service.namespace`, `service.version`, `service.instance.id`, `deployment.environment.name`, `host.name`, `cloud.provider`, `cloud.region` e `cloud.availability_zone` viram labels em **toda** série (sem `join` com `target_info`). |
-| `otel_keep_identifying_resource_attributes` / `otel_promote_scope_metadata` | Mantém `job`/`instance` derivados (spec de compatibilidade OTel↔Prometheus) e o instrumentation scope como `otel_scope_name`/`otel_scope_version`. |
-| `max_global_exemplars_per_user: 100000` | Habilita exemplars (link métrica → trace). |
+## 2. Objetivo
 
-Como consultar (PromQL com nomes UTF-8 — nome e labels com ponto vão entre aspas):
+1. **Gravar com semântica OpenTelemetry:** nomes e atributos idênticos aos da especificação, consultáveis diretamente no Mimir.
+2. **Identificar cada série sem ambiguidade:** host, ambiente, cloud, serviço, instância e banco sempre presentes como labels.
+3. **Coletar o mínimo necessário (Política Lean):** cada métrica habilitada explicitamente, com referência de séries por tipo de servidor.
+4. **Padronizar a leitura nos dashboards:** descrição obrigatória de cada painel.
 
-```promql
-sum by ("service.name") (rate({"http.server.request.count", "deployment.environment.name"="prd"}[5m]))
-histogram_quantile(0.95, sum by ("service.name") (rate({"http.server.request.duration"}[5m])))
+---
+
+## 3. Caminho de Ingestão
+
+```text
+agente (host_metrics, receivers de banco, OBI)  ─┐
+otel-agent (pull de exporters legados)          ─┼─ OTLP ──> otel-gateway :4317/:4318 ──> Mimir /otlp/v1/metrics
+aplicações instrumentadas                        ─┘
 ```
 
-Verificação rápida (rede interna `lgtm`):
+* O `otel-gateway` não filtra, não renomeia e não converte métricas (`otel-gateway/config.yaml`).
+* Não existe ingestão Prometheus `remote_write`. Exporters Prometheus (`node_exporter`, `windows_exporter`, exporters de banco) são coletados pelo `otel-agent` da stack e convertidos **no agente** para o **mesmo formato do push** — nomes, atributos e semântica da OTel Semantic Conventions, iguais aos dos receivers nativos (`otel-agent/pull-semconv.yaml`, seção 7.1). Push e pull são indistinguíveis no Mimir e nos dashboards.
+* O Tempo não gera métricas (`metrics_generator` desabilitado): as métricas HTTP/RED vêm do OBI na origem (ver [TRACES.md](TRACES.md)).
+
+Verificação de que só há escrita OTLP no Mimir (rede interna `lgtm`):
 
 ```bash
 docker run --rm --network lgtm curlimages/curl -s http://mimir:9009/metrics \
-  | grep 'cortex_request_duration_seconds_count{.*route="otlp_v1_metrics"'
+  | grep -E 'cortex_request_duration_seconds_count\{.*route="(api_v1_push|otlp_v1_metrics)"'   # só otlp_v1_metrics
 ```
 
-> **Origem das métricas:** no agente OpenTelemetry (`examples/push/linux`), as métricas de host vêm do receiver `host_metrics` com os nomes da OTel Semantic Conventions (`system.cpu.time`, `system.memory.usage`, `system.filesystem.usage`...) e as métricas HTTP do OBI (`http.server.request.duration`...). Os atributos do `host_metrics` seguem a versão emitida pelo receiver (`state`, `direction`, `device`), pois as system semantic conventions estão em *Development* e a especificação orienta não adotar breaking changes antes de estabilizar. No servidor da stack, o `otel-agent` coleta também as métricas de containers via `docker_stats` (`container.cpu.usage.total`, `container.cpu.throttling_data.*`, `container.memory.usage.total`/`limit`, `container.network.io.usage.rx_bytes`/`tx_bytes`), identificadas pelo label `container.name` (promovido no Mimir — sem ele as séries de containers diferentes se misturariam). Os templates `.alloy` ainda não migrados usam `remote_write` para a porta 9999, que **não existe mais** no Gateway — esses envios falham até a migração (ver [ROADMAP.md](../ROADMAP.md)).
->
-> **Bancos de dados:** no servidor MySQL (`examples/push/linux-mysql`), o receiver nativo `mysql` substitui o `mysqld_exporter`: ~38 séries por instância (`mysql.server.healthy`, `mysql.threads`, `mysql.query.count`, `mysql.query.slow.count`, `mysql.row_operations`, `mysql.row_locks`, `mysql.buffer_pool.*`, `mysql.innodb.redo_log.checkpoint.age`, `mysql.tmp_resources`...), todas habilitadas explicitamente. `mysql.table.io.wait.*` e `mysql.index.io.wait.*` vêm ligadas por padrão no receiver com uma série por tabela/índice e ficam **desligadas**.
->
-> **PostgreSQL** (`examples/push/linux-pgsql`): o receiver nativo `postgresql` substitui o `postgres_exporter`, sempre com o feature gate `receiver.postgresql.useOTelSemconv` (Alpha): um resource por servidor e o banco no atributo `db.namespace` de cada série — sem o gate, o banco fica só no resource e as séries de bancos diferentes se misturam no Mimir. Apenas métricas no nível de banco (~14 séries por banco: `postgresql.backends`, `connection.max`, `commits`, `rollbacks`, `tup_*`, `deadlocks`, `temp.io`, `blks_hit`/`blks_read`, `db_size`, `bgwriter.checkpoint.count`); as métricas por tabela/índice, ligadas por padrão no receiver, ficam **desligadas**.
->
-> **Servidores legados (pull, `examples/pull/linux`):** o `otel-agent` faz o scrape do `node_exporter` remoto e converte para OTLP; os nomes continuam `node_*` (sem equivalência 1:1 com `system.*`), com a identidade OpenTelemetry por alvo (`host.name`, `deployment.environment.name`, `cloud.*`), `job=node-exporter` e `up`. Mesma allowlist Lean do template legado: ~64 séries por servidor (contra ~1.555 expostas pelo `node_exporter`); as séries sintéticas `scrape_*` são descartadas.
->
-> **DBaaS MySQL (pull, `examples/pull/linux-dbaas-mysql`):** o `otel-agent` coleta os dois endpoints expostos pelo serviço (`:8080/node/metrics` e `:8080/mysql/metrics`) com jobs `node-exporter` e `mysqld-exporter` e a mesma identidade por instância; o resource do banco recebe `db.system.name=mysql`. Allowlist de SO idêntica à do pull Linux (conferida pelo script de consistência) e 14 métricas `mysql_*` (16 séries com `up`), contra ~3.000 expostas pelo mysqld_exporter.
->
-> **DBaaS PostgreSQL (pull, `examples/pull/linux-dbaas-pgsql`):** mesmo modelo, com os endpoints `:8080/node/metrics` e `:8080/postgres/metrics` (jobs `node-exporter` e `postgres-exporter`, `db.system.name=postgresql`). O label `datname` do postgres_exporter vira `db.namespace` (mesma dimensão do template push `linux-pgsql`); os bancos internos `template0`/`template1` e o label `server` (caminho do socket) são descartados. Referência: 44 séries de banco com 2 bancos de aplicação, contra 597 expostas.
+---
 
-## Política de Coleta (Lean Agent Metrics)
+## 4. Armazenamento no Mimir com Semântica OpenTelemetry
 
-Diferente do padrão de mercado que coleta centenas de métricas irrelevantes, nossa arquitetura utiliza uma política de **Explicit Whitelisting (Allowlist)** via `metric_relabel` com a ação `keep`.
+Configuração no bloco `limits` de `mimir/mimir.yaml`:
 
-O _Node Exporter_ original pode gerar até **1400 séries ativas**. Em nossa stack, filtramos agressivamente na origem para persistir apenas o que é visualizado nos Dashboards.
+| Configuração | Efeito |
+|---|---|
+| `name_validation_scheme: utf8` + `otel_translation_strategy: NoTranslation` | Nomes de métricas e labels gravados como na especificação, com pontos e sem sufixos `_total`/`_seconds` (ex.: `http.server.request.duration`). |
+| `otel_convert_histograms_to_nhcb: true` | Histogramas viram *native histograms*: uma série por histograma, sem `_bucket`/`_sum`/`_count`. |
+| `promote_otel_resource_attributes` | Resource attributes que identificam a origem viram labels em **toda** série (seção 5). |
+| `otel_keep_identifying_resource_attributes` / `otel_promote_scope_metadata` | Mantém `job`/`instance` derivados (compatibilidade OTel↔Prometheus) e o instrumentation scope em `otel_scope_name`/`otel_scope_version`. |
+| `max_global_exemplars_per_user: 100000` | Habilita exemplars (link métrica → trace, label `trace_id`). |
 
-### Estratégia de Filtragem:
-- **Agente OpenTelemetry:** cada scraper e cada métrica do `host_metrics` é habilitada explicitamente (`metrics: <nome>: { enabled: true|false }`); dispositivos (`loop`, `ram`, `dm-*`), pseudo-filesystems e interfaces virtuais são excluídos; o OBI exporta só `features: [application]`; o self-monitoring usa `level: basic`. Referência: ~66 séries `system.*` por host Linux.
-- **Templates `.alloy` legados:** o filtro ocorre via `metric_relabel` `keep` no agente antes de enviar o dado pela rede.
-- **Gateway:** nunca filtra nem transforma — só repassa o que o agente decidiu coletar.
+> **Status:** as opções OTLP do Mimir são marcadas como *experimental* (`mimir -help-all`). Releia as release notes a cada upgrade ([UPGRADE.md](UPGRADE.md)).
 
-O resultado é um Mimir _Lean_ operando com **80% a 90% de economia de disco** em comparação com coletas não filtradas.
+### 4.1 Como consultar
 
-## Labels
+Nomes e labels com ponto vão entre aspas (PromQL com nomes UTF-8):
 
-Todos os hosts são identificados exclusivamente pelo label **`instance`**. O label `nodename` **não é utilizado** para evitar duplicidade de cardinalidade — `instance` e `nodename` carregariam o mesmo valor, dobrando o custo de séries sem benefício analítico.
+```promql
+# Taxa por serviço
+sum by ("service.name") (rate({"http.server.request.duration", "deployment.environment.name"="prd"}[5m]))
 
-| Label | Valor | Origem |
+# Percentil de um native histogram (sem _bucket)
+histogram_quantile(0.99, sum by ("host.name") (rate({"coredns_dns_request_duration_seconds"}[5m])))
+
+# Quantidade de observações de um native histogram (no lugar de _count)
+histogram_count(rate({"http.server.request.duration"}[5m]))
+```
+
+### 4.2 Atributos das métricas de host
+
+O receiver `host_metrics` emite os nomes `system.*` da especificação, mas os atributos na versão que ele implementa (`state`, `direction`, `device`): as *system semantic conventions* estão em *Development* e a especificação orienta as instrumentações a não adotar *breaking changes* antes de estabilizar. Os mesmos nomes valem para **Linux e Windows** — um painel de host serve aos dois sistemas.
+
+---
+
+## 5. Identidade das Séries
+
+A identidade é definida **uma vez no agente** (`OTEL_RESOURCE_ATTRIBUTES` + detector `system`, `override: true`) ou **por alvo** nas coletas pull. No Mimir, os atributos abaixo viram labels de toda série:
+
+| Label | Origem | Exemplo |
 |---|---|---|
-| `job` | `node-exporter` | Injetado pelo `prometheus.relabel` no Alloy Agent |
-| `instance` | `$HOSTNAME` (ex: `code`) | Injetado pelo `prometheus.relabel` via `sys.env("HOSTNAME")` |
-| `service_name` | `node-exporter` | Injetado pelo `prometheus.relabel` |
+| `host.name` | detector `system` (agente) ou `host_name` do alvo (pull) | `web-01` |
+| `deployment.environment.name` | `OTEL_RESOURCE_ATTRIBUTES` ou alvo | `prd` |
+| `os.type` | detector `system` (agente) ou conversão do pull (`otel-agent/pull-semconv.yaml`) | `linux`, `windows` — separa hosts Linux e Windows, que usam os mesmos nomes `system.*` |
+| `cloud.provider` / `cloud.region` / `cloud.availability_zone` | `OTEL_RESOURCE_ATTRIBUTES` ou alvo | `mgc` / `br-se1` / `a` |
+| `service.name` (`job`) | receiver/agente | `mysql`, `postgresql`, `mssql`, `otel-agent`, `node-exporter` |
+| `service.instance.id` (`instance`) | receiver ou agente | `WIN-01\MSSQL2` |
+| `service.namespace`, `service.version` | aplicação (OBI/SDK) | — |
+| `container.name`, `container.image.name` | `docker_stats` | `loki` |
+| `sqlserver.instance.name` | receiver `sqlserver` (agente) ou conversão do pull | `MSSQL2` — filtro de instância nos dashboards |
 
-O mesmo padrão se aplica ao cAdvisor. Para política de logs e labels do Loki, consulte [LOGS.md](LOGS.md).
+O `target_info` do self-monitoring de cada agente carrega ainda `os.description` (distribuição e kernel), usado no inventário dos dashboards sem criar séries novas — o Loki descarta esse atributo dos logs (`loki/loki.yaml`).
 
-## Retenção
+Atributos que **não** são resource, mas identificam a série, ficam no próprio datapoint: `db.namespace` (banco), `sqlserver.instance.name`, `state`, `device` etc.
 
-A retenção é definida dinamicamente. Os blocos persistidos obedecem à variável `MIMIR_RETENTION` do arquivo `.env` da stack.
+> **Consultas:** séries mudam de labels quando um atributo de recurso ou de escopo muda (ex.: upgrade do Collector altera `otel_scope_version`) e, por ~5 min, as duas versões coexistem. Nos dashboards, deduplique com `max by (<dimensões>)` antes de somar (ex.: `sum(max by (state) ({"system.memory.usage", ...}))`).
 
-*   Valor Padrão Original: **`30d`**
-*   Cortes de blocos velhos ocorrem autonomamente em partições TSDB limitadas.
+> **Regra:** todo atributo que identifica a origem de uma série precisa estar em `promote_otel_resource_attributes` **ou** no datapoint. Se ficar só no resource sem promoção, séries de origens diferentes ficam com labels idênticas e se misturam no Mimir. Foi o caso de `container.name` (resolvido com promoção), do banco no PostgreSQL (feature gate `receiver.postgresql.useOTelSemconv`) e da instância/banco no SQL Server (conversão no agente).
 
-> **Requisito técnico:** o Mimir inicializa o componente `ruler` mesmo sem regras configuradas. Por isso `mimir.yaml` precisa declarar `ruler_storage` e `ruler.rule_path` com caminhos graváveis.
-> ```
-> ruler: failed to access directory ./data-ruler/: open .check: permission denied
-> ```
-> O `mimir.yaml` desta stack já declara os paths absolutos obrigatórios:
-> ```yaml
-> ruler_storage:
->   backend: filesystem
->   filesystem:
->     dir: /data/ruler
->
-> ruler:
->   rule_path: /data/ruler-temp
-> ```
+---
 
-## Dimensionamento (Sizing)
+## 6. Política Lean (Coletar e Armazenar o Mínimo Necessário)
 
-Para cálculos de projeção de disco, cardinalidade real por host e cenários de exemplo, consulte o documento central de capacidade:
+Nada é coletado "por segurança":
 
-👉 **[SIZING.md](SIZING.md)**
+* **Agentes OpenTelemetry:** cada métrica é declarada (`metrics: <nome>: { enabled: true|false }`), inclusive as que vêm ligadas por padrão nos receivers. Dispositivos, filesystems e interfaces sem valor operacional são excluídos. O self-monitoring usa `level: basic` e o OBI exporta só `features: [application]`.
+* **Coletas pull:** allowlist via `metric_relabel_configs` (`action: keep`) no `otel-agent`; séries sintéticas `scrape_*` descartadas.
+* **Gateway:** nunca filtra — só repassa o que o agente decidiu coletar.
+* A lista de métricas de host é **idêntica** em todos os agentes Linux/Windows e no `otel-agent`, e as allowlists pull do mesmo exporter são iguais entre templates (`artifacts/scripts/check-examples-consistency.py`).
 
-## 📋 Padrão de Descrições de Painéis e Métricas nos Dashboards
+Para incluir uma métrica nova: habilite-a no template correspondente (e no `otel-agent/config.yaml`, se for de host), rode o script de consistência e, se a cardinalidade subir de forma relevante, atualize [SIZING.md](SIZING.md).
 
-Toda métrica e painel criado ou mantido nos dashboards Grafana deste repositório **deve obrigatoriamente** conter uma descrição estruturada no campo `Description` (o tooltip `(i)` do painel).
+---
 
-O objetivo é garantir que **qualquer operador, desenvolvedor ou suporte (mesmo com pouco conhecimento prévio do serviço)** compreenda instantaneamente o que a métrica significa, saiba avaliar se o valor está saudável e tenha comandos concretos para iniciar a resolução em caso de incidente.
+## 7. Catálogo por Fonte
 
-### Estrutura Obrigatória em 3 Blocos:
+Referências medidas nos testes de validação de cada template (detalhes de configuração no `INSTALL.md` de cada um):
 
-1. **O que é (Definição Simples e Direta):**
-   * Explicação objetiva do que o gráfico/card mede, **em linguagem acessível** e contextualizada.
-   * Evite jargões herméticos de protocolo; prefira exemplos práticos do dia a dia (ex: *"Consultas de serviços internos da nuvem"* em vez de *"Zona ne1.cloud.internal"*).
-2. **• O que observar (Sinais Vitais, Padrões e Thresholds):**
-   * O comportamento normal e esperado da métrica.
-   * Thresholds e limites numéricos claros (ex: *"< 16 ms (Verde), > 32 ms (Vermelho)"*, *"deve permanecer estritamente em 0"*).
-   * O impacto real nas aplicações clientes caso o valor desvie do padrão.
-3. **• Ação em caso de problema (Resolução e Mitigação):**
-   * Comandos reais e objetivos para verificação e diagnóstico (`journalctl`, `systemctl`, `ping`, `dig`, `etcdctl`).
-   * Passos de mitigação imediatos e caminhos de arquivos de configuração relevantes.
+| Fonte | Template | Coleta | Nomes | Séries (referência) |
+|---|---|---|---|---|
+| Host Linux | [push/linux](../examples/push/linux/INSTALL.md) | `host_metrics` | `system.*` | ~67 por host |
+| Host Windows | [push/windows](../examples/push/windows/INSTALL.md) | `host_metrics` | `system.*` | ~30 por host |
+| Containers do servidor da stack | `otel-agent` | `docker_stats` | `container.*` | 7 por container |
+| Aplicações HTTP/gRPC | [push/linux](../examples/push/linux/INSTALL.md) (OBI) | eBPF | `http.server.request.duration`, `http.client.request.duration`, `rpc.server.call.duration` | por serviço/rota |
+| MySQL | [push/linux-mysql](../examples/push/linux-mysql/INSTALL.md) | receiver `mysql` | `mysql.*` | ~38 por instância |
+| PostgreSQL | [push/linux-pgsql](../examples/push/linux-pgsql/INSTALL.md) | receiver `postgresql` (gate `useOTelSemconv`) | `postgresql.*` + `db.namespace` | ~14 por banco |
+| SQL Server | [push/windows-mssql](../examples/push/windows-mssql/INSTALL.md) | receiver `sqlserver` (contadores) | `sqlserver.*` + `db.namespace` | ~25 por instância |
+| Host Linux legado | [pull/linux](../examples/pull/linux/INSTALL.md) | `node_exporter` → conversão | `system.*` | ~46 por host |
+| Host Windows legado | [pull/windows](../examples/pull/windows/INSTALL.md) | `windows_exporter` → conversão | `system.*` | ~26 por host |
+| Windows + SQL Server legado | [pull/windows-mssql](../examples/pull/windows-mssql/INSTALL.md) | `windows_exporter` (mssql) → conversão | `system.*`, `sqlserver.*` + `db.namespace` | ~76 por servidor (2 instâncias) |
+| DBaaS MySQL | [pull/linux-dbaas-mysql](../examples/pull/linux-dbaas-mysql/INSTALL.md) | node + mysqld_exporter → conversão | `system.*`, `mysql.*` | ~58 SO + ~33 banco |
+| DBaaS PostgreSQL | [pull/linux-dbaas-pgsql](../examples/pull/linux-dbaas-pgsql/INSTALL.md) | node + postgres_exporter → conversão | `system.*`, `postgresql.*` + `db.namespace` | ~58 SO + ~30 banco |
+| Cluster DNS (por nó) | [pull/dns](../examples/pull/dns/INSTALL.md) | node → conversão + CoreDNS + etcd | `system.*`, `coredns_*`, `etcd_*` | ~51 + ~61 + ~18 |
+| Self-monitoring | gateway e agentes | telemetria interna | `otelcol_*` | ~40–65 por coletor |
 
-### Template Canônico:
+### 7.1 Conversão das Coletas Pull (mesmo formato do push)
+
+Os processors compartilhados de `otel-agent/pull-semconv.yaml` (carregado sempre pelo `otel-agent`) convertem cada exporter para os nomes, atributos e a semântica do receiver nativo do agente — validados contra o agente no **mesmo servidor** (valores iguais):
+
+| Exporter | Vira | Destaques da conversão |
+|---|---|---|
+| `node_exporter` | `system.*` | CPU agregada por `state` (`iowait`→`wait`, `irq`→`interrupt`); memória `used` = MemTotal − MemAvailable e `cached` = Cached + SReclaimable (semântica do gopsutil); filesystem `used`/`free` (disponível)/`reserved`; `os.description` no `target_info` |
+| `windows_exporter` | `system.*` | `privileged`→`system`, `dpc` descartado; memória `free` = disponível; `volume`/`nic` → `device` |
+| coletor `mssql` | `sqlserver.*` | uma identidade por instância (`service.instance.id` = `<host>\<instância>`); contadores cumulativos → `*.rate` por segundo |
+| `postgres_exporter` | `postgresql.*` | `datname` → `db.namespace`; versão em `db.system.version` |
+| `mysqld_exporter` | `mysql.*` | contadores *untyped* → Sum; `buffer_pool.usage` clean/dirty; idade do checkpoint do redo |
+
+Subtrações entre métricas (ex.: `used = total − available`) são feitas só com o `metrics_transform`: uma cópia do subtraendo × −1 é combinada (`combine`, `sum`) com o minuendo, preservando as dimensões de cada série.
+
+**Sem equivalente calculável no pull** (painéis ficam sem dados para esses hosts): load average e *disk busy* no Windows; hit ratio e tempo médio de lock do SQL Server (exigem divisão entre métricas); logs e traces (exigem o agente). **Sem OTel Semantic Conventions:** CoreDNS e etcd mantêm os nomes dos exporters.
+
+---
+
+## 8. Retenção
+
+A retenção do Mimir é definida pela variável `MIMIR_RETENTION` do `.env` (padrão **`30d`**), aplicada pelo compactor em `limits.compactor_blocks_retention_period`.
+
+> **Requisito técnico:** o Mimir inicializa o componente `ruler` mesmo sem regras. Por isso `mimir.yaml` declara `ruler_storage` e `ruler.rule_path` com caminhos graváveis (`/data/ruler` e `/data/ruler-temp`). Sem eles a inicialização falha com `ruler: failed to access directory ./data-ruler/: open .check: permission denied`.
+
+---
+
+## 9. Padrão de Descrições de Painéis
+
+Todo painel dos dashboards deste repositório **deve** ter uma descrição estruturada no campo `Description` (o tooltip `(i)`), para que qualquer operador entenda o que a métrica significa, saiba se o valor está saudável e tenha comandos para começar a resolver um incidente.
+
+### 9.1 Estrutura obrigatória em 3 blocos
+
+1. **O que é:** o que o gráfico mede, em linguagem acessível e com exemplo prático (ex.: *"Consultas de serviços internos da nuvem"* em vez de *"Zona ne1.cloud.internal"*).
+2. **• O que observar:** comportamento normal, thresholds numéricos (ex.: *"< 16 ms (Verde), > 32 ms (Vermelho)"*) e impacto nas aplicações se o valor desviar.
+3. **• Ação em caso de problema:** comandos reais de verificação (`journalctl`, `systemctl`, `ping`, `dig`, `etcdctl`) e passos de mitigação com caminhos de arquivos.
+
+### 9.2 Template canônico
 
 ```text
 <O que a métrica mede de forma simples, clara e contextualizada>.
@@ -127,22 +181,33 @@ O objetivo é garantir que **qualquer operador, desenvolvedor ou suporte (mesmo 
 • Ação em caso de problema: <Comandos de verificação imediata, testes de conectividade e passos de mitigação>.
 ```
 
-### Exemplos Reais de Referência:
+### 9.3 Exemplos de referência
 
-**1. Painel de Latência (Pilar Health):**
-> *Tempo de resposta percebido por 99% das consultas de serviços internos da nuvem (bancos de dados, VMs e nomes *.cloud.internal).*
+**Latência (pilar Health):**
+> *Tempo de resposta percebido por 99% das consultas de serviços internos da nuvem (bancos de dados, VMs e nomes \*.cloud.internal).*
 > *• O que observar: Deve responder em menos de 16 ms (Verde). Valores entre 16 ms e 32 ms indicam lentidão e acima de 32 ms (Vermelho) indicam lentidão crítica para os sistemas internos.*
 > *• Ação em caso de problema: A lentidão geralmente está no banco etcd. Verifique a aba 'etcd > Diagnostics' abaixo para ver a velocidade de gravação em disco do etcd.*
 
-**2. Painel de Capacidade de Memória (Pilar Capacity):**
+**Memória (pilar Capacity):**
 > *Quantidade real de memória RAM física consumida exclusivamente pelo processo do CoreDNS em cada servidor.*
 > *• O que observar: Deve ficar estável entre 50 MB e 150 MB. Se a linha subir continuamente sem nunca parar, indica vazamento de memória (memory leak).*
 > *• Ação em caso de problema: Verifique se o cache não está configurado com tamanho excessivo ou se há plugins com falha e reinicie o serviço com 'sudo systemctl restart coredns'.*
 
-**3. Painel de Diagnóstico de Descarte (Pilar Diagnostics):**
+**Descarte de cache (pilar Diagnostics):**
 > *Quantidade de nomes que foram jogados fora da memória antes do tempo porque a gaveta de cache encheu (limite de 10.000 registros atingido).*
 > *• O que observar: Deve ficar próximo de zero. Se a taxa estiver alta e constante, o CoreDNS está descartando dados úteis e tendo que buscar tudo de novo, gerando lentidão desnecessária.*
 > *• Ação em caso de problema: Aumente o tamanho do cache no '/etc/coredns/Corefile' (mude 'cache 30' para 'cache 30 { success 50000 denial 25000 }') e recarregue com 'sudo systemctl reload coredns'.*
+
+---
+
+## 10. Governança e Referências
+
+* Topologia, portas e regras de escrita: [ARCHITECTURE.md](ARCHITECTURE.md).
+* Projeção de disco e cardinalidade: [SIZING.md](SIZING.md).
+* Logs (identidade e Política Lean dos logs): [LOGS.md](LOGS.md).
+* Traces e métricas derivadas (OBI, exemplars): [TRACES.md](TRACES.md).
+* Dashboards (fluxo GitOps): [DASHBOARDS.md](DASHBOARDS.md).
+* Upgrades e breaking changes do Mimir: [UPGRADE.md](UPGRADE.md).
 
 ---
 🔙 Voltar: [README Principal](../README.md)

@@ -71,6 +71,10 @@ service:
   # Self-monitoring: métricas internas do Collector em OTLP para a própria
   # entrada do Gateway (sem scrape Prometheus, sem conversão).
   telemetry:
+    # Sem stack trace: no log do container cada linha do trace viraria um
+    # registro sem nível (furando o filtro WARN+ do otel-agent).
+    logs:
+      disable_stacktrace: true
     resource:
       attributes:
         - name: service.name

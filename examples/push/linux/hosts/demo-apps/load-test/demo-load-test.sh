@@ -2,7 +2,7 @@
 # =============================================================================
 # LGTM Stack - Gerador de carga para a cadeia demo (frontend -> middleware ->
 # backend, ver ../app/tier.py) usada para validar traces distribuídos via
-# Beyla eBPF.
+# OBI (eBPF).
 #
 # Sem isto, o painel "Distributed Traces" só mostra dado durante a janela em
 # que alguém chamou a cadeia manualmente (curl), e volta a ficar vazio assim
@@ -11,7 +11,7 @@
 #
 # Mistura de rotas: majoritariamente "/" (sucesso), com uma fração de "/slow"
 # (>1000ms, exercita a política keep-slow do tail sampling do gateway) e
-# "/error" (500, exercita keep-errors). Ver alloy-gateway/conf.d/003-otlp-gtw-local.alloy.
+# "/error" (500, exercita keep-errors). Ver otel-gateway/config.yaml (tail_sampling).
 #
 # Uso:
 #   ./demo-load-test.sh                roda até Ctrl-C com os padrões

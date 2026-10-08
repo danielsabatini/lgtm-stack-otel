@@ -10,13 +10,14 @@
 # deployment.environment.name, cloud.*) é declarada por alvo: o servidor
 # remoto não tem agente para detectá-la.
 #
-# Nomes das métricas: continuam os do node_exporter (node_*). Não há
-# equivalência 1:1 com system.* (host_metrics); traduzir seria uma conversão
-# pesada. Para métricas system.* e logs, instale o agente
-# (examples/push/linux/INSTALL.md).
+# Formato: o mesmo do agente (examples/push/linux). Os processors
+# *_node_semconv (otel-agent/pull-semconv.yaml) convertem node_* para system.*
+# com os nomes, atributos e a semântica do host_metrics (ex.: memória "used" =
+# MemTotal - MemAvailable) — os dashboards não distinguem push de pull. Logs
+# exigem o agente.
 #
-# Política Lean: só as métricas da lista keep abaixo (mesma lista do template
-# legado), sem pseudo-dispositivos e pseudo-filesystems.
+# Política Lean: só as métricas da lista keep abaixo (insumos da conversão),
+# sem pseudo-dispositivos e pseudo-filesystems.
 # =============================================================================
 
 receivers:
@@ -47,7 +48,7 @@ receivers:
             - source_labels: [__name__]
               action: keep
               regex: >-
-                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SUnreclaim_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_disk_read_bytes_total|node_disk_written_bytes_total|node_disk_reads_completed_total|node_disk_writes_completed_total|node_disk_read_time_seconds_total|node_disk_write_time_seconds_total|node_disk_io_time_seconds_total|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
             # Pseudo-dispositivos de disco
             - source_labels: [device]
               regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
@@ -91,5 +92,6 @@ service:
     # SEM resource_detection: a identidade é a do servidor remoto, não a da stack.
     metrics/pull_linux:
       receivers: [prometheus/pull_linux]
-      processors: [memory_limiter, filter/pull_linux, groupbyattrs/pull_linux, transform/pull_linux, batch]
+      processors: [memory_limiter, filter/pull_linux, groupbyattrs/pull_linux, transform/pull_linux,
+                   metrics_transform/node_semconv, transform/node_semconv, filter/node_semconv, batch]
       exporters: [otlp_grpc/gateway]

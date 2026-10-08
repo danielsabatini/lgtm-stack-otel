@@ -2,8 +2,9 @@
 
 Para servidores onde **não é possível instalar o agente OpenTelemetry** e só há
 o `node_exporter`. O `otel-agent` da stack faz o scrape do `node_exporter`
-(`:9100`), converte para OTLP com a identidade OpenTelemetry do servidor e
-envia ao `otel-gateway` — o Gateway continua recebendo só OTLP, sem conversão.
+(`:9100`), converte as métricas para o **mesmo formato do agente** (`system.*`,
+OTel Semantic Conventions) com a identidade OpenTelemetry do servidor e envia ao
+`otel-gateway` — o Gateway continua recebendo só OTLP, sem conversão.
 
 ```text
 servidor legado            servidor da stack LGTM
@@ -12,7 +13,8 @@ node_exporter :9100  <──scrape──  otel-agent ──OTLP──> otel-gate
 
 | Aspecto | Pull legado (este guia) | Agente OpenTelemetry ([push/linux](../../push/linux/INSTALL.md)) |
 |---|---|---|
-| Métricas | `node_*` (nomes do node_exporter) | `system.*` (OTel Semantic Conventions) |
+| Métricas | `system.*` (convertidas de `node_*` no `otel-agent`) | `system.*` (OTel Semantic Conventions) |
+| Dashboard | **Linux Hosts** (o mesmo do agente) | **Linux Hosts** |
 | Logs (journald) | ❌ não disponível | ✅ |
 | Traces / métricas HTTP (OBI) | ❌ | ✅ |
 | Identidade | declarada por alvo neste template | detectada no próprio host |
@@ -110,13 +112,22 @@ docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is read
 
 ## 3. O que é coletado (Política Lean)
 
-Só as métricas da lista `keep` do template (CPU, load, memória, swap, pressão,
-disco, filesystem, rede, boot, `node_uname_info`, `node_os_info`) e o `up`
-(disponibilidade do alvo). São descartados pseudo-dispositivos (`loop`, `ram`,
-`dm-*`), pseudo-filesystems (`tmpfs`, `overlay`...), interfaces virtuais e as
-séries sintéticas `scrape_*`.
+Só as métricas da lista `keep` do template — os insumos da conversão para
+`system.*` (CPU, load, memória, swap, disco, filesystem, rede, boot,
+`node_uname_info`, `node_os_info`) — e o `up` (disponibilidade do alvo). São
+descartados pseudo-dispositivos (`loop`, `ram`, `dm-*`), pseudo-filesystems
+(`tmpfs`, `overlay`...), interfaces virtuais e as séries sintéticas `scrape_*`.
 
-Referência validada (Debian 13, node_exporter 1.9.0): **64 séries** por
+A conversão (`*_node_semconv` em `otel-agent/pull-semconv.yaml`) grava os mesmos
+nomes, atributos e a mesma semântica do `host_metrics` do agente — validada
+contra o agente no mesmo servidor, com valores iguais (memória `used` =
+MemTotal − MemAvailable, filesystem `used`/`free`/`reserved` etc.; detalhes em
+[docs/METRICS.md](../../../docs/METRICS.md) §7.1). O nome do SO e o kernel vão
+para o `target_info` (`os.description`), como no agente. Diferenças: o
+`node_exporter` não informa se o filesystem é ro/rw (`mode=rw`) e nomeia volumes
+LVM por `/dev/mapper/...`.
+
+Referência validada (Debian 13, node_exporter 1.9.0): **46 séries** por
 servidor, contra ~1.555 expostas pelo `node_exporter`.
 
 ---
@@ -132,13 +143,14 @@ H="app-legado-01"
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
   --data-urlencode "query={\"up\", \"host.name\"=\"$H\"}"
 
-# Quantidade de séries do servidor (esperado ~64)
+# Quantidade de séries do servidor (esperado ~46)
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
   --data-urlencode "query=count({\"host.name\"=\"$H\"})"
 ```
 
 No Grafana: **Explore** → **Mimir** →
-`rate({"node_cpu_seconds_total", "host.name"="app-legado-01", mode!="idle"}[5m])`.
+`rate({"system.cpu.time", "host.name"="app-legado-01", state!="idle"}[5m])` — ou
+o dashboard **Hosts → Linux Hosts**, selecionando o servidor.
 
 ---
 

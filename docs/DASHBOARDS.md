@@ -2,6 +2,8 @@
 
 > **Referência Técnica:** Este documento estabelece o fluxo oficial de edição, exportação e provisionamento automatizado de dashboards como código (*GitOps*) utilizando o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`), detalhando as convenções de design, taxonomia de abas e a arquitetura completa da solução **MGC Internal DNS**.
 
+> ✅ **Status (migração OpenTelemetry):** os dashboards consultam só os nomes da OTel Semantic Conventions. Push (agente) e pull (exporters convertidos no `otel-agent`) gravam o mesmo formato, então cada tipo de servidor tem **um único dashboard**, independente do método de coleta (seção 3).
+
 ---
 
 ## 1. Introdução
@@ -23,23 +25,22 @@ A LGTM Stack adota um modelo de **Fonte Única da Verdade (Single Source of Trut
 
 ## 3. Estrutura Canônica de Diretórios
 
-Todos os arquivos JSON de dashboards residem sob a árvore de provisioning do Grafana:
+Cada tipo de servidor tem **um dashboard só**, que lista todos os hosts daquele tipo — com agente (push) ou coletados por pull. Isso é possível porque o pull é convertido no `otel-agent` para os mesmos nomes, atributos e semântica do agente (ver [METRICS.md](METRICS.md) §7.1): as consultas são as mesmas para os dois métodos. Painéis cuja métrica não existe na origem do pull (ex.: logs, traces, load average no Windows) ficam sem dados para esses hosts.
 
 ```text
-lgtm-stack/
-└── grafana/provisioning/dashboards/    ← Fonte Única da Verdade dos Dashboards
-    ├── Hosts/
-    │   ├── linux-hosts.json            (Linux Hosts - UID: linux-hosts | Single-Node)
-    │   └── windows-hosts.json          (Windows Hosts - UID: windows-hosts | Single-Node)
-    ├── Hosts + Database/
-    │   ├── linux-mysql-hosts.json      (Linux + MySQL - UID: linux-mysql-hosts)
-    │   ├── linux-pgsql-hosts.json      (Linux + PostgreSQL - UID: linux-pgsql-hosts)
-    │   └── windows-hosts-mssql.json    (Windows + SQL Server - UID: windows-hosts-mssql)
-    ├── DNS/
-│   │   └── mgc-internal-dns.json       (MGC Internal DNS - UID: adth4vt | Multi-Node Cluster)
-    ├── LGTM/
-    │   └── lgtm-stack.json             (LGTM Self-Monitoring - UID: lgtm-stack)
-    └── dashboards.yaml                 (Configuração de Hot-Reload a cada 10s)
+grafana/provisioning/dashboards/          ← Fonte Única da Verdade dos Dashboards
+├── Hosts/
+│   ├── linux-hosts.json                  Linux Hosts (system.*, journald, OBI) — agente e node_exporter
+│   └── windows-hosts.json                Windows Hosts (system.*, Event Log) — agente e windows_exporter
+├── Hosts + Database/
+│   ├── linux-mysql-hosts.json            Linux + MySQL (mysql.*) — agente e mysqld_exporter (ex.: DBaaS)
+│   ├── linux-pgsql-hosts.json            Linux + PostgreSQL (postgresql.*) — agente e postgres_exporter (ex.: DBaaS)
+│   └── windows-hosts-mssql.json          Windows + SQL Server (sqlserver.*) — agente e coletor mssql
+├── DNS/
+│   └── mgc-internal-dns.json             Linux (system.*) + CoreDNS + etcd (nomes dos exporters)
+├── LGTM/
+│   └── lgtm-stack.json                   Self-monitoring: pipeline OTel (otelcol_*), containers (container.*) e servidor da stack
+└── dashboards.yaml                       Provider (recarga a cada 30 s)
 ```
 
 ---
@@ -57,7 +58,7 @@ lgtm-stack/
   [3. Salvar o JSON em grafana/provisioning/dashboards/<Pasta>/<nome>.json]
                        │
                        ▼
-  [4. Git Commit + Push (O Grafana hot-recarrega as mudanças em até 10s)]
+  [4. Git Commit + Push (O Grafana recarrega as mudanças em até 30s)]
 ```
 
 ---
@@ -131,7 +132,7 @@ Todo novo dashboard **deve obrigatoriamente** conter o envelope de recurso nativ
 Adicione o novo dashboard na tabela de UIDs Canônicos (Seção 7 deste documento) para evitar colisões e manter o catálogo atualizado.
 
 ### Passo 4: Validação do Hot-Reload Automático (Sem Reiniciar)
-O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segundos**.
+O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 30 segundos** (`updateIntervalSeconds: 30` no `dashboards.yaml`).
 
 1. Salve o arquivo JSON na pasta.
 2. Acompanhe os logs do Grafana para confirmar a detecção e importação:
@@ -146,15 +147,15 @@ O Grafana verifica a pasta `grafana/provisioning/dashboards/` **a cada 10 segund
 
 > ⚠️ **Nunca altere os UIDs** de dashboards já existentes. A alteração de UID quebra favoritos, links cruzados e alertas configurados.
 
-| Dashboard | UID Canônico | Pasta no Provisioning | Escopo | Componentes / Tags |
+| Dashboard | UID Canônico | Pasta | Coleta (push e pull) | Status |
 |---|---|---|---|---|
-| **MGC Internal DNS** | `adth4vt` | `DNS/` | Multi-Node (Cluster) | `linux`, `coredns`, `etcd`, `dns` |
-| **Linux Hosts** | `linux-hosts` | `Hosts/` | Single-Node | `linux`, `node-exporter`, `infrastructure` |
-| **Windows Hosts** | `windows-hosts` | `Hosts/` | Single-Node | `windows`, `windows-exporter`, `infrastructure` |
-| **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `mysql`, `database` |
-| **Linux + PostgreSQL Hosts** | `linux-pgsql-hosts` | `Hosts + Database/` | Multi-Node | `linux`, `postgres`, `database` |
-| **Windows + MSSQL Hosts** | `windows-hosts-mssql` | `Hosts + Database/` | Multi-Node | `windows`, `mssql`, `database` |
-| **LGTM Stack Self-Monitoring** | `lgtm-stack` | `LGTM/` | Stack Local | `lgtm`, `mimir`, `loki`, `tempo`, `alloy` |
+| **Linux Hosts** | `linux-hosts` | `Hosts/` | agente; `node_exporter` | ✅ migrado |
+| **Windows Hosts** | `windows-hosts` | `Hosts/` | agente; `windows_exporter` | ✅ migrado |
+| **Linux + MySQL Hosts** | `linux-mysql-hosts` | `Hosts + Database/` | agente; `mysqld_exporter` (DBaaS) | ✅ migrado |
+| **Linux + PostgreSQL Hosts** | `linux-pgsql-hosts` | `Hosts + Database/` | agente; `postgres_exporter` (DBaaS) | ✅ migrado |
+| **Windows + SQL Server Hosts** | `windows-hosts-mssql` | `Hosts + Database/` | agente; coletor `mssql` do `windows_exporter` | ✅ migrado |
+| **MGC Internal DNS** | `adth4vt` | `DNS/` | `node_exporter`, CoreDNS, etcd | ✅ migrado |
+| **LGTM Stack Self-Monitoring** | `lgtm-stack` | `LGTM/` | telemetria interna dos coletores (`otelcol_*`), `docker_stats` e agente do servidor da stack | ✅ migrado |
 
 ---
 
@@ -164,13 +165,12 @@ O dashboard **MGC Internal DNS** monitora a infraestrutura de resolução de nom
 
 ```text
 MGC Internal DNS (adth4vt)
-├── 1. Linha Linux (Sistema Operacional dos Servidores DNS)
-│   ├── Health: Sinais vitais de CPU, Memória, Disco e Rede em percentual normalizado.
-│   ├── Capacity: Composição e limites de CPU Load, Memória RAM, Swap, FS Root e Inodes.
-│   ├── Activity: Volume temporal de Throughput e IOPS de Disco e Tráfego de Rede.
-│   ├── Diagnostics: Análise de causa raiz com Modos de CPU, PSI (CPU/Mem/IO), Latência de Disco e Erros/Drops de Rede.
-│   ├── Inventory: Uptime, Total de Cores, RAM Total, Swap Total, FS Total e Versão do OS.
-│   └── Logs: Coleta estruturada de Security (SSH), System (systemd/kernel/cron), Application e Platform.
+├── 1. Linha Linux (Sistema Operacional dos Servidores DNS — system.*, mesmas abas do Linux Hosts)
+│   ├── Health: CPU, Memória, Filesystem e Rede em percentual normalizado.
+│   ├── Capacity: Load x CPUs, Memória, Swap, Filesystem e Inodes por ponto de montagem.
+│   ├── Activity: Throughput e IOPS de Disco e Tráfego de Rede.
+│   ├── Diagnostics: CPU por estado, Disco ocupado, Latência de Disco e Erros/Descartes de Rede.
+│   └── Inventory: Uptime, CPUs, RAM, Swap, Filesystem e SO (target_info).
 │
 ├── 2. Linha CoreDNS (Camada de Resolução DNS)
 │   ├── Health: Status UP/DOWN, DNS Error Rate (%), Query Rate (req/s), Upstream Health (%), Latência Interna p99 e Latência Forward p99.
@@ -194,7 +194,7 @@ MGC Internal DNS (adth4vt)
 ### 9.1 Padrão de Legendas e Renderização de Metadados:
 
 * **Dashboards Multi-Node (ex: MGC Internal DNS `adth4vt`):**
-  * **Métricas com Múltiplas Instâncias:** Utilizam o separador pipe ` | ` na legenda: `{{instance}} | {{version}}`, `{{instance}} | {{job}}` ou `{{instance}} | {{device}}`.
+  * **Métricas com Múltiplas Instâncias:** Utilizam o separador pipe ` | ` na legenda: `{{host.name}} | {{version}}` ou `{{host.name}} | {{device}}` (identidade do host pelo `host.name`, ver [METRICS.md](METRICS.md) §5).
   * **Painéis Stat de Metadados:** Configurados com `textMode: "name"`, `justifyMode: "center"`, cor de fundo `colorMode: "none"` e tamanho fixo `text.valueSize: 16`.
 
 * **Dashboards Single-Node (ex: Linux Hosts `linux-hosts`):**
@@ -220,6 +220,18 @@ Todo painel deve seguir estritamente o padrão em 3 blocos definido em [METRICS.
 
 ---
 
+### 9.6 Padrão de Consultas (OpenTelemetry no Mimir):
+* **Nomes UTF-8 entre aspas:** métricas e atributos com ponto vão dentro do seletor: `{"system.cpu.time", "host.name"="$host", state="idle"}`; em agregações, `sum by ("service.name") (...)`. Na legenda, `{{host.name}}` funciona normalmente.
+* **Variável de host:** `query_result(count by ("host.name") ({"system.uptime", "os.type"="linux"}))` com regex `/host\.name="([^"]+)"/` (o `os.type` separa Linux e Windows, que usam os mesmos nomes `system.*`).
+* **Deduplicação:** envolva gauges em `max by (<dimensões reais>)` e taxas em `max by (<dimensões>) (rate(...))` antes de somar. Um upgrade do Collector muda `otel_scope_version` e, por ~5 min, a série antiga e a nova coexistem — sem o `max by`, os valores dobram.
+* **Intervalo de taxa:** o datasource Mimir declara `timeInterval: 60s` (maior intervalo de coleta da stack: receivers de banco e parte dos pulls). Assim `$__rate_interval` ≥ 4 min e todo `rate()` tem amostras suficientes — não fixe janelas como `[1m]`.
+* **Filtros de banco:** variáveis multi-seleção (padrão *All*) abaixo do Host — **Instância** no SQL Server (`"sqlserver.instance.name"=~"$instance"`, label promovido no Mimir; no Event Log, `windows_eventlog_provider=~"(MSSQL\\$)?(${instance:regex})"`) e **Banco** no PostgreSQL (`"db.namespace"=~"$database"`; no log, `| db_namespace=~"${database:regex}" or db_namespace=""` para manter as mensagens do servidor). Métricas do servidor inteiro (ex.: `postgresql.connection.max`, checkpoints) não são filtradas. O MySQL não tem filtro de banco: o receiver e o `mysqld_exporter` só entregam métricas do servidor (`SHOW GLOBAL STATUS`); as por tabela/índice ficam desligadas pela Política Lean.
+* **Histogramas nativos (OBI):** taxa com `histogram_count(rate(...))`, percentil com `histogram_quantile(0.95, sum by (...) (rate(...)))` e `exemplar: true` para abrir o trace pelo `trace_id`.
+* **Logs:** `{host_name="$host"} | category="security"` (`category` é structured metadata, ver [LOGS.md](LOGS.md) §3).
+* **Traces:** `{ resource.host.name = "$host" }`.
+
+---
+
 ## 10. Diagnóstico de Erros Comuns
 
 ### 10.1 Erro: Tabs virando linhas simples (TabsLayout destruído via API)
@@ -238,7 +250,7 @@ Todo painel deve seguir estritamente o padrão em 3 blocos definido em [METRICS.
 
 * Para a taxonomia de abas e categorização de métricas, consulte [OBSERVABILITY-METHODOLOGY.md](OBSERVABILITY-METHODOLOGY.md).
 * Para o padrão obrigatório de descrições e tooltips dos painéis, consulte [METRICS.md](METRICS.md).
-* Para fronteiras de rede e topologia de coleta do Alloy Gateway, consulte [ARCHITECTURE.md](ARCHITECTURE.md).
+* Para fronteiras de rede e topologia de coleta (OTel Gateway e agentes), consulte [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 🔙 Voltar: [README Principal](../README.md)

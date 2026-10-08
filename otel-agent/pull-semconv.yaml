@@ -1,0 +1,493 @@
+# =============================================================================
+# otel-agent — conversão das coletas pull para a OTel Semantic Conventions
+# =============================================================================
+# Carregado sempre pelo entrypoint (junto do config.yaml). Define processors
+# compartilhados que os templates pull (otel-agent/pull.d/*.yaml) referenciam
+# nos seus pipelines, logo após a identidade do alvo:
+#
+#   processors: [memory_limiter, filter/pull_x, groupbyattrs/pull_x,
+#                transform/pull_x, <conversões abaixo>, batch]
+#
+# Objetivo: push e pull gravam o MESMO formato no Mimir (nomes, atributos e
+# semântica do receiver nativo do agente). A conversão é feita aqui, no agente
+# da stack — nunca no Gateway. Processors definidos e não usados por nenhum
+# pipeline são ignorados pelo Collector.
+#
+# Métricas sem equivalente na OTel Semantic Conventions (CoreDNS, etcd) seguem
+# com o nome do exporter.
+# =============================================================================
+
+processors:
+  # ---------------------------------------------------------------------------
+  # node_exporter -> system.* (mesmos nomes, atributos e semântica do host_metrics)
+  # ---------------------------------------------------------------------------
+  # Validado contra o host_metrics do agente no mesmo servidor (valores iguais).
+  # Diferença a - b por série: insere uma cópia de b com valor x -1 e combina com
+  # a (o combine soma os pontos de mesmos atributos). Grupos de regex sem nome
+  # precisam ser (?:...) — um grupo capturante viraria um atributo "$1".
+  # Diferenças conhecidas: o node_exporter não informa ro/rw (mode=rw fixo) e
+  # nomeia volumes LVM pelo /dev/mapper (o host_metrics usa /dev/dm-N).
+  metrics_transform/node_semconv:
+    transforms:
+      - {include: node_memory_MemAvailable_bytes, action: insert, new_name: tmp_mem_neg_available,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: node_memory_MemTotal_bytes, action: insert, new_name: tmp_mem_total}
+      - {include: node_memory_SReclaimable_bytes, action: insert, new_name: tmp_mem_sreclaimable}
+      - {include: node_memory_SwapFree_bytes, action: insert, new_name: tmp_swap_neg_free,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: node_filesystem_free_bytes, action: insert, new_name: tmp_fs_neg_free,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: node_filesystem_avail_bytes, action: insert, new_name: tmp_fs_neg_avail,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: node_filesystem_files_free, action: insert, new_name: tmp_inodes_neg_free,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      # memória: used = MemTotal - MemAvailable ; cached = Cached + SReclaimable (gopsutil)
+      - {include: '^(?:tmp_mem_total|tmp_mem_neg_available)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_memory_Used_bytes}
+      - {include: '^(?:node_memory_Cached_bytes|tmp_mem_sreclaimable)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_memory_CachedTotal_bytes}
+      # swap: used = SwapTotal - SwapFree
+      - {include: '^(?:node_memory_SwapTotal_bytes|tmp_swap_neg_free)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_memory_SwapUsed_bytes}
+      # filesystem: used = size - free ; reserved = free - avail ; inodes used = files - files_free
+      - {include: '^(?:node_filesystem_size_bytes|tmp_fs_neg_free)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_filesystem_used_bytes}
+      - {include: '^(?:node_filesystem_free_bytes|tmp_fs_neg_avail)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_filesystem_reserved_bytes}
+      - {include: '^(?:node_filesystem_files|tmp_inodes_neg_free)$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: node_filesystem_files_used}
+
+      # --- system.memory.* / system.paging.usage ---
+      - {include: node_memory_MemTotal_bytes, action: update, new_name: system.memory.limit}
+      - include: '^node_memory_(?P<state>Used|MemFree|Buffers|CachedTotal|SReclaimable|SUnreclaim)_bytes$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.memory.usage
+        submatch_case: lower
+        operations:
+          - action: update_label
+            label: state
+            value_actions:
+              - {value: memfree, new_value: free}
+              - {value: buffers, new_value: buffered}
+              - {value: cachedtotal, new_value: cached}
+              - {value: sreclaimable, new_value: slab_reclaimable}
+              - {value: sunreclaim, new_value: slab_unreclaimable}
+      - {include: '^node_memory_Swap(?P<state>Used|Free)_bytes$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: system.paging.usage, submatch_case: lower}
+      # --- system.filesystem.* (free = espaço disponível; node_exporter não informa ro/rw) ---
+      - include: '^node_filesystem_(?P<state>used|reserved|avail)_bytes$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.filesystem.usage
+        operations:
+          - {action: update_label, label: state, value_actions: [{value: avail, new_value: free}]}
+          - {action: update_label, label: fstype, new_label: type}
+          - {action: add_label, new_label: mode, new_value: rw}
+      - include: '^node_filesystem_files_(?P<state>used|free)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.filesystem.inodes.usage
+        operations:
+          - {action: update_label, label: fstype, new_label: type}
+          - {action: add_label, new_label: mode, new_value: rw}
+      # --- system.cpu.* (agregado por estado, como o host_metrics) ---
+      - include: node_cpu_seconds_total
+        action: insert
+        new_name: system.cpu.logical.count
+        experimental_match_labels: {mode: idle}
+        operations: [{action: aggregate_labels, label_set: [], aggregation_type: count}]
+      - include: node_cpu_seconds_total
+        action: update
+        new_name: system.cpu.time
+        operations:
+          - action: update_label
+            label: mode
+            new_label: state
+            value_actions:
+              - {value: iowait, new_value: wait}
+              - {value: irq, new_value: interrupt}
+          - {action: aggregate_labels, label_set: [state], aggregation_type: sum}
+      - {include: node_load1, action: update, new_name: system.cpu.load_average.1m}
+      - {include: node_load5, action: update, new_name: system.cpu.load_average.5m}
+      - {include: node_load15, action: update, new_name: system.cpu.load_average.15m}
+      # --- system.disk.* ---
+      - include: '^node_disk_(?P<direction>read|written)_bytes_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.io
+        operations: [{action: update_label, label: direction, value_actions: [{value: written, new_value: write}]}]
+      - include: '^node_disk_(?P<direction>reads|writes)_completed_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.operations
+        operations: [{action: update_label, label: direction, value_actions: [{value: reads, new_value: read}, {value: writes, new_value: write}]}]
+      - {include: '^node_disk_(?P<direction>read|write)_time_seconds_total$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: system.disk.operation_time}
+      - {include: node_disk_io_time_seconds_total, action: update, new_name: system.disk.io_time}
+      # --- system.network.* ---
+      - {include: '^node_network_(?P<direction>receive|transmit)_bytes_total$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: system.network.io}
+      - {include: '^node_network_(?P<direction>receive|transmit)_errs_total$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: system.network.errors}
+      - {include: '^node_network_(?P<direction>receive|transmit)_drop_total$', match_type: regexp, action: combine, aggregation_type: sum,
+         new_name: system.network.dropped}
+
+  # Uptime, SO (os.type/os.description no Resource, para o inventário via
+  # target_info) e tipos iguais aos do host_metrics.
+  transform/node_semconv:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(resource.attributes["os.description"], attributes["pretty_name"]) where metric.name == "node_os_info"
+          - set(resource.attributes["tmp.kernel"], Concat(["Linux", attributes["nodename"], attributes["release"], attributes["version"], attributes["machine"]], " ")) where metric.name == "node_uname_info"
+          - set(value_double, Double(UnixSeconds(Now())) - value_double) where metric.name == "node_boot_time_seconds"
+      - context: resource
+        statements:
+          - set(attributes["os.type"], "linux")
+          - set(attributes["os.description"], Concat([attributes["os.description"], " (", attributes["tmp.kernel"], ")"], "")) where attributes["os.description"] != nil and attributes["tmp.kernel"] != nil
+          - delete_key(attributes, "tmp.kernel")
+      - context: metric
+        statements:
+          - set(metric.name, "system.uptime") where metric.name == "node_boot_time_seconds"
+          - convert_sum_to_gauge() where metric.name == "system.cpu.logical.count"
+
+  # Sobras da conversão (insumos node_* e temporários)
+  filter/node_semconv:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^(node_|tmp_)")
+
+  # ---------------------------------------------------------------------------
+  # windows_exporter -> system.* (mesmos nomes, atributos e semântica do
+  # host_metrics no Windows). Validado contra o agente no mesmo servidor.
+  # Mapeamentos: privileged -> system, dpc descartado (o host_metrics não o
+  # separa); memória free = available; volume -> device/mountpoint; nic -> device.
+  # Sem equivalente (descartados): fila do processador, cache e banda da placa.
+  # ---------------------------------------------------------------------------
+  metrics_transform/windows_semconv:
+    transforms:
+      - {include: windows_memory_available_bytes, action: insert, new_name: tmp_win_mem_neg_available,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: windows_memory_physical_total_bytes, action: insert, new_name: tmp_win_mem_total}
+      - {include: windows_pagefile_free_bytes, action: insert, new_name: tmp_win_pagefile_neg_free,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: windows_logical_disk_free_bytes, action: insert, new_name: tmp_win_disk_neg_free,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      # diferenças: memória used, pagefile used, disco used
+      - {include: '^(?:tmp_win_mem_total|tmp_win_mem_neg_available)$', match_type: regexp, action: combine,
+         aggregation_type: sum, new_name: windows_memory_used_bytes}
+      - {include: '^(?:windows_pagefile_limit_bytes|tmp_win_pagefile_neg_free)$', match_type: regexp, action: combine,
+         aggregation_type: sum, new_name: windows_pagefile_used_bytes}
+      - {include: '^(?:windows_logical_disk_size_bytes|tmp_win_disk_neg_free)$', match_type: regexp, action: combine,
+         aggregation_type: sum, new_name: windows_logical_disk_used_bytes}
+      # system.memory.* / system.paging.usage
+      - {include: windows_memory_physical_total_bytes, action: update, new_name: system.memory.limit}
+      - {include: '^windows_memory_(?P<state>used|available)_bytes$', match_type: regexp, action: combine,
+         aggregation_type: sum, new_name: system.memory.usage,
+         operations: [{action: update_label, label: state, value_actions: [{value: available, new_value: free}]}]}
+      - {include: '^windows_pagefile_(?P<state>used|free)_bytes$', match_type: regexp, action: combine,
+         aggregation_type: sum, new_name: system.paging.usage,
+         operations: [{action: update_label, label: file, new_label: device}]}
+      # system.filesystem.usage (volume com letra = device e mountpoint)
+      - include: '^windows_logical_disk_(?P<state>used|free)_bytes$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.filesystem.usage
+        operations:
+          - {action: update_label, label: volume, new_label: device}
+          - {action: add_label, new_label: mode, new_value: rw}
+      # system.disk.*
+      - include: '^windows_logical_disk_(?P<direction>read|write)_bytes_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.io
+        operations: [{action: update_label, label: volume, new_label: device}]
+      - include: '^windows_logical_disk_(?P<direction>read|write)s_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.operations
+        operations: [{action: update_label, label: volume, new_label: device}]
+      - include: '^windows_logical_disk_(?P<direction>read|write)_seconds_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.operation_time
+        operations: [{action: update_label, label: volume, new_label: device}]
+      # system.network.*
+      - include: '^windows_net_bytes_(?P<direction>received|sent)_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.io
+        operations:
+          - {action: update_label, label: nic, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: received, new_value: receive}, {value: sent, new_value: transmit}]}
+      - include: '^windows_net_packets_(?P<direction>received|outbound)_errors_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.errors
+        operations:
+          - {action: update_label, label: nic, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: received, new_value: receive}, {value: outbound, new_value: transmit}]}
+      - include: '^windows_net_packets_(?P<direction>received|outbound)_discarded_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.dropped
+        operations:
+          - {action: update_label, label: nic, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: received, new_value: receive}, {value: outbound, new_value: transmit}]}
+      # system.cpu.*
+      - include: windows_cpu_time_total
+        action: insert
+        new_name: system.cpu.logical.count
+        experimental_match_labels: {mode: idle}
+        operations: [{action: aggregate_labels, label_set: [], aggregation_type: count}]
+      - include: windows_cpu_time_total
+        action: update
+        new_name: system.cpu.time
+        operations:
+          - action: update_label
+            label: mode
+            new_label: state
+            value_actions: [{value: privileged, new_value: system}]
+          - {action: aggregate_labels, label_set: [state], aggregation_type: sum}
+
+  transform/windows_semconv:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(resource.attributes["os.description"], Concat([attributes["product"], " [Version ", attributes["version"], ".", attributes["revision"], "]"], "")) where metric.name == "windows_os_info"
+          - set(value_double, Double(UnixSeconds(Now())) - value_double) where metric.name == "windows_system_boot_time_timestamp"
+      - context: resource
+        statements:
+          - set(attributes["os.type"], "windows")
+      - context: metric
+        statements:
+          - set(metric.name, "system.uptime") where metric.name == "windows_system_boot_time_timestamp"
+          - convert_sum_to_gauge() where metric.name == "system.cpu.logical.count"
+
+  # Sobras da conversão (insumos windows_* do host e temporários). As métricas
+  # windows_mssql_* são tratadas pela conversão do SQL Server.
+  filter/windows_semconv:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^(windows_|tmp_win_)") and not IsMatch(name, "^windows_mssql_")
+      datapoint:
+        - metric.name == "system.cpu.time" and attributes["state"] == "dpc"
+
+  # ---------------------------------------------------------------------------
+  # windows_exporter (coletor mssql) -> sqlserver.* (mesmo formato do receiver
+  # sqlserver do agente: uma identidade por instância, taxas por segundo).
+  # Use depois dos *_windows_semconv. Pré-requisito: o template já converteu
+  # database -> db.namespace e mssql_instance -> sqlserver.instance.name.
+  # Os contadores do Perfmon chegam como gauge, mas são cumulativos: viram Sum
+  # cumulativo -> delta -> taxa por segundo (*.rate, como no receiver).
+  # Sem equivalente calculável (descartado): hit ratio do buffer cache (exige
+  # divisão entre métricas).
+  # ---------------------------------------------------------------------------
+  transform/mssql_semconv_pre:
+    error_mode: ignore
+    metric_statements:
+      - context: metric
+        statements:
+          - convert_gauge_to_sum("cumulative", true) where IsMatch(metric.name, "^windows_mssql_(bufman_page_(reads|writes)|databases_(transactions|log_growths)|sqlstats_(batch_requests|sql_compilations|sql_recompilations)|locks_(deadlocks|lock_waits))$")
+
+  metrics_transform/mssql_semconv:
+    transforms:
+      - {include: windows_mssql_genstats_user_connections, action: update, new_name: sqlserver.user.connection.count}
+      - {include: windows_mssql_genstats_blocked_processes, action: update, new_name: sqlserver.processes.blocked}
+      - include: windows_mssql_bufman_page_life_expectancy_seconds
+        action: update
+        new_name: sqlserver.page.life_expectancy
+        operations: [{action: add_label, new_label: performance_counter.object_name, new_value: Buffer Manager}]
+      - include: '^windows_mssql_bufman_page_(?P<type>read|write)s$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: sqlserver.page.operation.rate
+      - {include: windows_mssql_databases_transactions, action: update, new_name: sqlserver.transaction.rate}
+      - {include: windows_mssql_databases_log_used_percent, action: update, new_name: sqlserver.transaction_log.usage}
+      - {include: windows_mssql_databases_log_growths, action: update, new_name: sqlserver.transaction_log.growth.count}
+      - {include: windows_mssql_sqlstats_batch_requests, action: update, new_name: sqlserver.batch.request.rate}
+      - {include: windows_mssql_sqlstats_sql_compilations, action: update, new_name: sqlserver.batch.sql_compilation.rate}
+      - {include: windows_mssql_sqlstats_sql_recompilations, action: update, new_name: sqlserver.batch.sql_recompilation.rate}
+      # por tipo de recurso de lock -> total da instância
+      - include: windows_mssql_locks_deadlocks
+        action: update
+        new_name: sqlserver.deadlock.rate
+        operations: [{action: aggregate_labels, label_set: [sqlserver.instance.name], aggregation_type: sum}]
+      - include: windows_mssql_locks_lock_waits
+        action: update
+        new_name: sqlserver.lock.wait.rate
+        operations: [{action: aggregate_labels, label_set: [sqlserver.instance.name], aggregation_type: sum}]
+
+  cumulative_to_delta/mssql_semconv:
+    include:
+      match_type: regexp
+      metrics: ['^sqlserver\..+\.rate$']
+
+  delta_to_rate/mssql_semconv:
+    metrics:
+      - sqlserver.page.operation.rate
+      - sqlserver.transaction.rate
+      - sqlserver.batch.request.rate
+      - sqlserver.batch.sql_compilation.rate
+      - sqlserver.batch.sql_recompilation.rate
+      - sqlserver.deadlock.rate
+      - sqlserver.lock.wait.rate
+
+  # Uma identidade por instância (como o receiver): service.instance.id = <host>\<instância>
+  groupbyattrs/mssql_semconv:
+    keys: [sqlserver.instance.name]
+
+  transform/mssql_semconv:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        conditions:
+          - attributes["sqlserver.instance.name"] != nil
+        statements:
+          - set(attributes["service.name"], "mssql")
+          - set(attributes["service.instance.id"], Concat([attributes["host.name"], attributes["sqlserver.instance.name"]], "\\"))
+
+  filter/mssql_semconv:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^windows_mssql_")
+
+  # ---------------------------------------------------------------------------
+  # postgres_exporter -> postgresql.* (mesmo formato do receiver postgresql com
+  # o gate useOTelSemconv: banco em db.namespace). Pré-requisito: o template já
+  # converteu datname -> db.namespace. Sem equivalente (descartados): sessões
+  # por estado (pg_stat_activity) e tamanho do WAL.
+  # ---------------------------------------------------------------------------
+  metrics_transform/pgsql_semconv:
+    transforms:
+      - {include: pg_stat_database_numbackends, action: update, new_name: postgresql.backends}
+      - {include: pg_settings_max_connections, action: update, new_name: postgresql.connection.max}
+      - {include: pg_stat_database_xact_commit, action: update, new_name: postgresql.commits}
+      - {include: pg_stat_database_xact_rollback, action: update, new_name: postgresql.rollbacks}
+      - {include: pg_stat_database_blks_hit, action: update, new_name: postgresql.blks_hit}
+      - {include: pg_stat_database_blks_read, action: update, new_name: postgresql.blks_read}
+      - {include: pg_stat_database_deadlocks, action: update, new_name: postgresql.deadlocks}
+      - {include: pg_stat_database_temp_bytes, action: update, new_name: postgresql.temp.io}
+      - {include: pg_database_size_bytes, action: update, new_name: postgresql.db_size}
+      - {include: pg_stat_database_tup_fetched, action: update, new_name: postgresql.tup_fetched}
+      - {include: pg_stat_database_tup_returned, action: update, new_name: postgresql.tup_returned}
+      - {include: pg_stat_database_tup_inserted, action: update, new_name: postgresql.tup_inserted}
+      - {include: pg_stat_database_tup_updated, action: update, new_name: postgresql.tup_updated}
+      - {include: pg_stat_database_tup_deleted, action: update, new_name: postgresql.tup_deleted}
+      - include: '^pg_stat_bgwriter_checkpoints_(?P<type>req|timed)_total$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: postgresql.bgwriter.checkpoint.count
+        operations: [{action: update_label, label: type, value_actions: [{value: req, new_value: requested}, {value: timed, new_value: scheduled}]}]
+
+  transform/pgsql_semconv:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(resource.attributes["db.system.version"], attributes["short_version"]) where metric.name == "pg_static"
+          - delete_matching_keys(attributes, "^(datid|server)$")
+      - context: resource
+        conditions:
+          - attributes["service.name"] == "postgres-exporter"
+        statements:
+          - set(attributes["service.name"], "postgresql")
+          - set(attributes["db.system.name"], "postgresql")
+
+  filter/pgsql_semconv:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^pg_")
+
+  # ---------------------------------------------------------------------------
+  # mysqld_exporter -> mysql.* (mesmo formato do receiver mysql do agente).
+  # Linhas: o exporter do MySQL 8.4 só expõe Innodb_system_rows_* (o receiver
+  # lê os contadores de linhas do InnoDB) — usadas para mysql.row_operations.
+  # ---------------------------------------------------------------------------
+  # O mysqld_exporter publica os contadores do SHOW GLOBAL STATUS como untyped
+  # (Gauge no OTLP): os cumulativos viram Sum, como no receiver — e o combine
+  # exige o mesmo tipo (ex.: aborted_* + connection_errors_total).
+  transform/mysql_semconv_pre:
+    error_mode: ignore
+    metric_statements:
+      - context: metric
+        statements:
+          - convert_gauge_to_sum("cumulative", true) where IsMatch(metric.name, "^mysql_global_status_(aborted_(clients|connects)|created_tmp_(disk_tables|tables|files)|innodb_row_lock_(time|waits)|innodb_system_rows_(read|inserted|updated|deleted)|innodb_buffer_pool_(read_requests|reads|write_requests)|queries|slow_queries|uptime)$")
+
+  metrics_transform/mysql_semconv:
+    transforms:
+      # idade do checkpoint do redo = current_lsn - checkpoint_lsn
+      - {include: mysql_global_status_innodb_redo_log_checkpoint_lsn, action: insert, new_name: tmp_mysql_neg_checkpoint_lsn,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: '^(?:mysql_global_status_innodb_redo_log_current_lsn|tmp_mysql_neg_checkpoint_lsn)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.innodb.redo_log.checkpoint.age}
+      # buffer pool: dirty ; clean = data - dirty ; limit = innodb_buffer_pool_size
+      - {include: mysql_global_status_innodb_buffer_pool_bytes_dirty, action: insert, new_name: tmp_mysql_neg_dirty,
+         operations: [{action: experimental_scale_value, experimental_scale: -1}]}
+      - {include: '^(?:mysql_global_status_innodb_buffer_pool_bytes_data|tmp_mysql_neg_dirty)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: tmp_mysql_bp_clean}
+      - {include: '^(?:tmp_mysql_bp_|mysql_global_status_innodb_buffer_pool_bytes_)(?P<status>clean|dirty)$',
+         match_type: regexp, action: combine, aggregation_type: sum, new_name: mysql.buffer_pool.usage}
+      - {include: mysql_global_variables_innodb_buffer_pool_size, action: update, new_name: mysql.buffer_pool.limit}
+      - {include: '^mysql_global_status_innodb_buffer_pool_(?P<operation>read_requests|reads|write_requests)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.buffer_pool.operations}
+      - {include: mysql_up, action: update, new_name: mysql.server.healthy}
+      - {include: mysql_global_status_uptime, action: update, new_name: mysql.uptime}
+      - {include: mysql_global_status_queries, action: update, new_name: mysql.query.count}
+      - {include: mysql_global_status_slow_queries, action: update, new_name: mysql.query.slow.count}
+      - {include: mysql_global_status_max_used_connections, action: update, new_name: mysql.max_used_connections}
+      - {include: '^mysql_global_status_threads_(?P<kind>connected|running|cached)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.threads}
+      - {include: '^mysql_global_status_innodb_row_lock_(?P<kind>time|waits)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.row_locks}
+      - {include: '^mysql_global_status_innodb_system_rows_(?P<operation>read|inserted|updated|deleted)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.row_operations}
+      - {include: '^mysql_global_status_created_tmp_(?P<resource>disk_tables|tables|files)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.tmp_resources}
+      # erros de conexão: connection_errors_total{error} + aborted_clients/aborted_connects
+      - {include: mysql_global_status_aborted_connects, action: update, new_name: tmp_mysql_aborted,
+         operations: [{action: add_label, new_label: error, new_value: aborted}]}
+      - {include: mysql_global_status_aborted_clients, action: update, new_name: tmp_mysql_aborted_clients,
+         operations: [{action: add_label, new_label: error, new_value: aborted_clients}]}
+      - {include: '^(?:mysql_global_status_connection_errors_total|tmp_mysql_aborted|tmp_mysql_aborted_clients)$', match_type: regexp,
+         action: combine, aggregation_type: sum, new_name: mysql.connection.errors}
+
+  transform/mysql_semconv:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(resource.attributes["db.system.version"], attributes["version"]) where metric.name == "mysql_version_info"
+      - context: resource
+        conditions:
+          - attributes["service.name"] == "mysqld-exporter"
+        statements:
+          - set(attributes["service.name"], "mysql")
+          - set(attributes["db.system.name"], "mysql")
+
+  filter/mysql_semconv:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^(mysql_|tmp_mysql_)")

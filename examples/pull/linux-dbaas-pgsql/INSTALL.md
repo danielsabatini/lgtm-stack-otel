@@ -14,12 +14,14 @@ instância DBaaS (rede privada)                    servidor da stack LGTM
 | Endpoint | Exporter | Job / `service.name` |
 |---|---|---|
 | `http://<IP>:8080/node/metrics` | node_exporter (SO da instância) | `node-exporter` |
-| `http://<IP>:8080/postgres/metrics` | postgres_exporter (banco) | `postgres-exporter` (com `db.system.name=postgresql`) |
+| `http://<IP>:8080/postgres/metrics` | postgres_exporter (banco) | `postgresql` (convertido; `db.system.name=postgresql`) |
 
-Os nomes das métricas são os dos exporters (`node_*`, `pg_*`). O label
-`datname` do postgres_exporter vira **`db.namespace`** (OTel Semantic
-Conventions) — a mesma dimensão usada pelo template
-[examples/push/linux-pgsql](../../push/linux-pgsql/INSTALL.md).
+As métricas são convertidas no `otel-agent` para o **mesmo formato do agente**
+(`system.*` e `postgresql.*`, OTel Semantic Conventions — processors
+`*_node_semconv` e `*_pgsql_semconv` de `otel-agent/pull-semconv.yaml`); o label
+`datname` vira **`db.namespace`**. A instância aparece no dashboard
+**Linux + PostgreSQL Hosts**, igual a um PostgreSQL com agente
+([examples/push/linux-pgsql](../../push/linux-pgsql/INSTALL.md)).
 
 Validado contra instância DBaaS PostgreSQL **16.11** (Magalu Cloud, br-se1).
 
@@ -82,13 +84,15 @@ O arquivo em `otel-agent/pull.d/` contém IPs do ambiente e não é versionado.
 
 | Origem | Allowlist | Séries por instância (referência) |
 |---|---|---|
-| node_exporter | mesma de [examples/pull/linux](../linux/INSTALL.md) + `up` | ~95 numa instância com 4 vCPUs e 2 discos |
-| postgres_exporter | `pg_up`, `pg_static` (versão), `pg_settings_max_connections`, `pg_stat_activity_count`, `pg_database_size_bytes`, `pg_wal_size_bytes`, `pg_stat_database_*` (numbackends, xact_commit/rollback, tup_*, deadlocks, temp_bytes, blks_hit/read) + `up` | 44 com 2 bancos de aplicação |
+| node_exporter → `system.*` | mesma de [examples/pull/linux](../linux/INSTALL.md) + `up` | ~58 numa instância com 4 vCPUs e 2 discos |
+| postgres_exporter → `postgresql.*` | `pg_stat_database_*` → `backends`, `commits`, `rollbacks`, `tup_*`, `deadlocks`, `temp.io`, `blks_hit/read`; `pg_database_size_bytes` → `db_size`; `pg_settings_max_connections` → `connection.max`; checkpoints → `bgwriter.checkpoint.count{type}`; `pg_static` → `db.system.version` + `up` | ~30 com 2 bancos de aplicação |
 
 Descartados na origem: os bancos internos `template0`/`template1` (metade das
 séries por banco, sem uso operacional), o label `server` (caminho do socket,
 igual em toda série), séries sintéticas `scrape_*` e pseudo-dispositivos.
-Referência: 44 séries de banco contra 597 expostas pelo postgres_exporter.
+Sem equivalente no receiver (descartados): sessões por estado
+(`pg_stat_activity_count`) e tamanho do WAL. Referência: ~30 séries de banco
+contra 597 expostas pelo postgres_exporter.
 
 ---
 
@@ -97,20 +101,20 @@ Referência: 44 séries de banco contra 597 expostas pelo postgres_exporter.
 ```bash
 H="dbaas-pgsql-01"
 
-# Disponibilidade: up (scrape) e pg_up (exporter conectado ao banco)
+# Disponibilidade do scrape
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
-  --data-urlencode "query={__name__=~\"up|pg_up\", \"host.name\"=\"$H\"}"
+  --data-urlencode "query={\"up\", \"host.name\"=\"$H\"}"
 
 # Commits por banco
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
-  --data-urlencode "query={\"pg_stat_database_xact_commit\", \"host.name\"=\"$H\"}"
+  --data-urlencode "query={\"postgresql.commits\", \"host.name\"=\"$H\"}"
 ```
 
 Os contadores devem coincidir com o endpoint de origem (ex.: comparar
 `pg_stat_database_xact_commit` do banco em `http://<IP>:8080/postgres/metrics`).
 
-No Grafana: **Explore** → **Mimir** →
-`sum by ("db.namespace") (rate({"pg_stat_database_xact_commit", "host.name"="dbaas-pgsql-01"}[5m]))`.
+No Grafana: dashboard **Hosts + Database → Linux + PostgreSQL Hosts**,
+selecionando a instância.
 
 ---
 
@@ -119,7 +123,7 @@ No Grafana: **Explore** → **Mimir** →
 | Sintoma | Causa provável |
 |---|---|
 | `up = 0` | Sem rota até `:8080` (security group, VPC) ou IP errado |
-| `up = 1` e `pg_up = 0` | Proxy responde, mas o postgres_exporter não conecta ao banco — verificar no painel do DBaaS |
+| `up = 1` sem séries `postgresql.*` | Proxy responde, mas o postgres_exporter não conecta ao banco — verificar no painel do DBaaS |
 | Métricas do banco com host errado | IP/identidade diferentes entre os jobs `node-exporter` e `postgres-exporter` |
 
 ---

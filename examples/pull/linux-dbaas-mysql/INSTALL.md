@@ -14,11 +14,13 @@ instância DBaaS (rede privada)                 servidor da stack LGTM
 | Endpoint | Exporter | Job / `service.name` |
 |---|---|---|
 | `http://<IP>:8080/node/metrics` | node_exporter (SO da instância) | `node-exporter` |
-| `http://<IP>:8080/mysql/metrics` | mysqld_exporter (banco) | `mysqld-exporter` (com `db.system.name=mysql`) |
+| `http://<IP>:8080/mysql/metrics` | mysqld_exporter (banco) | `mysql` (convertido; `db.system.name=mysql`) |
 
-Os nomes das métricas são os dos exporters (`node_*`, `mysql_*`). Métricas
-`mysql.*` do receiver nativo exigem conexão direta ao banco com usuário de
-monitoramento (ver [examples/push/linux-mysql](../../push/linux-mysql/INSTALL.md)).
+As métricas são convertidas no `otel-agent` para o **mesmo formato do agente**
+(`system.*` e `mysql.*`, OTel Semantic Conventions — processors `*_node_semconv`
+e `*_mysql_semconv` de `otel-agent/pull-semconv.yaml`): a instância aparece no
+dashboard **Linux + MySQL Hosts**, igual a um MySQL com agente
+([examples/push/linux-mysql](../../push/linux-mysql/INSTALL.md)).
 
 Validado contra instância DBaaS MySQL **8.4.6** (Magalu Cloud, br-se1).
 
@@ -81,8 +83,12 @@ O arquivo em `otel-agent/pull.d/` contém IPs do ambiente e não é versionado.
 
 | Origem | Allowlist | Séries por instância (referência) |
 |---|---|---|
-| node_exporter | mesma de [examples/pull/linux](../linux/INSTALL.md) (CPU, load, memória, swap, pressão, disco, filesystem, rede, boot, uname/os) + `up` | ~95 numa instância com 4 vCPUs e 2 discos |
-| mysqld_exporter | `mysql_up`, `max_connections`, `threads_connected`, `uptime`, `questions`, `slow_queries`, redo log, tabelas temporárias em disco, `innodb_system_rows_*`, buffer pool, row lock waits + `up` | 16 |
+| node_exporter → `system.*` | mesma de [examples/pull/linux](../linux/INSTALL.md) + `up` | ~58 numa instância com 4 vCPUs e 2 discos |
+| mysqld_exporter → `mysql.*` | `mysql_up` → `server.healthy`, `uptime`, `queries` → `query.count`, `slow_queries`, `threads_*` → `threads{kind}`, `max_used_connections`, erros de conexão (+ `aborted_*`), `innodb_row_lock_*` → `row_locks{kind}`, `innodb_system_rows_*` → `row_operations`, `created_tmp_*` → `tmp_resources`, buffer pool (uso clean/dirty, limite, operações), idade do checkpoint do redo; versão em `db.system.version` | ~33 |
+
+O `mysqld_exporter` publica os contadores do `SHOW GLOBAL STATUS` como *untyped*:
+a conversão os grava como Sum cumulativo, como o receiver. O exporter do MySQL
+8.4 só expõe `Innodb_system_rows_*`, usados para `mysql.row_operations`.
 
 Contra ~1.500 (node) + ~3.000 (mysqld) séries expostas. Séries sintéticas
 `scrape_*` e pseudo-dispositivos/filesystems são descartados.
@@ -94,18 +100,17 @@ Contra ~1.500 (node) + ~3.000 (mysqld) séries expostas. Séries sintéticas
 ```bash
 H="dbaas-mysql-01"
 
-# Disponibilidade: up (scrape) e mysql_up (exporter conectado ao banco)
+# Disponibilidade: up (scrape) e mysql.server.healthy (exporter conectado ao banco)
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
-  --data-urlencode "query={__name__=~\"up|mysql_up\", \"host.name\"=\"$H\"}"
+  --data-urlencode "query={__name__=~\"up|mysql.server.healthy\", \"host.name\"=\"$H\"}"
 
 # Séries por job
 docker run --rm --network lgtm curlimages/curl -sG "http://mimir:9009/prometheus/api/v1/query" \
   --data-urlencode "query=count by (job) ({\"host.name\"=\"$H\"})"
 ```
 
-No Grafana: **Explore** → **Mimir** →
-`{"mysql_global_status_threads_connected", "host.name"="dbaas-mysql-01"} / on() group_left {"mysql_global_variables_max_connections", "host.name"="dbaas-mysql-01"}`
-(saturação de conexões).
+No Grafana: dashboard **Hosts + Database → Linux + MySQL Hosts**, selecionando a
+instância.
 
 ---
 
@@ -114,7 +119,7 @@ No Grafana: **Explore** → **Mimir** →
 | Sintoma | Causa provável |
 |---|---|
 | `up = 0` | Sem rota até `:8080` (security group, VPC) ou IP errado |
-| `up = 1` e `mysql_up = 0` | Proxy responde, mas o mysqld_exporter não conecta ao banco — verificar no painel do DBaaS |
+| `up = 1` e `mysql.server.healthy = 0` | Proxy responde, mas o mysqld_exporter não conecta ao banco — verificar no painel do DBaaS |
 | Métricas do banco com host errado | IP/identidade diferentes entre os jobs `node-exporter` e `mysqld-exporter` |
 
 ---

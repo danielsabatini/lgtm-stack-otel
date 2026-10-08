@@ -40,14 +40,15 @@ flowchart TB
     classDef extBox fill:#f1f3f5,stroke:#868e96,stroke-dasharray: 4 4,color:#495057;
 
     subgraph EXT ["🌐 Aplicações & Servidores Remotos (Rede / VPC)"]
-        APP1["🖥️ Hosts Remotos<br/>(OTel Collector + OBI)"]:::extBox
+        APP1["🖥️ Hosts com Agente (push)<br/>(OTel Collector + OBI)"]:::extBox
         APP2["📦 Aplicações Microservices<br/>(OTLP Traces / Metrics)"]:::extBox
         APP3["📜 Emissores de Logs<br/>(OTLP Logs)"]:::extBox
+        LEGACY["🗃️ Servidores Legados sem Agente (pull)<br/>(node_exporter :9100, windows_exporter :9182,<br/>exporters de DBaaS, CoreDNS / etcd)"]:::extBox
     end
 
     subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
-        subgraph PRIV ["🛡️ Camada Host / Kernel (Modo Privilegiado)"]
-            AGENT["⚡ Agent Local (legado Alloy, em migração)<br/>• privileged: true<br/>• Lê /proc, /sys, /rootfs<br/>• Coleta Journald e Docker Socket"]:::privBox
+        subgraph PRIV ["🛡️ Camada Host (Leitura do Host, Sem Portas Expostas)"]
+            AGENT["⚡ otel-agent (servidor da stack)<br/>• root sem capabilities, mounts read-only<br/>• host_metrics, docker_stats, journald<br/>• Pull de exporters legados (pull.d)"]:::privBox
         end
 
         subgraph UNPRIV ["🕸️ Camada de Ingestão de Rede (Modo Seguro / Desprivilegiado)"]
@@ -66,8 +67,9 @@ flowchart TB
     end
 
     %% Conexões e Fluxos
-    AGENT -->|"OTLP Interno<br/>(Sem porta exposta)"| GATEWAY
-    APP1 -->|"OTLP Métricas e Logs<br/>(Portas 4317 / 4318)"| GATEWAY
+    AGENT -->|"OTLP local<br/>(127.0.0.1:4317)"| GATEWAY
+    LEGACY -.->|"Métricas via scrape HTTP<br/>(conexão iniciada pelo otel-agent)"| AGENT
+    APP1 -->|"OTLP Métricas, Logs e Traces<br/>(Portas 4317 / 4318)"| GATEWAY
     APP2 -->|"OTLP gRPC / HTTP<br/>(Portas 4317 / 4318)"| GATEWAY
     APP3 -->|"OTLP Logs<br/>(Portas 4317 / 4318)"| GATEWAY
 
@@ -114,7 +116,7 @@ Instalado em cada host monitorado (templates em `examples/push/`), sem portas ex
 
 > **Servidor da própria stack:** o serviço `otel-agent` do `compose.yaml` é o mesmo Collector em container (`otel-agent/Dockerfile`: binário oficial + `journalctl`), com `network_mode: host` e `pid: host` para enxergar a rede e os processos do host, root **sem nenhuma capability** (`cap_drop: ALL`, `no-new-privileges`) e todos os mounts somente leitura (`/` em `/hostfs`, socket do Docker, logs de containers, journal). Além do host, coleta métricas de containers (`docker_stats`) e os logs dos containers da stack. Não expõe portas (o self-monitoring usa `127.0.0.1:14317`).
 >
-> **Servidores legados sem agente (pull):** o `otel-agent` também carrega os arquivos `otel-agent/pull.d/*.yaml` (templates em `examples/pull/`) e faz o scrape de `node_exporter` remotos, convertendo para OTLP com a identidade OpenTelemetry declarada por alvo. Ele só **inicia** conexões (stack → `:9100` do servidor legado), sem abrir portas; o `node_exporter` remoto deve aceitar a `:9100` apenas do IP da stack.
+> **Servidores legados sem agente (pull):** o `otel-agent` também carrega os arquivos `otel-agent/pull.d/*.yaml` (templates em `examples/pull/`) e faz o scrape dos exporters remotos (`node_exporter`, `windows_exporter`, exporters de DBaaS MySQL/PostgreSQL, CoreDNS/etcd), convertendo para OTLP com a identidade OpenTelemetry declarada por alvo e para o **mesmo formato do agente** (nomes, atributos e semântica da OTel Semantic Conventions — `otel-agent/pull-semconv.yaml`; ver [METRICS.md](METRICS.md) §7.1). Push e pull são indistinguíveis no Mimir e nos dashboards. Ele só **inicia** conexões (stack → porta do exporter, ex.: `:9100`/`:9182`), sem abrir portas; o exporter remoto deve aceitar conexões apenas do IP da stack. Servidores coletados por pull não enviam logs nem traces.
 
 ### 4.3 Backends Distroless (Loki, Mimir e Tempo)
 As bases de dados utilizam imagens *distroless* (sem shell e sem utilitários de sistema operacional desnecessários):

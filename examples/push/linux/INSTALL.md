@@ -294,8 +294,8 @@ Procure por `"result":[...]` **não vazio**.
 No Grafana: **Explore** → **Loki** → `{host_name="<HOSTNAME>", service_name="ssh"}`
 e confira nos detalhes do log `severity_text`, `process.pid` e `category`.
 
-> Os dashboards provisionados ainda usam os nomes Prometheus antigos e estão
-> sendo refeitos sobre os nomes OpenTelemetry — até lá, valide pelo Explore.
+> No Grafana: dashboard **Hosts → Linux Hosts** (o mesmo para servidores com
+> agente e coletados por pull), incluindo as abas Applications (OBI) e Traces.
 
 ---
 

@@ -164,6 +164,8 @@ services:
       - LGTM_GATEWAY_ENDPOINT=127.0.0.1:4317
     volumes:
       - ./otel-agent/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      # Conversão das coletas pull para a OTel Semantic Conventions (processors compartilhados)
+      - ./otel-agent/pull-semconv.yaml:/etc/otelcol-contrib/pull-semconv.yaml:ro
       # Coletas pull de servidores legados (templates em examples/pull/)
       - ./otel-agent/pull.d:/etc/otelcol-contrib/pull.d:ro
       - otel-agent-data:/var/lib/otelcol

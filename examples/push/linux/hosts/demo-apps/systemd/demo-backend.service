@@ -1,6 +1,6 @@
 [Unit]
-Description=Demo tier (backend) para validacao de traces distribuidos via Beyla eBPF
-Documentation=https://grafana.com/docs/alloy/latest/reference/components/beyla/beyla.ebpf/
+Description=Demo tier (backend) para validacao de traces distribuidos via OBI (eBPF)
+Documentation=https://opentelemetry.io/docs/zero-code/obi/
 After=network-online.target
 Wants=network-online.target
 

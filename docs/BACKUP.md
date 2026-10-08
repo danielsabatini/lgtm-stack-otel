@@ -15,7 +15,7 @@ Por essa razão, backups manuais baseados em cópia direta de arquivos com o ban
 ## 2. Objetivo
 
 1. **Garantir Consistência dos Dados:** Assegurar que os dados de métricas (Mimir), logs (Loki) e traces (Tempo) sejam copiados sem corrupção de índices.
-2. **Proteger Configurações e Dashboards:** Garantir o backup seguro do banco relacional do Grafana (`grafana.db`) e do arquivo de credenciais `.env`.
+2. **Proteger Configurações e Dashboards:** Garantir o backup seguro do banco relacional do Grafana (`grafana.db`), do arquivo de credenciais `.env` e das coletas pull em `otel-agent/pull.d/*.yaml` — os dois últimos não são versionados no Git.
 3. **Estabelecer RTO e RPO Mínimos:** Fornecer um roteiro rápido de restauração em caso de falha catastrófica da máquina virtual.
 
 ---
@@ -63,7 +63,7 @@ docker compose start grafana
 
 ## 5. Automação e Rotação Noturna de Backups
 
-Para ambientes onde não há snapshot automático de bloco, utilize o script de automação fornecido no repositório. Ele realiza a exportação compactada dos volumes e descarta automaticamente backups com mais de 7 dias para evitar o esgotamento do disco:
+Para ambientes onde não há snapshot automático de bloco, utilize o script de automação fornecido no repositório. Ele realiza a exportação compactada dos volumes de dados (Grafana, Loki, Mimir, Tempo) e das coletas pull (`otel-agent/pull.d/*.yaml`) e descarta automaticamente backups com mais de 7 dias para evitar o esgotamento do disco:
 
 👉 **[Script de Automação de Backup](../artifacts/scripts/backup-rotation.sh)**
 
@@ -83,7 +83,7 @@ Antes de confiar no seu backup, valide se os arquivos não foram corrompidos:
 sqlite3 backup/grafana-YYYYMMDD.db "PRAGMA integrity_check;"
 
 # 2. Validar se o arquivo compactado de logs ou métricas pode ser lido:
-tar -tvf backup/lgtm-stack-otel_loki-data-YYYYMMDD.tar.gz | head -n 10
+tar -tvf backup/lgtm-stack-otel_loki-data-YYYYMMDD_HHMM.tar.gz | head -n 10
 ```
 
 ---
@@ -113,6 +113,7 @@ git clone <url-do-repositorio> lgtm-stack
 cd lgtm-stack
 
 # Restaurar o arquivo .env a partir do seu cofre de senhas seguro
+# Restaurar as coletas pull (se houver): tar xzf <backup>/otel-agent-pull.d-<data>.tar.gz
 # Iniciar todos os serviços:
 docker compose up -d
 ```

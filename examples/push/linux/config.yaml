@@ -39,6 +39,8 @@ receivers:
       cpu:
         metrics:
           system.cpu.time: { enabled: true }
+          # Nº de CPUs lógicas: referência de Load x Cores e inventário (1 série)
+          system.cpu.logical.count: { enabled: true }
       load:
         metrics:
           system.cpu.load_average.1m: { enabled: true }
@@ -173,6 +175,9 @@ processors:
     override: true
     system:
       hostname_sources: [os]
+      # Distribuição/versão do SO no target_info (inventário; não gera série nova)
+      resource_attributes:
+        os.description: { enabled: true }
 
   batch: {}
 

@@ -12,10 +12,10 @@
 # O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
 # declarada por instância e envia ao otel-gateway (que continua só OTLP).
 #
-# Nomes das métricas: os dos exporters (node_*, pg_*). O label datname vira
-# db.namespace (OTel Semantic Conventions), a mesma dimensão do template push
-# examples/push/linux-pgsql. Para métricas postgresql.* do receiver nativo é
-# preciso conexão direta ao banco.
+# Formato: o mesmo do agente (examples/push/linux-pgsql). O label datname vira
+# db.namespace e os processors *_node_semconv e *_pgsql_semconv
+# (otel-agent/pull-semconv.yaml) convertem node_* e pg_* para system.* e
+# postgresql.* — os dashboards não distinguem push de pull.
 #
 # Política Lean: só as allowlists abaixo, sem os bancos internos template0 /
 # template1 e sem o label "server" (caminho do socket, igual em toda série).
@@ -46,7 +46,7 @@ receivers:
             - source_labels: [__name__]
               action: keep
               regex: >-
-                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SUnreclaim_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_disk_read_bytes_total|node_disk_written_bytes_total|node_disk_reads_completed_total|node_disk_writes_completed_total|node_disk_read_time_seconds_total|node_disk_write_time_seconds_total|node_disk_io_time_seconds_total|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
             - source_labels: [device]
               regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
               action: drop
@@ -78,7 +78,7 @@ receivers:
             - source_labels: [__name__]
               action: keep
               regex: >-
-                up|pg_up|pg_static|pg_settings_max_connections|pg_stat_activity_count|pg_database_size_bytes|pg_wal_size_bytes|pg_stat_database_numbackends|pg_stat_database_xact_commit|pg_stat_database_xact_rollback|pg_stat_database_tup_returned|pg_stat_database_tup_fetched|pg_stat_database_tup_inserted|pg_stat_database_tup_updated|pg_stat_database_tup_deleted|pg_stat_database_deadlocks|pg_stat_database_temp_bytes|pg_stat_database_blks_hit|pg_stat_database_blks_read
+                up|pg_static|pg_settings_max_connections|pg_database_size_bytes|pg_stat_database_numbackends|pg_stat_database_xact_commit|pg_stat_database_xact_rollback|pg_stat_database_tup_returned|pg_stat_database_tup_fetched|pg_stat_database_tup_inserted|pg_stat_database_tup_updated|pg_stat_database_tup_deleted|pg_stat_database_deadlocks|pg_stat_database_temp_bytes|pg_stat_database_blks_hit|pg_stat_database_blks_read|pg_stat_bgwriter_checkpoints_req_total|pg_stat_bgwriter_checkpoints_timed_total
             # Bancos internos (não recebem conexões de aplicação)
             - source_labels: [datname]
               regex: 'template0|template1'
@@ -123,5 +123,7 @@ service:
     # SEM resource_detection: a identidade é a da instância DBaaS, não a da stack.
     metrics/pull_dbaas_pgsql:
       receivers: [prometheus/pull_dbaas_pgsql]
-      processors: [memory_limiter, filter/pull_dbaas_pgsql, groupbyattrs/pull_dbaas_pgsql, transform/pull_dbaas_pgsql, batch]
+      processors: [memory_limiter, filter/pull_dbaas_pgsql, groupbyattrs/pull_dbaas_pgsql, transform/pull_dbaas_pgsql,
+                   metrics_transform/node_semconv, transform/node_semconv, filter/node_semconv,
+                   metrics_transform/pgsql_semconv, transform/pgsql_semconv, filter/pgsql_semconv, batch]
       exporters: [otlp_grpc/gateway]

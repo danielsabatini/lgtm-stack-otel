@@ -55,7 +55,9 @@ O OTel Gateway (`otel-gateway/config.yaml`) aplica o padrão **Tail Sampling** d
 
 O `metrics_generator` do Tempo está **desabilitado**: cada backend armazena apenas o seu sinal e só o Gateway escreve nos backends (ver [ARCHITECTURE.md](ARCHITECTURE.md)). Além disso, o Tempo só enxergaria os traces que sobraram do tail sampling (erros, lentos e 5% dos OK), subestimando a taxa de requisições.
 
-As métricas de taxa, erros e latência e o Service Graph passam a ser emitidos **na origem** (OBI no agente), em OTLP e com a semântica OpenTelemetry, e chegam ao Mimir pelo Gateway como qualquer outra métrica. Exemplars dessas métricas carregam o label `trace_id`, usado pelo datasource Mimir para abrir o trace no Tempo.
+As métricas de taxa, erros e latência passam a ser emitidas **na origem** (OBI no agente, `features: [application]` em `examples/push/linux/obi.yaml`), em OTLP e com a semântica OpenTelemetry, e chegam ao Mimir pelo Gateway como qualquer outra métrica. Exemplars dessas métricas carregam o label `trace_id`, usado pelo datasource Mimir para abrir o trace no Tempo.
+
+> **Service Graph:** as métricas de grafo de serviços do OBI (feature `application_service_graph`) estão **desligadas** pela Política Lean; serão avaliadas junto com a reescrita dos dashboards (ver [ROADMAP.md](../ROADMAP.md)).
 
 Verificação de que o Tempo não escreve métricas:
 

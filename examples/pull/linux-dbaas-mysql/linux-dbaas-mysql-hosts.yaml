@@ -12,9 +12,10 @@
 # O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
 # declarada por instância e envia ao otel-gateway (que continua só OTLP).
 #
-# Nomes das métricas: os dos exporters (node_*, mysql_*). Para métricas mysql.*
-# do receiver nativo é preciso conexão direta ao banco (ver
-# examples/push/linux-mysql).
+# Formato: o mesmo do agente (examples/push/linux-mysql). Os processors
+# *_node_semconv e *_mysql_semconv (otel-agent/pull-semconv.yaml) convertem
+# node_* e mysql_* para system.* e mysql.* — os dashboards não distinguem push
+# de pull.
 #
 # Política Lean: só as allowlists abaixo (~64 séries de SO + 14 de banco por
 # instância, contra ~1.500 + ~3.000 expostas pelos exporters).
@@ -45,7 +46,7 @@ receivers:
             - source_labels: [__name__]
               action: keep
               regex: >-
-                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_pressure_cpu.*|node_pressure_io.*|node_pressure_memory.*|node_disk_read.*|node_disk_write.*|node_disk_written.*|node_disk_io_time.*|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_speed_bytes|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
+                up|node_boot_time_seconds|node_uname_info|node_os_info|node_cpu_seconds_total|node_load1|node_load5|node_load15|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_SReclaimable_bytes|node_memory_SUnreclaim_bytes|node_memory_SwapFree_bytes|node_memory_SwapTotal_bytes|node_disk_read_bytes_total|node_disk_written_bytes_total|node_disk_reads_completed_total|node_disk_writes_completed_total|node_disk_read_time_seconds_total|node_disk_write_time_seconds_total|node_disk_io_time_seconds_total|node_filesystem_avail_bytes|node_filesystem_files|node_filesystem_files_free|node_filesystem_free_bytes|node_filesystem_size_bytes|node_network_receive_bytes_total|node_network_receive_drop_total|node_network_receive_errs_total|node_network_transmit_bytes_total|node_network_transmit_drop_total|node_network_transmit_errs_total
             - source_labels: [device]
               regex: '^(loop|ram|fd|sr)[0-9]*$|^dm-[0-9]+$'
               action: drop
@@ -77,7 +78,7 @@ receivers:
             - source_labels: [__name__]
               action: keep
               regex: >-
-                up|mysql_up|mysql_global_variables_max_connections|mysql_global_status_threads_connected|mysql_global_status_uptime|mysql_global_status_questions|mysql_global_status_slow_queries|mysql_global_status_innodb_redo_log_physical_size|mysql_global_status_created_tmp_disk_tables|mysql_global_status_innodb_system_rows_read|mysql_global_status_innodb_system_rows_inserted|mysql_global_status_innodb_system_rows_updated|mysql_global_status_innodb_system_rows_deleted|mysql_global_status_innodb_buffer_pool_bytes_data|mysql_global_status_innodb_row_lock_waits
+                up|mysql_up|mysql_version_info|mysql_global_status_uptime|mysql_global_status_queries|mysql_global_status_slow_queries|mysql_global_status_threads_connected|mysql_global_status_threads_running|mysql_global_status_threads_cached|mysql_global_status_max_used_connections|mysql_global_status_connection_errors_total|mysql_global_status_aborted_clients|mysql_global_status_aborted_connects|mysql_global_status_innodb_row_lock_waits|mysql_global_status_innodb_row_lock_time|mysql_global_status_innodb_system_rows_read|mysql_global_status_innodb_system_rows_inserted|mysql_global_status_innodb_system_rows_updated|mysql_global_status_innodb_system_rows_deleted|mysql_global_status_created_tmp_disk_tables|mysql_global_status_created_tmp_tables|mysql_global_status_created_tmp_files|mysql_global_status_innodb_buffer_pool_read_requests|mysql_global_status_innodb_buffer_pool_reads|mysql_global_status_innodb_buffer_pool_write_requests|mysql_global_status_innodb_buffer_pool_bytes_data|mysql_global_status_innodb_buffer_pool_bytes_dirty|mysql_global_variables_innodb_buffer_pool_size|mysql_global_status_innodb_redo_log_current_lsn|mysql_global_status_innodb_redo_log_checkpoint_lsn
 
 processors:
   # Séries sintéticas do scrape (fora do metric_relabel): descarta. A
@@ -110,5 +111,7 @@ service:
     # SEM resource_detection: a identidade é a da instância DBaaS, não a da stack.
     metrics/pull_dbaas_mysql:
       receivers: [prometheus/pull_dbaas_mysql]
-      processors: [memory_limiter, filter/pull_dbaas_mysql, groupbyattrs/pull_dbaas_mysql, transform/pull_dbaas_mysql, batch]
+      processors: [memory_limiter, filter/pull_dbaas_mysql, groupbyattrs/pull_dbaas_mysql, transform/pull_dbaas_mysql,
+                   metrics_transform/node_semconv, transform/node_semconv, filter/node_semconv,
+                   transform/mysql_semconv_pre, metrics_transform/mysql_semconv, transform/mysql_semconv, filter/mysql_semconv, batch]
       exporters: [otlp_grpc/gateway]

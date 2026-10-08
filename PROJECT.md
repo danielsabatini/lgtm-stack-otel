@@ -1,14 +1,14 @@
 # PROJECT.md
 
-> Regras deste repositório, agnósticas de ferramenta de IA (`AGENTS.md` §8.2). Conflito com `AGENTS.md` é resolvido a favor do `AGENTS.md` (§1). Regra de ferramenta específica (atalhos, permissões, configuração de cliente) não pertence aqui — vá para o `<FERRAMENTA>.md` correspondente.
+> Regras deste repositório, agnósticas de harness de IA (`BOOTSTRAP.md` §7.1). Conflito com `AGENTS.md` é resolvido a favor do `AGENTS.md` (§4 — regras locais complementam, nunca contradizem). Regra de harness específica (atalhos, permissões, configuração de cliente) não pertence aqui — vá para o `<HARNESS>.md` correspondente (`BOOTSTRAP.md` §7.2).
 
 ## O que é este repositório
 
-Stack de observabilidade (LGTM: Loki, Grafana, Tempo, Mimir) self-hosted via Docker Compose, voltada para deploy em VMs (principalmente Magalu Cloud). Não é código de aplicação — é infraestrutura declarativa: `compose.yaml`, configs YAML dos backends e do OpenTelemetry Collector (gateway e agents), templates `.alloy` legados em migração, dashboards JSON do Grafana e documentação extensa em Markdown (PT-BR).
+Stack de observabilidade (LGTM: Loki, Grafana, Tempo, Mimir) self-hosted via Docker Compose, voltada para deploy em VMs (principalmente Magalu Cloud). Não é código de aplicação — é infraestrutura declarativa: `compose.yaml`, configs YAML dos backends e do OpenTelemetry Collector (gateway e agents),  dashboards JSON do Grafana e documentação extensa em Markdown (PT-BR).
 
 ## Governança de documentação (regra crítica)
 
-Este repositório segue **Single Source of Truth** estrito (ver `CONTRIBUTING.md`): cada `.md` de documentação técnica é a única fonte de verdade sobre seu tema — é proibido duplicar informação técnica entre arquivos, sempre referencie via link. Na raiz ficam apenas os 5 arquivos padrão exigidos por `AGENTS.md` §11.1 (`README.md`, `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE`) mais `AGENTS.md`, `PROJECT.md`, `MEMORY.md` e os `<FERRAMENTA>.md`; toda a documentação temática (não-padrão) mora em `docs/`. Antes de editar algo, identifique o documento dono do assunto:
+Este repositório segue **Single Source of Truth** estrito (ver `CONTRIBUTING.md`): cada `.md` de documentação técnica é a única fonte de verdade sobre seu tema — é proibido duplicar informação técnica entre arquivos, sempre referencie via link. Na raiz ficam apenas os 5 arquivos padrão (`BOOTSTRAP.md` §4: `README.md`, `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE`) mais `AGENTS.md`, `BOOTSTRAP.md`, `PROJECT.md`, `MEMORY.md` e os `<HARNESS>.md`; toda a documentação temática (não-padrão) mora em `docs/`. Os registros de decisão de arquitetura (ADRs) ficam em `decisions/`, na raiz, numerados (`NNNN-titulo.md`) — **exceção de projeto** ao `BOOTSTRAP.md` §1.3 (que indica `docs/decisions/`), mantida por decisão do responsável pelo repositório. Antes de editar algo, identifique o documento dono do assunto:
 
 | Arquivo | Tema |
 |---|---|
@@ -23,7 +23,7 @@ Este repositório segue **Single Source of Truth** estrito (ver `CONTRIBUTING.md
 | `docs/DASHBOARDS.md` | Fluxo de edição/conversão/provisioning de dashboards |
 | `docs/OBSERVABILITY-METHODOLOGY.md` | Metodologia de observabilidade, taxonomia de pilares, correlação de sinais (M/L/T), SLIs/SLOs e playbook |
 | `docs/ALERTS.md` | Status/placeholder da estratégia de alertas |
-| `ROADMAP.md` (raiz) | Visão de futuro e próximas funcionalidades — arquivo padrão de raiz (`AGENTS.md` §11.1.2), não fica em `docs/` |
+| `ROADMAP.md` (raiz) | Visão de futuro e próximas funcionalidades — arquivo padrão de raiz (`BOOTSTRAP.md` §4), não fica em `docs/` |
 | `CHANGELOG.md` | Histórico de versões |
 
 ### Padrão Estrutural e de Linguagem das Documentações (Mandatório)
@@ -71,13 +71,13 @@ docker run --rm -v $(pwd)/loki/loki.yaml:/etc/loki/local-config.yaml \
 
 Não existe test suite, linter ou build step neste repositório — validação é feita via `docker compose config`, `-verify-config` dos binários, e checagem manual de ingestão pós-deploy (ver checklist em `docs/UPGRADE.md`).
 
-**Ao criar ou editar qualquer template em `examples/`** (config do OpenTelemetry Collector ou `.alloy` legado), rode antes de finalizar:
+**Ao criar ou editar qualquer template em `examples/`**, rode antes de finalizar:
 
 ```bash
 python3 artifacts/scripts/check-examples-consistency.py
 ```
 
-Esse script (requer Docker) (a) valida toda config do OpenTelemetry Collector em `examples/` (YAML com bloco `receivers:`) com `otelcol-contrib validate` na versão pinada em `.env.example` (`OTELCOL_CONTRIB_VERSION`), (b) confere nelas a identidade OpenTelemetry (`resource_detection` com detectores `env` + `system` e `override: true`, saída para `${env:LGTM_GATEWAY_ENDPOINT}`), e, para os templates `.alloy` ainda não migrados, (c) valida a sintaxe com `grafana/alloy`, (d) confere os 5 labels de identidade legados e (e) compara as allowlists entre arquivos espelhados. Os templates em `examples/` são single-file por design (facilita copiar para um host remoto), então a duplicação é proposital — o script pega o caso em que algo é atualizado num arquivo e esquecido nos espelhos.
+Esse script (requer Docker, versão pinada em `OTELCOL_CONTRIB_VERSION` do `.env.example`) (a) valida as configs dos agentes em `examples/push/` com `otelcol-contrib validate`; (b) confere nelas a identidade OpenTelemetry (`resource_detection` com detectores `env` + `system` e `override: true`, saída para `${env:LGTM_GATEWAY_ENDPOINT}`); (c) garante que a lista de métricas de host (`host_metrics`) é idêntica em todos os agentes Linux/Windows e no `otel-agent`; (d) valida cada template de `examples/pull/` mesclado com o `otel-agent/config.yaml` e o `otel-agent/pull-semconv.yaml`, com identidade por alvo, sem `resource_detection` e com a conversão OTel de cada exporter no pipeline; e (e) compara as allowlists entre templates pull do mesmo exporter. Os templates em `examples/` são single-file por design (facilita copiar para um host remoto), então a duplicação é proposital — o script pega o caso em que algo é atualizado num arquivo e esquecido nos espelhos.
 
 ## Arquitetura (visão essencial)
 
@@ -88,7 +88,6 @@ Esse script (requer Docker) (a) valida toda config do OpenTelemetry Collector em
 
 - **Agent da própria stack** (`otel-agent/`, serviço `otel-agent` no `compose.yaml`): o mesmo Collector em container, com `network_mode: host`, `pid: host`, root sem capabilities (`cap_drop: ALL`) e mounts somente leitura; coleta host, containers (`docker_stats` + logs `json-file`) e journald do servidor da stack.
 
-> **Migração em andamento:** os templates `.alloy` de `examples/` (exceto `push/linux`) ainda usam o Grafana Alloy com `remote_write`/Loki push e **não entregam dados** ao Gateway OTLP até serem migrados (ver `ROADMAP.md`).
 
 **Regras arquiteturais invioláveis**:
 1. **Só o Gateway escreve nos backends.** Nenhum agente, aplicação ou backend escreve direto em `mimir:9009`, `loki:3100` ou `tempo:4317`.
@@ -98,13 +97,13 @@ Esse script (requer Docker) (a) valida toda config do OpenTelemetry Collector em
 
 Loki, Mimir e Tempo não publicam portas no host — só acessíveis pela rede Docker `lgtm`, e são imagens distroless (sem shell, sem healthcheck `CMD-SHELL`). Grafana é o único ponto de leitura.
 
-**Política Lean (coletar e armazenar o mínimo necessário)**: nada é coletado "por segurança". Nas configs do Collector, cada scraper/métrica (`metrics: <nome>: { enabled: true|false }`) e cada fonte de log (com filtro de severidade na origem, ex.: `priority: warning` no journald) é explícita; dispositivos, filesystems e interfaces sem valor operacional são excluídos; o self-monitoring usa `level: basic`; o OBI exporta só `features: [application]`. Nos templates `.alloy` legados, a mesma política é aplicada com `metric_relabel` `keep`. Ao precisar de uma métrica nova para um painel, habilite-a explicitamente no template correspondente e, se a cardinalidade subir de forma relevante, atualize `docs/SIZING.md`.
+**Política Lean (coletar e armazenar o mínimo necessário)**: nada é coletado "por segurança". Nas configs do Collector, cada scraper/métrica (`metrics: <nome>: { enabled: true|false }`) e cada fonte de log (com filtro de severidade na origem, ex.: `priority: warning` no journald) é explícita; dispositivos, filesystems e interfaces sem valor operacional são excluídos; o self-monitoring usa `level: basic`; o OBI exporta só `features: [application]`. Ao precisar de uma métrica nova para um painel, habilite-a explicitamente no template correspondente e, se a cardinalidade subir de forma relevante, atualize `docs/SIZING.md`.
 
 **Nomes no Mimir e no Loki**: métricas são gravadas com os nomes OpenTelemetry (PromQL com aspas: `{"system.cpu.time", "host.name"="web-01"}`); no Loki os resource attributes de identidade viram labels com `_` (`host_name`, `service_name`). Use variáveis do Grafana (`$host`, `$service`) em vez de nomes fixos. Detalhes em `docs/METRICS.md` e `docs/LOGS.md`.
 
 **Dashboards** (`grafana/provisioning/dashboards/` — Fonte Única da Verdade): todos os dashboards são armazenados exclusivamente sob o schema de recursos nativos do Grafana 13 (`dashboard.grafana.app/v2`). Fluxo GitOps: edite na UI do Grafana → exporte diretamente via API nativa v2 (`GET /apis/dashboard.grafana.app/v2/namespaces/default/dashboards/<uid>`) → salve no arquivo correspondente em `grafana/provisioning/dashboards/<Pasta>/<nome>.json` → commit. Nunca use o endpoint legado `/api/dashboards/db` (que destrói `TabsLayout` achatando em linhas simples). UIDs de dashboards em produção nunca devem mudar. `grafana/provisioning/dashboards/dashboards.yaml` faz hot-reload a cada 10s. Detalhes completos e padrões de design em `docs/DASHBOARDS.md`. Os dashboards atuais ainda consultam os nomes Prometheus antigos e serão refeitos sobre os nomes OpenTelemetry.
 
-**`examples/`**: modelos de monitoramento em duas categorias: `examples/push/` (agentes instalados no host alvo, cada um com seu `INSTALL.md` e configs) e `examples/pull/` (coletas remotas de servidores **sem agente**, ex.: só `node_exporter`). Os templates pull são copiados para `otel-agent/pull.d/` (não versionado) e executados pelo `otel-agent` da stack, que faz o scrape, converte para OTLP com a identidade OpenTelemetry declarada por alvo e envia ao Gateway — o Gateway nunca executa coletas. O pipeline pull não usa `resource_detection` (atribuiria a identidade da stack). Templates pull ainda em `.alloy` estão em migração.
+**`examples/`**: modelos de monitoramento em duas categorias: `examples/push/` (agentes instalados no host alvo, cada um com seu `INSTALL.md` e configs) e `examples/pull/` (coletas remotas de servidores **sem agente**, ex.: só `node_exporter`). Os templates pull são copiados para `otel-agent/pull.d/` (não versionado) e executados pelo `otel-agent` da stack, que faz o scrape, converte para OTLP com a identidade OpenTelemetry declarada por alvo e para o **mesmo formato do agente** (nomes, atributos e semântica da OTel Semantic Conventions, pelos processors compartilhados de `otel-agent/pull-semconv.yaml`) e envia ao Gateway — o Gateway nunca executa coletas nem conversões. Push e pull gravam o mesmo formato, então cada tipo de servidor tem um único dashboard. O pipeline pull não usa `resource_detection` (atribuiria a identidade da stack).
 
 ## Convenções de versão e upgrade
 

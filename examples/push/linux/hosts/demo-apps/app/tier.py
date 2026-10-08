@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 Serviço HTTP genérico de 3 camadas para validar propagação de contexto
-distribuído do Beyla (eBPF) — SEM nenhuma instrumentação manual.
+distribuído do OBI (OpenTelemetry eBPF Instrumentation) — SEM nenhuma instrumentação manual.
 
 Somente stdlib. Nenhum import de OpenTelemetry. Nenhuma manipulação de
 cabeçalho `traceparent`. Toda a correlação entre serviços é produzida pelo
-Beyla via `ebpf { context_propagation = "headers" }`.
+OBI via `ebpf: context_propagation: headers` (examples/push/linux/obi.yaml).
 
 Configuração por ambiente:
   TIER_NAME   nome lógico do serviço (apenas para o corpo da resposta/log)
@@ -31,7 +31,7 @@ PORT = int(os.environ.get("TIER_PORT", "8080"))
 NEXT = os.environ.get("TIER_NEXT", "").rstrip("/")
 
 # Latência aplicada pela folha na rota /slow. Acima do limiar de 1000ms usado
-# pelo tail sampling do Alloy Gateway.
+# pelo tail sampling do OTel Gateway.
 SLOW_SECONDS = 1.2
 
 ROUTES = ("/", "/slow", "/error")
@@ -40,7 +40,7 @@ ROUTES = ("/", "/slow", "/error")
 def call_next(path: str) -> tuple[int, dict]:
     """Chama o próximo serviço da cadeia via HTTP simples (cleartext).
 
-    O Beyla injeta o cabeçalho `traceparent` nesta requisição de saída no nível
+    O OBI injeta o cabeçalho `traceparent` nesta requisição de saída no nível
     do kernel. O código abaixo não sabe que traces existem.
     """
     url = f"{NEXT}{path}"
@@ -61,7 +61,7 @@ def call_next(path: str) -> tuple[int, dict]:
 
 class Handler(BaseHTTPRequestHandler):
     # HTTP/1.1 com keep-alive: reflete tráfego real e mantém o padrão de
-    # requisição que o Beyla observa entre as camadas.
+    # requisição que o OBI observa entre as camadas.
     protocol_version = "HTTP/1.1"
     server_version = f"tier/{NAME}"
 

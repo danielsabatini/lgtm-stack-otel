@@ -38,15 +38,17 @@ build/
 # Temporary workspace files
 workspace/
 
-# AI Agents — repositório canônico compartilhado, somente leitura (AGENTS.md §9, §29)
+# Plataforma de agentes — links locais para o repositório canônico harness-agent-platform
+# (Constituição, bootstrap e fonte canônica de Agents/Skills — BOOTSTRAP.md §3 e §5)
 .agents
 AGENTS.md
+BOOTSTRAP.md
 
 # Workspace individual da ferramenta opencode — pasta local com symlinks internos
-# para .agents/agents e .agents/skills, não portável entre máquinas/clones (AGENTS.md §10)
+# para .agents/agents e .agents/skills, não portável entre máquinas/clones (.<harness>/, BOOTSTRAP.md §3)
 .opencode
 
-# Journal de execução — histórico local, não atravessa clone/máquina (AGENTS.md §14.11)
+# Journal de execução — histórico local, não atravessa clone/máquina (BOOTSTRAP.md §1.2)
 .journal/
 
 # Ignore instance-specific remote scrape configurations in gateway

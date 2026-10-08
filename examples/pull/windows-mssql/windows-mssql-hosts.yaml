@@ -1,0 +1,107 @@
+# =============================================================================
+# PULL LEGADO — Windows + SQL Server (windows_exporter com coletor mssql)
+# =============================================================================
+# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/windows-mssql-hosts.yaml,
+# ajuste os alvos e reinicie (docker compose restart otel-agent).
+#
+# Para servidores Windows sem o agente OpenTelemetry: o otel-agent faz o
+# scrape do windows_exporter (:9182), converte para OTLP com a identidade
+# OpenTelemetry declarada por alvo e envia ao otel-gateway (que continua só
+# OTLP).
+#
+# Formato: o mesmo do agente (examples/push/windows). Os processors
+# *_windows_semconv (otel-agent/pull-semconv.yaml) convertem windows_* para
+# system.* com os nomes, atributos e a semântica do host_metrics — os
+# dashboards não distinguem push de pull. Event Log exige o agente.
+#
+# SQL Server: os labels do coletor mssql viram atributos da OTel Semantic
+# Conventions — database -> db.namespace e mssql_instance ->
+# sqlserver.instance.name (os mesmos do template push windows-mssql). Bancos
+# internos ocultos do SQL Server são descartados.
+#
+# Política Lean: só as métricas da lista keep abaixo (mesma do template
+# legado), sem partições sem letra e interfaces virtuais.
+# =============================================================================
+
+receivers:
+  prometheus/pull_windows_mssql:
+    config:
+      scrape_configs:
+        - job_name: windows-exporter
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs:
+            # Um item por servidor Windows.
+            # TODO: ajuste o IP e a identidade de cada servidor.
+            - targets: ["[IP_ADDRESS]:9182"]
+              labels:
+                host_name: "[HOSTNAME]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: br-se1
+                cloud_availability_zone: a
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|windows_system_boot_time_timestamp|windows_os_info|windows_cpu_time_total|windows_memory_physical_total_bytes|windows_memory_available_bytes|windows_pagefile_limit_bytes|windows_pagefile_free_bytes|windows_logical_disk_size_bytes|windows_logical_disk_free_bytes|windows_logical_disk_read_bytes_total|windows_logical_disk_reads_total|windows_logical_disk_write_bytes_total|windows_logical_disk_writes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_write_seconds_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total|windows_mssql_bufman_page_life_expectancy_seconds|windows_mssql_bufman_page_reads|windows_mssql_bufman_page_writes|windows_mssql_databases_log_growths|windows_mssql_databases_log_used_percent|windows_mssql_databases_transactions|windows_mssql_genstats_blocked_processes|windows_mssql_genstats_user_connections|windows_mssql_locks_deadlocks|windows_mssql_locks_lock_waits|windows_mssql_sqlstats_batch_requests|windows_mssql_sqlstats_sql_compilations|windows_mssql_sqlstats_sql_recompilations
+            # Discos lógicos: só volumes com letra (C:, D:...) e o total
+            - source_labels: [__name__, volume]
+              regex: 'windows_logical_disk_.+;HarddiskVolume.*'
+              action: drop
+            # Interfaces virtuais
+            - source_labels: [__name__, nic]
+              regex: 'windows_net_.+;(isatap.*|Teredo.*|.*Loopback.*)'
+              action: drop
+            # Bancos internos ocultos do SQL Server
+            - source_labels: [database]
+              regex: 'mssqlsystemresource|model_msdb|model_replicatedmaster'
+              action: drop
+
+processors:
+  # Séries sintéticas do scrape (fora do metric_relabel): descarta. A
+  # disponibilidade do alvo fica no "up".
+  filter/pull_windows_mssql:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^scrape_")
+
+  # Labels de identidade do alvo -> Resource OpenTelemetry do servidor.
+  groupbyattrs/pull_windows_mssql:
+    keys: [host_name, deployment_environment_name, cloud_provider, cloud_region, cloud_availability_zone]
+
+  transform/pull_windows_mssql:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["host.name"], attributes["host_name"])
+          - set(attributes["deployment.environment.name"], attributes["deployment_environment_name"])
+          - set(attributes["cloud.provider"], attributes["cloud_provider"])
+          - set(attributes["cloud.region"], attributes["cloud_region"])
+          - set(attributes["cloud.availability_zone"], attributes["cloud_availability_zone"])
+          - set(attributes["os.type"], "windows")
+          - delete_matching_keys(attributes, "^(host_name|deployment_environment_name|cloud_provider|cloud_region|cloud_availability_zone)$")
+
+  # SQL Server: labels do coletor mssql -> OTel Semantic Conventions
+  transform/pull_windows_mssql_db:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["db.namespace"], attributes["database"]) where attributes["database"] != nil
+          - delete_key(attributes, "database")
+          - set(attributes["sqlserver.instance.name"], attributes["mssql_instance"]) where attributes["mssql_instance"] != nil
+          - delete_key(attributes, "mssql_instance")
+
+service:
+  pipelines:
+    # SEM resource_detection: a identidade é a do servidor remoto, não a da stack.
+    metrics/pull_windows_mssql:
+      receivers: [prometheus/pull_windows_mssql]
+      processors: [memory_limiter, filter/pull_windows_mssql, groupbyattrs/pull_windows_mssql, transform/pull_windows_mssql, transform/pull_windows_mssql_db,
+                   metrics_transform/windows_semconv, transform/windows_semconv, filter/windows_semconv,
+                   transform/mssql_semconv_pre, metrics_transform/mssql_semconv, cumulative_to_delta/mssql_semconv,
+                   delta_to_rate/mssql_semconv, groupbyattrs/mssql_semconv, transform/mssql_semconv, filter/mssql_semconv, batch]
+      exporters: [otlp_grpc/gateway]

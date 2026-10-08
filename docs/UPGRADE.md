@@ -39,7 +39,6 @@ Loki, Mimir e Tempo rodam **sempre** como monolito (`target: all`, um único pro
 |---|---|---|---|
 | Mimir | `3.1.4` → `3.2.1` | Query sharding e *remote execution* passam a vir ligados por padrão; flags experimentais de query removidos; UI web do Alertmanager removida (só API v2). | Nenhum: nenhum flag removido é usado. |
 | Tempo | `3.0.2` → `3.1.0` | Blocos novos gravados em **vParquet5**; escrita em vParquet3 proibida; mudanças em cache Redis e query-frontend. | Nenhum: blocos vParquet4 existentes continuam legíveis e são compactados normalmente; Redis não é usado. |
-| Alloy | `v1.18.0` → `v1.20.1` | v1.19 renomeou as métricas internas do `memory_limiter` e removeu `prometheus.write.queue`; v1.20 alterou componentes de kafka/hetzner/k8sattributes. | Nenhum: nenhum dashboard consulta essas métricas e nenhum desses componentes é usado. |
 | Loki / Grafana | `3.7.4` → `3.7.8` / `13.1.2` → `13.2.3` | Apenas correções de segurança. | Nenhum. |
 
 ---
@@ -133,7 +132,7 @@ As versões abaixo foram testadas e validadas neste repositório:
 | **Grafana** | `13.2.3` | Visualização | UI, Provisioning e migrações SQLite 100% validadas. |
 | **OpenTelemetry Collector Contrib** | `0.162.0` | Gateway & Agent | Gateway OTLP (tail sampling) e agent Linux (`host_metrics`, `journald`) validados em Debian 13. |
 | **OBI** | `v0.14.0` | Agent (eBPF) | Traces + métricas HTTP com propagação de contexto validados (kernel 6.12). |
-| **Alloy** (legado) | `v1.20.1` | Agent local da stack e templates não migrados | Em migração para OpenTelemetry Collector. |
+| **windows_exporter** | `0.31.8` | Exporter em servidores Windows legados (pull) | Coletado pelo `otel-agent` via `examples/pull/windows*`. |
 | **Loki** | `3.7.8` | Logs TSDB | Suporte a chunks TSDB v13 e retenção via compactor. |
 | **Mimir** | `3.2.1` | Métricas TSDB | Suporte a blocos de índice v2 e compactor integrado. |
 | **Tempo** | `3.1.0` | Traces TSDB | Modo monolítico; blocos novos em vParquet5 (vParquet4 antigos seguem legíveis, sem migração). |
@@ -153,7 +152,7 @@ Caso o novo serviço entre em falha contínua após o upgrade:
 
 ## 7. Checklist de Validação Pós-Upgrade (Teste de 5 Minutos)
 
-- [ ] **Métricas:** No Grafana, execute no Explore a query `up` apontando para o Mimir (todos os serviços devem retornar `1`).
+- [ ] **Métricas:** No Explore do Mimir, `count by ("service.name") ({"otelcol_process_uptime"})` deve listar o `otel-gateway`, o `otel-agent` e os agentes dos hosts; para servidores coletados por pull, `{"up"} == 1`.
 - [ ] **Logs:** No Explore, busque logs recentes no Loki (`{service_name="ssh"}`) e confirme que novas entradas estão chegando.
 - [ ] **Traces:** Confirme que spans recentes aparecem no datasource do Tempo.
 - [ ] **Health do Gateway:** `curl -s http://localhost:13133/` deve retornar `"status":"Server available"`.

@@ -1,0 +1,335 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Agent Windows + SQL Server
+# =============================================================================
+# Arquivo: C:\Program Files\OpenTelemetry Collector\config.yaml
+# Serviço: otelcol-contrib (instalado pelo MSI oficial)
+#
+# Coleta no próprio host e envia tudo em OTLP ao Gateway da stack:
+#   - Métricas de host ...... host_metrics       (system.*, mesmos nomes do Linux)
+#   - Event Log ............. windows_event_log  (Security, System, SCM, TaskScheduler)
+#   - SQL Server ............ sqlserver          (sqlserver.*, contadores de desempenho
+#                                                  do Windows: sem usuário/senha de banco)
+#   - Event Log do SQL Server windows_event_log  (Application, providers das instâncias)
+#
+# Mesma base do template examples/push/windows/config.yaml — mantenha a parte
+# de host idêntica (o script de consistência confere).
+#   - Self-monitoring ....... telemetria interna -> OTLP 127.0.0.1:4317
+#
+# Identidade (OTel Semantic Conventions) e Gateway: variáveis de ambiente do
+# serviço (registro HKLM\SYSTEM\CurrentControlSet\Services\otelcol-contrib,
+# valor Environment — ver INSTALL.md):
+#   OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=prd,cloud.provider=mgc,cloud.region=br-se1,cloud.availability_zone=a
+#   LGTM_GATEWAY_ENDPOINT=lgtm-stack:4317
+#   host.name e os.type vêm do detector "system".
+#
+# Política Lean: coletar e armazenar apenas o necessário. Cada métrica e cada
+# fonte de log abaixo é explícita; o que não está listado não é coletado. A
+# lista de métricas de host é a MESMA dos agentes Linux (conferida por
+# artifacts/scripts/check-examples-consistency.py): um painel serve aos dois.
+# =============================================================================
+
+receivers:
+  # Entrada local do self-monitoring. Só loopback: o agente não expõe portas.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+
+  # ---------------------------------------------------------------------------
+  # MÉTRICAS DE HOST (nomes system.* da OTel Semantic Conventions)
+  # ---------------------------------------------------------------------------
+  host_metrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time: { enabled: true }
+          # Nº de CPUs lógicas: referência de Load x Cores e inventário (1 série)
+          system.cpu.logical.count: { enabled: true }
+      load:
+        metrics:
+          system.cpu.load_average.1m: { enabled: true }
+          system.cpu.load_average.5m: { enabled: true }
+          system.cpu.load_average.15m: { enabled: true }
+      memory:
+        metrics:
+          system.memory.usage: { enabled: true }
+          system.memory.limit: { enabled: true }
+      paging:
+        metrics:
+          system.paging.usage: { enabled: true }
+          system.paging.faults: { enabled: false }
+          system.paging.operations: { enabled: false }
+      disk:
+        # Partições sem letra (EFI de sistema, recuperação): sem valor operacional
+        exclude:
+          devices: ["^HarddiskVolume[0-9]+$"]
+          match_type: regexp
+        metrics:
+          system.disk.io: { enabled: true }
+          system.disk.operations: { enabled: true }
+          system.disk.operation_time: { enabled: true }
+          system.disk.io_time: { enabled: true }
+          system.disk.merged: { enabled: false }
+          system.disk.pending_operations: { enabled: false }
+          system.disk.weighted_io_time: { enabled: false }
+      filesystem:
+        # Unidades de CD/DVD (CDFS/UDF)
+        exclude_fs_types:
+          fs_types: [CDFS, UDF]
+          match_type: strict
+        metrics:
+          system.filesystem.usage: { enabled: true }
+          system.filesystem.inodes.usage: { enabled: true }
+      network:
+        # Interfaces virtuais do Windows (loopback, túneis IPv6)
+        exclude:
+          interfaces: ["^Loopback Pseudo-Interface.*", "^isatap.*", "^Teredo.*"]
+          match_type: regexp
+        metrics:
+          system.network.io: { enabled: true }
+          system.network.dropped: { enabled: true }
+          system.network.errors: { enabled: true }
+          system.network.packets: { enabled: false }
+          system.network.connections: { enabled: false }
+      system:
+        metrics:
+          system.uptime: { enabled: true }
+
+  # ---------------------------------------------------------------------------
+  # EVENT LOG (filtro XPath na origem)
+  # ---------------------------------------------------------------------------
+  # O XPath do Event Log aceita um subconjunto da linguagem: use "!=" (não há
+  # suporte a not()). Valide uma consulta antes com:
+  #   Get-WinEvent -LogName System -FilterXPath "<xpath>" -MaxEvents 5
+  # A posição de leitura (bookmark) é guardada em file_storage.
+
+  # Segurança: logon/logoff, privilégios e ciclo de vida de contas
+  windows_event_log/security:
+    start_at: end
+    storage: file_storage
+    query: |
+      <QueryList><Query Id="0" Path="Security"><Select Path="Security">*[System[(EventID=4624 or EventID=4625 or EventID=4634 or EventID=4647 or EventID=4648 or EventID=4672 or EventID=4720 or EventID=4725 or EventID=4726 or EventID=4740 or EventID=4767)]]</Select></Query></QueryList>
+    resource:
+      service.name: windows-security
+    attributes:
+      category: security
+
+  # Sistema: Critical/Error/Warning, EXCETO o Service Control Manager (fonte
+  # própria abaixo — sem duplicar eventos)
+  windows_event_log/system:
+    start_at: end
+    storage: file_storage
+    query: |
+      <QueryList><Query Id="0" Path="System"><Select Path="System">*[System[(Level=1 or Level=2 or Level=3) and Provider[@Name!='Service Control Manager']]]</Select></Query></QueryList>
+    resource:
+      service.name: windows-system
+    attributes:
+      category: system
+
+  # Serviços do Windows (Service Control Manager): falhas e quedas de serviços
+  windows_event_log/services:
+    start_at: end
+    storage: file_storage
+    query: |
+      <QueryList><Query Id="0" Path="System"><Select Path="System">*[System[Provider[@Name='Service Control Manager'] and (Level=1 or Level=2 or Level=3)]]</Select></Query></QueryList>
+    resource:
+      service.name: windows-services
+    attributes:
+      category: platform
+
+  # Tarefas agendadas: Critical/Error/Warning
+  windows_event_log/task_scheduler:
+    start_at: end
+    storage: file_storage
+    query: |
+      <QueryList><Query Id="0" Path="Microsoft-Windows-TaskScheduler/Operational"><Select Path="Microsoft-Windows-TaskScheduler/Operational">*[System[(Level=1 or Level=2 or Level=3)]]</Select></Query></QueryList>
+    resource:
+      service.name: windows-task-scheduler
+    attributes:
+      category: application
+
+  # ---------------------------------------------------------------------------
+  # SQL SERVER (receiver nativo OpenTelemetry, contadores de desempenho)
+  # ---------------------------------------------------------------------------
+  # Lê os contadores de desempenho do Windows: NÃO precisa de usuário/senha do
+  # banco (o serviço roda como LocalSystem). Um receiver por instância:
+  #   - instância padrão (MSSQLSERVER): sem instance_name
+  #   - instância nomeada (MSSQL$<NOME>): instance_name + computer_name
+  # TODO: declare um receiver por instância deste servidor (e inclua no
+  # pipeline metrics/sqlserver).
+  sqlserver/default: &sqlserver_lean
+    collection_interval: 60s
+    resource_attributes:
+      sqlserver.instance.name: { enabled: true }
+      sqlserver.computer.name: { enabled: true }
+    metrics:
+      # Conexões e carga
+      sqlserver.user.connection.count: { enabled: true }
+      sqlserver.batch.request.rate: { enabled: true }
+      sqlserver.batch.sql_compilation.rate: { enabled: true }
+      sqlserver.batch.sql_recompilation.rate: { enabled: true }
+      # Memória e buffer pool
+      sqlserver.page.buffer_cache.hit_ratio: { enabled: true }
+      sqlserver.page.life_expectancy: { enabled: true }
+      sqlserver.page.operation.rate: { enabled: true }
+      # Contenção
+      sqlserver.lock.wait.rate: { enabled: true }
+      sqlserver.lock.wait_time.avg: { enabled: true }
+      # Por banco (db.namespace): transações e log de transações
+      sqlserver.transaction.rate: { enabled: true }
+      sqlserver.transaction_log.usage: { enabled: true }
+      sqlserver.transaction_log.growth.count: { enabled: true }
+      # Desligadas (Lean)
+      # Só existem com conexão direta ao banco (não via contadores de desempenho)
+      sqlserver.memory.usage: { enabled: false }
+      sqlserver.deadlock.rate: { enabled: false }
+      sqlserver.database.execution.errors: { enabled: false }
+      sqlserver.transaction.write.rate: { enabled: false }
+      sqlserver.transaction_log.flush.data.rate: { enabled: false }
+      sqlserver.transaction_log.flush.rate: { enabled: false }
+      sqlserver.transaction_log.flush.wait.rate: { enabled: false }
+      sqlserver.transaction_log.shrink.count: { enabled: false }
+      sqlserver.page.checkpoint.flush.rate: { enabled: false }
+      sqlserver.page.lazy_write.rate: { enabled: false }
+      sqlserver.page.split.rate: { enabled: false }
+
+  sqlserver/mssql2:
+    <<: *sqlserver_lean
+    # TODO: nome da instância nomeada (sem o prefixo MSSQL$) e nome do computador
+    instance_name: MSSQL2
+    computer_name: ${env:COMPUTERNAME}
+
+  # Erros e avisos do SQL Server no Event Log Application.
+  # TODO: um provider por instância — MSSQLSERVER (padrão) e MSSQL$<NOME>.
+  windows_event_log/sqlserver:
+    start_at: end
+    storage: file_storage
+    query: |
+      <QueryList><Query Id="0" Path="Application"><Select Path="Application">*[System[(Provider[@Name='MSSQLSERVER'] or Provider[@Name='MSSQL$MSSQL2']) and (Level=1 or Level=2 or Level=3)]]</Select></Query></QueryList>
+    resource:
+      service.name: mssql
+    attributes:
+      category: application
+
+extensions:
+  # Bookmarks do Event Log entre reinícios.
+  file_storage:
+    directory: C:\ProgramData\OpenTelemetry Collector\file_storage
+    create_directory: true
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  # Identidade: OTEL_RESOURCE_ATTRIBUTES (env) + host.name/os.type (system).
+  resource_detection:
+    detectors: [env, system]
+    override: true
+    system:
+      hostname_sources: [os]
+      # Distribuição/versão do SO no target_info (inventário; não gera série nova)
+      resource_attributes:
+        os.description: { enabled: true }
+
+  # O receiver entrega o evento como mapa (Body). Converte para o OTel Logs
+  # Data Model: Body = mensagem do evento; campos úteis como atributos. A
+  # severidade já vem do Level do evento (Critical/Error/Warning/Information).
+  transform/eventlog:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["windows.eventlog.event_id"], body["event_id"]["id"]) where IsMap(body)
+          - set(attributes["windows.eventlog.provider"], body["provider"]["name"]) where IsMap(body)
+          - set(attributes["windows.eventlog.channel"], body["channel"]) where IsMap(body)
+          - set(attributes["process.pid"], body["execution"]["process_id"]) where IsMap(body) and body["execution"] != nil
+          # Segurança: quem, de onde e como (eventos de logon/conta)
+          - set(attributes["user.name"], body["event_data"]["TargetUserName"]) where IsMap(body) and body["event_data"]["TargetUserName"] != nil
+          - set(attributes["source.address"], body["event_data"]["IpAddress"]) where IsMap(body) and body["event_data"]["IpAddress"] != nil and body["event_data"]["IpAddress"] != "-"
+          - set(attributes["windows.logon.type"], body["event_data"]["LogonType"]) where IsMap(body) and body["event_data"]["LogonType"] != nil
+          # Auditoria de falha (logon recusado, conta bloqueada) vem como
+          # Information no Event Log: eleva para WARN
+          - set(severity_number, SEVERITY_NUMBER_WARN) where IsMap(body) and (body["event_id"]["id"] == 4625 or body["event_id"]["id"] == 4740)
+          - set(severity_text, "WARN") where IsMap(body) and (body["event_id"]["id"] == 4625 or body["event_id"]["id"] == 4740)
+          # SQL Server: o receiver não consegue renderizar a mensagem (DLL de
+          # mensagens do SQL) e entrega message vazio; o texto está em event_data
+          # (param1=erro, param2=severidade, param3=estado, param4=mensagem).
+          - set(attributes["db.response.status_code"], body["event_data"]["param1"]) where IsMap(body) and IsMatch(body["provider"]["name"], "^MSSQL") and body["event_data"]["param1"] != nil
+          - set(body, Concat(["Error:", body["event_data"]["param1"], "Severity:", body["event_data"]["param2"], "State:", body["event_data"]["param3"], body["event_data"]["param4"]], " ")) where IsMap(body) and IsMatch(body["provider"]["name"], "^MSSQL") and body["message"] == "" and body["event_data"]["param4"] != nil
+          - set(body, body["message"]) where IsMap(body) and body["message"] != nil
+
+  # SQL Server: identidade da instância e banco em db.namespace.
+  #  - service.instance.id = <host>\<instância> (o receiver usa <host>:1433 em
+  #    todas as instâncias — sem isso as séries delas se misturam no Mimir);
+  #  - sqlserver.database.name (resource) -> db.namespace (atributo da série,
+  #    OTel Semantic Conventions);
+  #  - service.name = mssql.
+  transform/sqlserver:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["db.namespace"], resource.attributes["sqlserver.database.name"]) where resource.attributes["sqlserver.database.name"] != nil
+      - context: resource
+        statements:
+          - set(attributes["sqlserver.instance.name"], "MSSQLSERVER") where attributes["sqlserver.instance.name"] == nil
+          - set(attributes["service.instance.id"], Concat([attributes["host.name"], attributes["sqlserver.instance.name"]], "\\"))
+          - set(attributes["service.name"], "mssql")
+          - delete_key(attributes, "sqlserver.database.name")
+
+  # Bancos internos ocultos do SQL Server (sem valor operacional)
+  filter/sqlserver:
+    error_mode: ignore
+    metrics:
+      datapoint:
+        - IsMatch(attributes["db.namespace"], "^(mssqlsystemresource|model_msdb|model_replicatedmaster)$")
+
+  batch: {}
+
+exporters:
+  otlp_grpc/gateway:
+    endpoint: ${env:LGTM_GATEWAY_ENDPOINT:-lgtm-stack:4317}
+    tls:
+      # TODO: ajuste conforme a política de TLS do seu ambiente.
+      insecure: true
+
+service:
+  extensions: [file_storage]
+
+  # Self-monitoring: métricas internas do Collector (nível basic = só o
+  # essencial) em OTLP para o receiver local, recebendo a mesma identidade.
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-agent
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://127.0.0.1:4317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [host_metrics, otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]
+
+    # resource_detection ANTES do transform: o service.instance.id usa o host.name
+    metrics/sqlserver:
+      receivers: [sqlserver/default, sqlserver/mssql2]
+      processors: [memory_limiter, resource_detection, transform/sqlserver, filter/sqlserver, batch]
+      exporters: [otlp_grpc/gateway]
+
+    logs:
+      receivers: [windows_event_log/security, windows_event_log/system, windows_event_log/services, windows_event_log/task_scheduler, windows_event_log/sqlserver]
+      processors: [memory_limiter, transform/eventlog, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]

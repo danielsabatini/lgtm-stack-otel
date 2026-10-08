@@ -7,6 +7,29 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 ### Alterado
+- **Coletas pull no mesmo formato do push (100% OTel Semantic Conventions)** — *breaking change* para consultas sobre `node_*`, `windows_*`, `windows_mssql_*`, `mysql_*` e `pg_*`:
+  - Novo `otel-agent/pull-semconv.yaml` (carregado sempre pelo entrypoint e montado no `compose.yaml`): processors compartilhados que convertem `node_exporter` e `windows_exporter` → `system.*`, coletor `mssql` → `sqlserver.*` (uma identidade por instância, contadores → `*.rate`), `postgres_exporter` → `postgresql.*` e `mysqld_exporter` → `mysql.*`, com os nomes, atributos e a semântica dos receivers do agente. Conversão no agente da stack, nunca no Gateway.
+  - Validado contra o agente no **mesmo servidor** (VM Debian, Windows Server 2022 com 2 instâncias SQL Server) e contra DBaaS MySQL 8.4.6 / PostgreSQL 16.11: valores iguais (ex.: filesystem e memória byte a byte).
+  - Subtrações entre métricas (memória `used`, filesystem `used`/`reserved`, inodes, swap, buffer pool clean, checkpoint age) feitas só com `metrics_transform` (cópia × −1 + `combine`); `metricsgeneration` descartado por não casar pontos por atributo.
+  - Templates pull: allowlists com os insumos da conversão (entram `SUnreclaim`, operações e tempos de disco do Windows, buffer pool/threads/erros do MySQL, checkpoints do PostgreSQL; saem PSI, `merged`/`weighted`, banda e fila do Windows, sessões por estado e WAL do PostgreSQL, memória target/erros/worker waits do SQL Server) — menos séries por host (ex.: Windows + SQL Server 156 → ~76). CoreDNS e etcd mantêm os nomes dos exporters (sem semconv).
+  - Sem equivalente calculável no pull: load average e disco ocupado no Windows, hit ratio e tempo médio de lock do SQL Server (exigem divisão entre métricas).
+  - `check-examples-consistency.py` valida os templates mesclados com `pull-semconv.yaml` e exige a conversão de cada exporter no pipeline.
+- `LGTM/lgtm-stack.json` reescrito: linha **Pipeline OpenTelemetry** (nova — coletores ativos, itens recebidos/enviados por sinal, recusas e falhas de envio, filas de exportação, erros de scraper, tail sampling, memória/CPU e versão de cada coletor, Gateway e agentes de todos os hosts), **Containers** (`container.*` do `docker_stats`: CPU, memória x limite, rede, throttling, imagens, logs) e **Servidor da Stack** (mesmas abas do Linux Hosts). Substitui as métricas de cAdvisor/`node_*` do Alloy.
+- Dashboards de banco com filtros multi-seleção: **Instância** no Windows + SQL Server (Mimir promove `sqlserver.instance.name` a label; legendas sem `label_replace`) e **Banco** no Linux + PostgreSQL (métricas por `db.namespace` e log). MySQL sem filtro de banco: as métricas do receiver/exporter são do servidor inteiro.
+- **Dashboards unificados por tipo de servidor** (push e pull no mesmo dashboard, mesmas consultas); estrutura e status em `docs/DASHBOARDS.md` §3 e §7. `DNS/mgc-internal-dns.json` portado: linha Linux sobre `system.*` (mesmas abas do Linux Hosts) e linhas CoreDNS/etcd com histogramas nativos e identidade OTel.
+  - `Hosts/linux-hosts.json` reescrito sobre `system.*` (variável `host` por `host.name`/`os.type`), com abas Health, Capacity, Activity, Diagnostics, Inventory, **Applications (OBI)** (taxa, erros 5xx e p95 por serviço com exemplars → Tempo), Logs (`category` em structured metadata) e Traces (`resource.host.name`). Painéis de PSI removidos (sem equivalente no `host_metrics`); entra o tempo de disco ocupado (`system.disk.io_time`).
+  - `Hosts/windows-hosts.json`, `Hosts + Database/linux-mysql-hosts.json`, `linux-pgsql-hosts.json` e `windows-hosts-mssql.json` reescritos sobre `system.*`, `mysql.*`, `postgresql.*` e `sqlserver.*`: linha do host compartilhada (Linux/Windows, com comandos de diagnóstico de cada SO) e linha do banco com Health, Capacity, Activity, Diagnostics, Inventory (versão via `target_info`) e Logs do banco. Validados ao vivo na VM Debian (MySQL 8.4, PostgreSQL 18) e no Windows Server 2022 (2 instâncias SQL Server).
+  - Datasource Mimir com `timeInterval: 60s`: `$__rate_interval` passa a cobrir as coletas de 60 s (receivers de banco), que ficavam sem dados no `rate()`.
+  - Consultas deduplicadas com `max by (...)` para não dobrar valores quando labels de recurso/escopo mudam (ex.: upgrade do Collector).
+- Agentes (5 templates push e `otel-agent`): `system.cpu.logical.count` habilitado (1 série/host, referência Load x CPUs) e `os.description` no detector `system` (inventário via `target_info`, sem série nova).
+- Mimir: `os.type` promovido a label (separa hosts Linux e Windows, que usam os mesmos nomes `system.*`).
+- **Auditoria pós-migração de docs e diagramas:**
+  - `docs/LOGS.md` reescrito: ingestão OTLP (`otlp_http/loki`), campos OTel no Loki (labels de índice x structured metadata), fontes e filtros de severidade por tipo de servidor e tabela de mapeamento das consultas legadas (`instance` → `host_name`, `level` → `severity_text`, `category` em structured metadata).
+  - `docs/METRICS.md` e `docs/SIZING.md` com séries medidas por template; `docs/ARCHITECTURE.md` e diagrama de topologia com os servidores legados (pull) e o caminho `otel-agent` → Gateway; `docs/TRACES.md` corrige o Service Graph (feature do OBI desligada); `docs/UPGRADE.md` sem o Alloy e com checklist pós-upgrade sobre `otelcol_process_uptime`; `docs/DASHBOARDS.md` com aviso de migração e legendas por `host.name`; `docs/ALERTS.md`, `docs/OBSERVABILITY-METHODOLOGY.md`, `CONTRIBUTING.md`, `README.md`, `ROADMAP.md`, `MEMORY.md` e `artifacts/load-test/LOAD-TEST.md` alinhados ao modelo OpenTelemetry.
+  - Diagramas `lgtm-architecture-topology`, `telemetry-signals-correlation` e `incident-resolution-journey` regenerados (SVG/PNG).
+  - Governança: link `BOOTSTRAP.md` (`harness-agent-platform`) e citações remapeadas (`BOOTSTRAP.md` §1.2, §3, §4, §5, §7); `decisions/` na raiz registrado como exceção de projeto ao `BOOTSTRAP.md` §1.3.
+- `artifacts/scripts/backup-rotation.sh` passa a incluir as coletas pull (`otel-agent/pull.d/*.yaml`, não versionadas); `docs/BACKUP.md` atualizado.
+- `docs/decisions/` movido para `decisions/` na raiz (ADRs); regra registrada no `PROJECT.md`.
 - **Grafana Alloy substituído pelo OpenTelemetry Collector + OBI** — *breaking change*:
   - **Gateway:** `alloy-gateway/` → `otel-gateway/config.yaml` (OpenTelemetry
     Collector Contrib `0.162.0`, imagem oficial): OTLP 4317/4318 →
@@ -40,6 +63,41 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
     sem eles as séries `container.*` de containers diferentes se misturavam.
   - Validado em VM Debian 13 (kernel 6.12): journald, host metrics, OBI,
     Docker em container e queda de 70 s do Gateway sem perda de amostras.
+- **`examples/pull/windows` e `windows-mssql` migrados — Alloy removido do
+  repositório**: scrape do windows_exporter (`:9182`) pelo `otel-agent`, com a
+  mesma allowlist Lean do legado; no SQL Server, `mssql_instance` →
+  `sqlserver.instance.name` e `database` → `db.namespace` (mesmos atributos do
+  template push) e bancos internos ocultos descartados. Validado com
+  windows_exporter 0.31.8 (checksum conferido) em Windows Server 2022 com duas
+  instâncias: 34 séries (SO) e 156 (SO + SQL Server) contra ~1.650 expostas.
+  Com isso não resta nenhum `.alloy`: removidos `GRAFANA_ALLOY_VERSION`, as
+  verificações Alloy do `check-examples-consistency.py` e as menções a
+  "legado/em migração" na documentação; demo de traces passa a citar o OBI.
+- **`examples/push/windows-mssql` migrado para OpenTelemetry Collector**:
+  base do template Windows + receiver nativo `sqlserver` (contadores de
+  desempenho, sem credencial de banco), um receiver por instância. O agente
+  reescreve `service.instance.id` para `<host>\<instância>` (o receiver
+  repete `<host>:1433` em todas, misturando as séries), move o banco para
+  `db.namespace` e descarta bancos internos ocultos — 25 séries por instância.
+  Event Log com os providers de todas as instâncias (o legado perdia as
+  nomeadas) e Body reconstruído a partir de `event_data`, com o número do erro
+  em `db.response.status_code`. Validado com `MSSQLSERVER` + `MSSQL2`.
+- **`examples/push/windows` migrado para OpenTelemetry Collector** (MSI
+  oficial, serviço `otelcol-contrib`): `host_metrics` com os mesmos nomes
+  `system.*` e a mesma lista Lean dos agentes Linux (~29 séries; excluídos
+  CD/DVD, partições sem letra e interfaces virtuais) + 4 fontes
+  `windows_event_log` com XPath na origem. Corrigida a duplicação do template
+  legado (eventos do Service Control Manager entravam por duas fontes).
+  Identidade via variável `Environment` do serviço no registro. Validado em
+  Windows Server 2022: falha de logon 4625 como `WARN` com `user.name` e
+  `windows.logon.type`, falhas de serviço e de tarefa agendada como `ERROR`.
+- **`examples/pull/dns` migrado**: os três `.alloy` (node, CoreDNS, etcd)
+  viram um único `dns-hosts.yaml` carregado pelo `otel-agent`, com os nós e a
+  identidade declarados uma vez (âncora YAML) e reaproveitados pelos três jobs
+  (antes repetidos 9 vezes). Histogramas de latência do CoreDNS/etcd passam a
+  native histograms (consultas sem `_bucket`). Validado contra o cluster
+  `dns-se1-1/2/3`: 9 alvos com `up=1`, um líder etcd, contagem do histograma
+  idêntica à origem e p99 calculado sob carga de teste.
 - **`examples/pull/linux-dbaas-pgsql` migrado**: scrape de `/node/metrics` e
   `/postgres/metrics` (proxy :8080 do DBaaS) pelo `otel-agent`, jobs
   `node-exporter`/`postgres-exporter`, identidade por instância,
@@ -122,6 +180,11 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   monolítica e single-tenant (`docs/UPGRADE.md` §3, Regra 3).
 
 ### Corrigido
+- `examples/push/windows-mssql`: `sqlserver.memory.usage`, `sqlserver.deadlock.rate` e `sqlserver.database.execution.errors` desligadas — só existem com conexão direta ao banco e nunca eram emitidas no modo de contadores de desempenho; `INSTALL.md` corrigido.
+- `otel-agent`: logs de containers fora do compose (sem `com.docker.compose.service`) eram gravados como `unknown_service` e, sem nível reconhecido, furavam o filtro WARN+ — agora são descartados.
+- `otel-agent` e `otel-gateway`: erros registrados sem *stack trace* (`disable_stacktrace`); cada linha do trace virava um log sem nível no Loki.
+- Loki: `os.description` descartado dos logs (`otlp_config`), evitando o atributo repetido como structured metadata em toda linha.
+- `examples/push/windows-mssql`: logs do SQL Server com `category: application` (antes `database`, fora das 4 categorias canônicas).
 - `MEMORY.md`: a heurística "`sampling_traces_on_memory` ==
   `new_trace_id_received` indica tail sampling travado" estava errada — os
   traces permanecem em memória após a decisão, então os valores coincidem em

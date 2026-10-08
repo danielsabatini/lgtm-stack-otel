@@ -8,14 +8,15 @@ flowchart TB
     classDef extBox fill:#f1f3f5,stroke:#868e96,stroke-dasharray: 4 4,color:#495057;
 
     subgraph EXT ["🌐 Aplicações & Servidores Remotos (Rede / VPC)"]
-        APP1["🖥️ Hosts Remotos<br/>(OTel Collector + OBI)"]:::extBox
+        APP1["🖥️ Hosts com Agente (push)<br/>(OTel Collector + OBI)"]:::extBox
         APP2["📦 Aplicações Microservices<br/>(OTLP Traces / Metrics)"]:::extBox
         APP3["📜 Emissores de Logs<br/>(OTLP Logs)"]:::extBox
+        LEGACY["🗃️ Servidores Legados sem Agente (pull)<br/>(node_exporter :9100, windows_exporter :9182,<br/>exporters de DBaaS, CoreDNS / etcd)"]:::extBox
     end
 
     subgraph STACK ["🏛️ Servidor Central (LGTM Stack)"]
-        subgraph PRIV ["🛡️ Camada Host / Kernel (Modo Privilegiado)"]
-            AGENT["⚡ Agent Local (legado Alloy, em migração)<br/>• privileged: true<br/>• Lê /proc, /sys, /rootfs<br/>• Coleta Journald e Docker Socket"]:::privBox
+        subgraph PRIV ["🛡️ Camada Host (Leitura do Host, Sem Portas Expostas)"]
+            AGENT["⚡ otel-agent (servidor da stack)<br/>• root sem capabilities, mounts read-only<br/>• host_metrics, docker_stats, journald<br/>• Pull de exporters legados (pull.d)"]:::privBox
         end
 
         subgraph UNPRIV ["🕸️ Camada de Ingestão de Rede (Modo Seguro / Desprivilegiado)"]
@@ -34,8 +35,9 @@ flowchart TB
     end
 
     %% Conexões e Fluxos
-    AGENT -->|"OTLP Interno<br/>(Sem porta exposta)"| GATEWAY
-    APP1 -->|"OTLP Métricas e Logs<br/>(Portas 4317 / 4318)"| GATEWAY
+    AGENT -->|"OTLP local<br/>(127.0.0.1:4317)"| GATEWAY
+    LEGACY -.->|"Métricas via scrape HTTP<br/>(conexão iniciada pelo otel-agent)"| AGENT
+    APP1 -->|"OTLP Métricas, Logs e Traces<br/>(Portas 4317 / 4318)"| GATEWAY
     APP2 -->|"OTLP gRPC / HTTP<br/>(Portas 4317 / 4318)"| GATEWAY
     APP3 -->|"OTLP Logs<br/>(Portas 4317 / 4318)"| GATEWAY
 
