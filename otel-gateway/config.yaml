@@ -53,6 +53,16 @@ processors:
     send_batch_size: 2000
     timeout: 5s
 
+  # Nomes das latências do service graph no padrão que o Service Map do Grafana
+  # consulta (sufixo _seconds). Só as métricas GERADAS pelo conector (nenhum
+  # dado recebido é alterado).
+  transform/service_graph:
+    error_mode: ignore
+    metric_statements:
+      - context: metric
+        statements:
+          - set(metric.name, Concat([metric.name, "_seconds"], "")) where metric.name == "traces_service_graph_request_server" or metric.name == "traces_service_graph_request_client"
+
 exporters:
   otlp_http/mimir:
     endpoint: http://mimir:9009/otlp
@@ -64,6 +74,28 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
+
+# Service Graph (Service Map do Grafana): derivado dos TRACES, casando o span de
+# cliente com o de servidor de cada chamada (contexto W3C propagado). É a única
+# derivação feita no Gateway — ele é o único ponto que vê os spans de todos os
+# hosts (chamadas entre hosts) e fica ANTES do tail sampling (100% das chamadas).
+# Nenhum dado recebido é alterado; as métricas geradas vão para o Mimir.
+# O OBI não resolve o serviço de destino fora do Kubernetes (gera nós
+# "incoming"/"outgoing"), por isso o service graph do OBI fica desligado.
+connectors:
+  service_graph:
+    latency_histogram_buckets: [10ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+    # Pares cliente/servidor aguardando o outro lado (memória limitada)
+    store:
+      ttl: 5s
+      max_items: 5000
+    # Chamadas a destinos não instrumentados (bancos, APIs externas) viram nós
+    # com o nome do atributo do span
+    virtual_node_peer_attributes: [peer.service, db.system.name, server.address]
+    metrics_flush_interval: 30s
+
+  # Liga a pipeline de entrada de traces à de amostragem (tail sampling -> Tempo)
+  forward/sampling: {}
 
 service:
   extensions: [health_check]
@@ -103,7 +135,20 @@ service:
       processors: [memory_limiter, batch]
       exporters: [otlp_http/loki]
 
+    # Entrada de traces: 100% dos spans alimentam o service graph e seguem para a
+    # amostragem
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, tail_sampling, batch]
+      processors: [memory_limiter]
+      exporters: [service_graph, forward/sampling]
+
+    traces/sampled:
+      receivers: [forward/sampling]
+      processors: [tail_sampling, batch]
       exporters: [otlp_grpc/tempo]
+
+    # Métricas do service graph (traces_service_graph_*) -> Mimir
+    metrics/service_graph:
+      receivers: [service_graph]
+      processors: [transform/service_graph, batch]
+      exporters: [otlp_http/mimir]

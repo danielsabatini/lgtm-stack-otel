@@ -70,8 +70,11 @@ datasources:
         # trace_id é structured metadata nos logs OTLP (não está no texto da linha)
         customQuery: true
         query: '{service_name="$${__span.tags["service.name"]}"} | trace_id="$${__trace.traceId}"'
-      # Service Map via Mimir (métricas traces_service_graph_* emitidas pelos agents)
+      # Service Map via Mimir (traces_service_graph_*, geradas pelo conector service_graph do otel-gateway)
       serviceMap:
         datasourceUid: mimir
+        # Latências do service graph (traces_service_graph_request_*_seconds) são
+        # histogramas nativos no Mimir (OTLP)
+        histogramType: native
       nodeGraph:
         enabled: true
