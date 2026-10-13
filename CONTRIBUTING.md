@@ -5,24 +5,31 @@ Obrigado pelo interesse em contribuir com a LGTM Stack! Este projeto foca em **L
 ## Princípios de Design
 
 1.  **Whitelist First:** Nunca adicione métricas "por segurança". Adicione apenas o que é estritamente necessário para os Dashboards.
-2.  **Desacoplamento:** O Alloy Agent coleta (privilegiado), o Alloy Gateway ingere (seguro).
-3.  **Portabilidade:** Use variáveis do Grafana (`$instance`, `$container`) em vez de nomes de hosts fixos.
+2.  **Desacoplamento:** O agente OpenTelemetry coleta (privilegiado, no host), o OTel Gateway ingere (sem privilégios, somente OTLP).
+3.  **Portabilidade:** Use variáveis do Grafana sobre os atributos de identidade OpenTelemetry (`$host` → `host.name`, `$container` → `container.name`) em vez de nomes de hosts fixos.
 4.  **Sincronização de Alertas:** Thresholds visuais nos painéis devem existir apenas para métricas com alertas e seus valores devem ser idênticos aos da regra de alerta.
 
 ## Fluxo de Trabalho
 
 ### 1. Adicionando novas métricas
 Se você adicionar um novo painel ao Grafana que exige uma métrica ainda não coletada:
-1.  Identifique a métrica no exporter (Node Exporter, cAdvisor, etc).
-2.  Adicione o nome da métrica na regra `keep` do arquivo `.alloy` correspondente em `alloy-agent/conf.d/`.
+1.  Identifique a métrica no receiver do OpenTelemetry Collector (`host_metrics`, `docker_stats`, etc.).
+2.  Habilite-a explicitamente (`metrics: <nome>: { enabled: true }`) em `otel-agent/config.yaml` e no template correspondente de `examples/push/`.
 3.  Atualize o `docs/SIZING.md` se a cardinalidade aumentar significativamente.
 
 ### 1.1 Editando templates em `examples/`
-Os templates de `examples/` são arquivos únicos e autocontidos por design — feitos para copiar direto num host remoto sem depender de outros arquivos do repositório. Isso significa que a allowlist de métricas e os labels de identidade global aparecem duplicados entre arquivos que deveriam espelhar um ao outro (ex.: `linux/config.alloy` ↔ `remote-scrape/pull-linux-hosts.alloy`). Ao criar ou editar qualquer `.alloy` em `examples/`, rode:
+Os templates de `examples/` são arquivos únicos e autocontidos por design — feitos para copiar direto num host remoto sem depender de outros arquivos do repositório. Isso significa que a allowlist de métricas e os labels de identidade global aparecem duplicados entre arquivos que deveriam espelhar um ao outro (ex.: as flags `system.*` de `examples/push/linux/config.yaml` ↔ `examples/push/windows/config.yaml` ↔ `otel-agent/config.yaml`, ou a lista `node_*` de `examples/pull/linux/linux-hosts.yaml` ↔ `examples/pull/dns/dns-hosts.yaml`). Ao criar ou editar qualquer `.yaml` em `examples/` ou em `otel-agent/`, rode:
 ```bash
 python3 artifacts/scripts/check-examples-consistency.py
 ```
-Ele valida a sintaxe (via `alloy validate`) e verifica se as edições foram replicadas nos arquivos-espelho, evitando o tipo de drift silencioso que esse script foi criado para pegar.
+Ele valida as configs (via `otelcol-contrib validate`) e verifica se as edições foram replicadas nos arquivos-espelho, evitando o tipo de drift silencioso que esse script foi criado para pegar.
+
+### 1.2 Dashboards
+Os dashboards são gerados por `artifacts/dashboards/` (não edite os JSONs de `grafana/provisioning/dashboards/` nem salve mudanças feitas na UI — elas são sobrescritas). Altere o gerador e rode:
+```bash
+python3 artifacts/dashboards/build.py
+```
+Ele regenera todos os dashboards e verifica a conformidade com `docs/OBSERVABILITY-METHODOLOGY.md` (detalhes em `docs/DASHBOARDS.md`).
 
 ### 2. Documentação
 A regra de ouro é: **Single Source of Truth** com **Linguagem Simples, Direta e Numerada**.
@@ -34,7 +41,7 @@ A regra de ouro é: **Single Source of Truth** com **Linguagem Simples, Direta e
 
 ## Padrões de Código
 
-- **Alloy:** Use a sintaxe do Alloy v1.x. Organize arquivos por função (ex: `00x-metric-...`, `20x-log-...`).
+- **OpenTelemetry Collector:** configs em YAML do `otelcol-contrib` (versão em `OTELCOL_CONTRIB_VERSION`). Cada métrica e cada fonte de log é explícita (Política Lean); identidade via `OTEL_RESOURCE_ATTRIBUTES` + detector `system`; nomes da OTel Semantic Conventions.
 - **Docker:** Utilize imagens oficiais e, preferencialmente, versões estáveis. Evite a tag `latest` em produção.
 
 ---

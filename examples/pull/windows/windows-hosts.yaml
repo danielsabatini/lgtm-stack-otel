@@ -1,0 +1,85 @@
+# =============================================================================
+# PULL LEGADO — Windows (windows_exporter)
+# =============================================================================
+# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/windows-hosts.yaml,
+# ajuste os alvos e reinicie (docker compose restart otel-agent).
+#
+# Para servidores Windows sem o agente OpenTelemetry: o otel-agent faz o
+# scrape do windows_exporter (:9182), converte para OTLP com a identidade
+# OpenTelemetry declarada por alvo e envia ao otel-gateway (que continua só
+# OTLP).
+#
+# Formato: o mesmo do agente (examples/push/windows). Os processors
+# *_windows_semconv (otel-agent/pull-semconv.yaml) convertem windows_* para
+# system.* com os nomes, atributos e a semântica do host_metrics — os
+# dashboards não distinguem push de pull. Event Log exige o agente.
+#
+# Política Lean: só as métricas da lista keep abaixo (mesma do template
+# legado), sem partições sem letra e interfaces virtuais.
+# =============================================================================
+
+receivers:
+  prometheus/pull_windows:
+    config:
+      scrape_configs:
+        - job_name: windows-exporter
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs:
+            # Um item por servidor Windows.
+            # TODO: ajuste o IP e a identidade de cada servidor.
+            - targets: ["[IP_ADDRESS]:9182"]
+              labels:
+                host_name: "[HOSTNAME]"
+                deployment_environment_name: prd
+                cloud_provider: mgc
+                cloud_region: br-se1
+                cloud_availability_zone: a
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              action: keep
+              regex: >-
+                up|windows_system_boot_time_timestamp|windows_os_info|windows_cpu_time_total|windows_memory_physical_total_bytes|windows_memory_available_bytes|windows_pagefile_limit_bytes|windows_pagefile_free_bytes|windows_logical_disk_size_bytes|windows_logical_disk_free_bytes|windows_logical_disk_read_bytes_total|windows_logical_disk_reads_total|windows_logical_disk_write_bytes_total|windows_logical_disk_writes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_write_seconds_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total
+            # Discos lógicos: só volumes com letra (C:, D:...) e o total
+            - source_labels: [__name__, volume]
+              regex: 'windows_logical_disk_.+;HarddiskVolume.*'
+              action: drop
+            # Interfaces virtuais
+            - source_labels: [__name__, nic]
+              regex: 'windows_net_.+;(isatap.*|Teredo.*|.*Loopback.*)'
+              action: drop
+
+processors:
+  # Séries sintéticas do scrape (fora do metric_relabel): descarta. A
+  # disponibilidade do alvo fica no "up".
+  filter/pull_windows:
+    error_mode: ignore
+    metrics:
+      metric:
+        - IsMatch(name, "^scrape_")
+
+  # Labels de identidade do alvo -> Resource OpenTelemetry do servidor.
+  groupbyattrs/pull_windows:
+    keys: [host_name, deployment_environment_name, cloud_provider, cloud_region, cloud_availability_zone]
+
+  transform/pull_windows:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["host.name"], attributes["host_name"])
+          - set(attributes["deployment.environment.name"], attributes["deployment_environment_name"])
+          - set(attributes["cloud.provider"], attributes["cloud_provider"])
+          - set(attributes["cloud.region"], attributes["cloud_region"])
+          - set(attributes["cloud.availability_zone"], attributes["cloud_availability_zone"])
+          - set(attributes["os.type"], "windows")
+          - delete_matching_keys(attributes, "^(host_name|deployment_environment_name|cloud_provider|cloud_region|cloud_availability_zone)$")
+
+service:
+  pipelines:
+    # SEM resource_detection: a identidade é a do servidor remoto, não a da stack.
+    metrics/pull_windows:
+      receivers: [prometheus/pull_windows]
+      processors: [memory_limiter, filter/pull_windows, groupbyattrs/pull_windows, transform/pull_windows,
+                   metrics_transform/windows_semconv, transform/windows_semconv, filter/windows_semconv, batch]
+      exporters: [otlp_grpc/gateway]

@@ -1,0 +1,37 @@
+# =============================================================================
+# systemd unit — OpenTelemetry eBPF Instrumentation (OBI)
+# =============================================================================
+# Arquivo: /etc/systemd/system/obi.service
+# Binário: /usr/local/bin/obi   Config: /etc/obi/obi.yaml
+#
+# Roda com usuário dedicado (obi) e apenas as capabilities eBPF necessárias —
+# não como root.
+# =============================================================================
+
+[Unit]
+Description=OpenTelemetry eBPF Instrumentation (OBI)
+Documentation=https://opentelemetry.io/docs/zero-code/obi/
+After=network-online.target otelcol-contrib.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=obi
+Group=obi
+ExecStart=/usr/local/bin/obi -config /etc/obi/obi.yaml
+Restart=on-failure
+RestartSec=5s
+
+# Capabilities eBPF (sem root). CAP_SYS_ADMIN é necessária para o watcher de
+# processos (detectar serviços iniciados depois do OBI) e CAP_NET_ADMIN para a
+# propagação de contexto por headers.
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_PTRACE CAP_NET_RAW CAP_NET_ADMIN CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_PTRACE CAP_NET_RAW CAP_NET_ADMIN CAP_CHECKPOINT_RESTORE CAP_DAC_READ_SEARCH CAP_SYS_ADMIN
+
+# /sys/fs/bpf é montado com modo 700 e dono root; o OBI cria ali seu diretório
+# de trabalho. O prefixo "+" executa como root só estes comandos.
+ExecStartPre=+/usr/bin/mkdir -p /sys/fs/bpf/otel
+ExecStartPre=+/usr/bin/chown obi:obi /sys/fs/bpf/otel
+
+[Install]
+WantedBy=multi-user.target

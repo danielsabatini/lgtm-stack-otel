@@ -14,12 +14,10 @@ RETENTION_DAYS=7
 
 # Lista de volumes para backup
 VOLUMES=(
-  "lgtm-stack_grafana-data"
-  "lgtm-stack_loki-data"
-  "lgtm-stack_mimir-data"
-  "lgtm-stack_tempo-data"
-  "lgtm-stack_alloy-gateway-data"
-  "lgtm-stack_alloy-agent-data"
+  "lgtm-stack-otel_grafana-data"
+  "lgtm-stack-otel_loki-data"
+  "lgtm-stack-otel_mimir-data"
+  "lgtm-stack-otel_tempo-data"
 )
 
 echo "--- Iniciando Backup LGTM Stack: ${DATE} ---"
@@ -44,6 +42,12 @@ for vol in "${VOLUMES[@]}"; do
     -v "${BACKUP_DIR}:/backup" \
     busybox tar czf "/backup/$(basename "${FILENAME}")" -C /data .
 done
+
+# Coletas pull (otel-agent/pull.d/*.yaml): não versionadas, contêm os alvos do ambiente
+if compgen -G "otel-agent/pull.d/*.yaml" > /dev/null; then
+  echo "   - Backup de otel-agent/pull.d..."
+  tar czf "${BACKUP_DIR}/otel-agent-pull.d-${DATE}.tar.gz" otel-agent/pull.d/*.yaml
+fi
 
 # 3. Subir a stack novamente
 echo "3. Reiniciando stack..."

@@ -1,0 +1,154 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Gateway da LGTM Stack
+# =============================================================================
+# Ponto único de ingestão (OTLP 4317 gRPC / 4318 HTTP) e único componente que
+# escreve nos backends. Não converte nem renomeia dados: agents e aplicações já
+# enviam OTLP com a OTel Semantic Conventions. Cada sinal vai ao seu backend:
+#   métricas -> Mimir (/otlp/v1/metrics)
+#   logs     -> Loki  (/otlp/v1/logs)
+#   traces   -> Tempo (OTLP gRPC), após tail sampling
+# Pipeline: otlp -> memory_limiter -> [tail_sampling (traces)] -> batch -> backend
+# =============================================================================
+
+extensions:
+  # Liveness/readiness: curl http://<host>:13133/
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1024
+    spike_limit_mib: 200
+
+  # Retém 100% dos erros e dos traces lentos; amostra 5% do restante.
+  # Os agents enviam 100% dos spans (sampler always_on) e calculam as métricas
+  # RED antes deste ponto, então o sampling não distorce taxa/erros/duração.
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: sample-ok
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 5
+
+  batch:
+    send_batch_size: 2000
+    timeout: 5s
+
+  # Nomes das latências do service graph no padrão que o Service Map do Grafana
+  # consulta (sufixo _seconds). Só as métricas GERADAS pelo conector (nenhum
+  # dado recebido é alterado).
+  transform/service_graph:
+    error_mode: ignore
+    metric_statements:
+      - context: metric
+        statements:
+          - set(metric.name, Concat([metric.name, "_seconds"], "")) where metric.name == "traces_service_graph_request_server" or metric.name == "traces_service_graph_request_client"
+
+exporters:
+  otlp_http/mimir:
+    endpoint: http://mimir:9009/otlp
+
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+# Service Graph (Service Map do Grafana): derivado dos TRACES, casando o span de
+# cliente com o de servidor de cada chamada (contexto W3C propagado). É a única
+# derivação feita no Gateway — ele é o único ponto que vê os spans de todos os
+# hosts (chamadas entre hosts) e fica ANTES do tail sampling (100% das chamadas).
+# Nenhum dado recebido é alterado; as métricas geradas vão para o Mimir.
+# O OBI não resolve o serviço de destino fora do Kubernetes (gera nós
+# "incoming"/"outgoing"), por isso o service graph do OBI fica desligado.
+connectors:
+  service_graph:
+    latency_histogram_buckets: [10ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+    # Pares cliente/servidor aguardando o outro lado (memória limitada)
+    store:
+      ttl: 5s
+      max_items: 5000
+    # Chamadas a destinos não instrumentados (bancos, APIs externas) viram nós
+    # com o nome do atributo do span
+    virtual_node_peer_attributes: [peer.service, db.system.name, server.address]
+    metrics_flush_interval: 30s
+
+  # Liga a pipeline de entrada de traces à de amostragem (tail sampling -> Tempo)
+  forward/sampling: {}
+
+service:
+  extensions: [health_check]
+
+  # Self-monitoring: métricas internas do Collector em OTLP para a própria
+  # entrada do Gateway (sem scrape Prometheus, sem conversão).
+  telemetry:
+    # Sem stack trace: no log do container cada linha do trace viraria um
+    # registro sem nível (furando o filtro WARN+ do otel-agent).
+    logs:
+      disable_stacktrace: true
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-gateway
+        - name: deployment.environment.name
+          value: ${env:ENVIRONMENT}
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://localhost:4317
+                insecure: true
+
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/mimir]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]
+
+    # Entrada de traces: 100% dos spans alimentam o service graph e seguem para a
+    # amostragem
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter]
+      exporters: [service_graph, forward/sampling]
+
+    traces/sampled:
+      receivers: [forward/sampling]
+      processors: [tail_sampling, batch]
+      exporters: [otlp_grpc/tempo]
+
+    # Métricas do service graph (traces_service_graph_*) -> Mimir
+    metrics/service_graph:
+      receivers: [service_graph]
+      processors: [transform/service_graph, batch]
+      exporters: [otlp_http/mimir]

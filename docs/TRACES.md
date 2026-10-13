@@ -22,18 +22,20 @@ Na LGTM Stack, o Grafana Tempo atua como o backend central de armazenamento de t
 
 ## 3. Endpoints e Ingestão OTLP
 
-As aplicações podem enviar traces apontando seus exporters OpenTelemetry diretamente para o **Alloy Gateway**:
+As aplicações podem enviar traces apontando seus exporters OpenTelemetry diretamente para o **OTel Gateway**:
 * **Porta 4317 (gRPC):** Protocolo OTLP de alta performance.
 * **Porta 4318 (HTTP):** Protocolo OTLP via HTTP/JSON.
 
 ---
 
-## 4. Coleta Automática via Beyla eBPF (Hosts Linux)
+## 4. Coleta Automática via OBI eBPF (Hosts Linux)
 
-Em servidores Linux onde não é viável alterar o código das aplicações para inserir SDKs do OpenTelemetry, a stack suporta a auto-instrumentação via **Grafana Beyla (`beyla.ebpf`)**:
-* **Zero Código:** Inspeciona chamadas HTTP, HTTPS e gRPC diretamente no nível do kernel Linux via eBPF.
-* **Métricas RED Automáticas:** Gera automaticamente métricas de taxa de requisições, erros e duração (`traces_spanmetrics_*`) no Mimir.
-* **Guia de Instalação:** Consulte o guia em [examples/push/linux/INSTALL.md](../examples/push/linux/INSTALL.md#51-traces-beyla-ebpf--opcional).
+Em servidores Linux onde não é viável alterar o código das aplicações para inserir SDKs do OpenTelemetry, a stack usa o **OBI** ([OpenTelemetry eBPF Instrumentation](https://opentelemetry.io/docs/zero-code/obi/)), serviço `obi` instalado ao lado do Collector do agente:
+* **Zero Código:** Inspeciona chamadas HTTP, HTTPS, gRPC e SQL no nível do kernel Linux via eBPF (kernel >= 5.8 com BTF).
+* **Propagação de Contexto:** `ebpf.context_propagation: headers` injeta o cabeçalho W3C `traceparent`, costurando serviços que se chamam sob um único `traceID` (validado com a cadeia demo frontend → middleware → backend).
+* **Métricas RED Automáticas:** O OBI emite métricas com os nomes da OTel Semantic Conventions (`http.server.request.duration`, `http.client.request.duration`, `rpc.server.call.duration`...), com `http.route`, `http.response.status_code` e `error.type`, contando **100% do tráfego** (antes do tail sampling do Gateway) e com exemplars `trace_id`.
+* **Caminho:** OBI → OTLP `127.0.0.1:4317` → Collector do agente (aplica a identidade do host) → OTel Gateway.
+* **Guia de Instalação:** Consulte o guia em [examples/push/linux/INSTALL.md](../examples/push/linux/INSTALL.md#6-traces-e-métricas-http-com-obi-opcional).
 
 ---
 
@@ -41,7 +43,7 @@ Em servidores Linux onde não é viável alterar o código das aplicações para
 
 Em ambientes de alta carga, armazenar 100% de todas as requisições bem-sucedidas geraria custos astronômicos de armazenamento sem benefício analítico real. 
 
-O Alloy Gateway aplica o padrão **Tail Sampling** diretamente na memória antes de persistir no Tempo:
+O OTel Gateway (`otel-gateway/config.yaml`) aplica o padrão **Tail Sampling** diretamente na memória antes de persistir no Tempo:
 
 1. **Keep-Errors (100% Retido):** Guarda **todas as requisições** onde qualquer span falhou ou retornou erro (`HTTP 5xx`).
 2. **Keep-Slow (100% Retido):** Guarda **todas as requisições** cuja duração total ultrapassou **1000 ms** (1 segundo), permitindo diagnosticar gargalos de performance.
@@ -49,11 +51,20 @@ O Alloy Gateway aplica o padrão **Tail Sampling** diretamente na memória antes
 
 ---
 
-## 6. Geração de Métricas e Grafo de Serviços (Service Graph)
+## 6. Métricas Derivadas de Traces (RED e Service Graph)
 
-O componente `metrics_generator` do Grafana Tempo processa os spans ingeridos em tempo real e alimenta o Mimir com:
-* **Service Graph:** Grafo de topologia visual no Grafana mostrando as conexões e dependências entre microsserviços.
-* **Span Metrics (Métricas RED):** Métricas de taxa de chamadas (`traces_spanmetrics_calls_total`) e histogramas de latência por rota HTTP.
+O `metrics_generator` do Tempo está **desabilitado**: cada backend armazena apenas o seu sinal e só o Gateway escreve nos backends (ver [ARCHITECTURE.md](ARCHITECTURE.md)). Além disso, o Tempo só enxergaria os traces que sobraram do tail sampling (erros, lentos e 5% dos OK), subestimando a taxa de requisições.
+
+As métricas de taxa, erros e latência passam a ser emitidas **na origem** (OBI no agente, `features: [application]` em `examples/push/linux/obi.yaml`), em OTLP e com a semântica OpenTelemetry, e chegam ao Mimir pelo Gateway como qualquer outra métrica. Exemplars dessas métricas carregam o label `trace_id`, usado pelo datasource Mimir para abrir o trace no Tempo.
+
+> **Service Graph:** as métricas de grafo de serviços do OBI (feature `application_service_graph`) estão **desligadas** pela Política Lean; serão avaliadas junto com a reescrita dos dashboards (ver [ROADMAP.md](../ROADMAP.md)).
+
+Verificação de que o Tempo não escreve métricas:
+
+```bash
+docker run --rm --network lgtm curlimages/curl -s http://tempo:3200/metrics \
+  | grep -c prometheus_remote_storage_samples_total   # deve ser 0
+```
 
 ---
 

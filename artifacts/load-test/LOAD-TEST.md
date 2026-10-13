@@ -29,12 +29,14 @@ Ambos os scripts executam **~30 milhões de operações** em 3 fases:
 
 ### Métricas Observáveis
 
+> Os nomes abaixo são os da OTel Semantic Conventions — os mesmos para o agente (`examples/push/linux-mysql`, `linux-pgsql`) e para o pull de DBaaS, convertido no `otel-agent` ([docs/METRICS.md](../../docs/METRICS.md) §7.1). Os painéis estão nos dashboards **Linux + MySQL Hosts** e **Linux + PostgreSQL Hosts**.
+
 | Pilar | PostgreSQL | MySQL | Status |
 |-------|-----------|-------|--------|
-| **HEALTH** | `pg_up`, `pg_stat_activity_count` | `mysql_up`, `threads_connected` | ✅ Visível |
-| **CAPACITY** | `pg_database_size_bytes`, `pg_wal_size_bytes` | `innodb_buffer_pool_bytes_data` | ✅ Persistente |
-| **ACTIVITY** | `pg_stat_database_xact_commit` | `mysql_global_status_questions` | ✅ Pico claro |
-| **DIAGNOSTICS** | `pg_stat_database_deadlocks` | `innodb_row_lock_waits` | ✅ Observável |
+| **HEALTH** | `postgresql.backends`, `postgresql.connection.max` | `mysql.server.healthy`, `mysql.threads{kind=connected}` | ✅ Visível |
+| **CAPACITY** | `postgresql.db_size` | `mysql.buffer_pool.usage` | ✅ Persistente |
+| **ACTIVITY** | `postgresql.commits` | `mysql.query.count` | ✅ Pico claro |
+| **DIAGNOSTICS** | `postgresql.deadlocks` | `mysql.row_locks{kind=waits}` | ✅ Observável |
 | **I/O** | WAL write rate | `innodb_data_reads/writes` | ✅ Ativo |
 | **Cache Hit Rate** | `blks_hit / (blks_hit + blks_read) * 100` | Similar | ✅ 95%+ |
 
@@ -44,7 +46,7 @@ Ambos os scripts executam **~30 milhões de operações** em 3 fases:
 
 ### Pré-requisitos
 
-1. **Alloy Gateway em execução** com coleta ativa (Pull Scrape)
+1. **`otel-agent` em execução** com a coleta pull do banco ativa (`otel-agent/pull.d/`)
 2. **Grafana com dashboards MySQL/PostgreSQL provisionados**
 3. **Acesso SSH ou direto** ao servidor remoto
 
@@ -164,10 +166,10 @@ watch -n 5 'mysql -h 192.168.1.13 -u root -p -e \
    - `instance = srv-pgsql-01` (ou seu hostname)
 
 3. **Monitore os Pilares:**
-   - **HEALTH:** `pg_up = 1` (deve estar estável)
-   - **ACTIVITY:** `pg_stat_database_xact_commit` (deve estar em **pico**)
-   - **CAPACITY:** `pg_wal_size_bytes` (crescimento visível)
-   - **DIAGNOSTICS:** `pg_stat_database_deadlocks` (deve ser **0**)
+   - **HEALTH:** `postgresql.backends` (conexões da carga visíveis)
+   - **ACTIVITY:** `postgresql.commits` (taxa deve estar em **pico**)
+   - **CAPACITY:** `postgresql.db_size` (crescimento visível)
+   - **DIAGNOSTICS:** `postgresql.deadlocks` (deve ser **0**)
    - **I/O:** WAL write rate no pico
 
 ### MySQL
@@ -181,11 +183,11 @@ watch -n 5 'mysql -h 192.168.1.13 -u root -p -e \
    - `instance = srv-mysql-01` (ou seu hostname)
 
 3. **Monitore os Pilares:**
-   - **HEALTH:** `mysql_up = 1` (deve estar estável)
-   - **ACTIVITY:** `mysql_global_status_questions` (deve estar em **pico**)
-   - **CAPACITY:** `mysql_global_status_innodb_buffer_pool_bytes_data` (pico de utilização)
-   - **DIAGNOSTICS:** `mysql_global_status_innodb_row_lock_waits` (deve ser baixo)
-   - **I/O:** `mysql_global_status_innodb_data_reads` (pico)
+   - **HEALTH:** `mysql.server.healthy = 1` (deve estar estável)
+   - **ACTIVITY:** `mysql.query.count` (taxa deve estar em **pico**)
+   - **CAPACITY:** `mysql.buffer_pool.usage` (pico de utilização)
+   - **DIAGNOSTICS:** `mysql.row_locks{kind=waits}` (deve ser baixo)
+   - **I/O:** `mysql.row_operations{operation=read}` (pico)
 
 ---
 
@@ -247,10 +249,10 @@ CALL gerar_carga_teste();
 
 ### Problema: Métricas não aparecem no Grafana
 
-1. **Verificar se Alloy Gateway está coletando:**
+1. **Verificar se o `otel-agent` está coletando:**
    ```bash
-   curl -s http://alloy-gateway:9090/api/v1/query \
-     --data-urlencode 'query=mysql_up{instance="srv-mysql-01"}' | jq
+   docker run --rm --network lgtm curlimages/curl -sG http://mimir:9009/prometheus/api/v1/query \
+     --data-urlencode 'query={"mysql.server.healthy", "host.name"="srv-mysql-01"}' | jq
    ```
 
 2. **Verificar exporter remoto:**
@@ -258,9 +260,9 @@ CALL gerar_carga_teste();
    curl -s http://192.168.1.13:8080/mysql/metrics | head -20
    ```
 
-3. **Reiniciar coleta no Gateway:**
+3. **Reiniciar a coleta no `otel-agent`:**
    ```bash
-   docker restart alloy-gateway
+   docker compose restart otel-agent
    ```
 
 ---
@@ -271,7 +273,7 @@ CALL gerar_carga_teste();
 
 | Métrica | PostgreSQL | MySQL | Esperado |
 |---------|-----------|-------|----------|
-| Queries/sec | `pg_stat_database_xact_commit rate` | `mysql_global_status_questions rate` | **Pico > 100k qps** |
+| Queries/sec | `rate(postgresql.commits)` | `rate(mysql.query.count)` | **Pico > 100k qps** |
 | Cache Hit Rate | `blks_hit / (blks_hit + blks_read) * 100` | `read_requests / (read_requests + reads) * 100` | **> 95%** |
 | Row Latency | `active_time / xact_commit` | `data_read + data_written / questions` | **< 1ms** |
 | Disk I/O | WAL write rate | `innodb_data_reads + writes` | **Variável** |

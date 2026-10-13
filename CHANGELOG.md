@@ -5,6 +5,219 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Alterado
+- **Coletas pull no mesmo formato do push (100% OTel Semantic Conventions)** — *breaking change* para consultas sobre `node_*`, `windows_*`, `windows_mssql_*`, `mysql_*` e `pg_*`:
+  - Novo `otel-agent/pull-semconv.yaml` (carregado sempre pelo entrypoint e montado no `compose.yaml`): processors compartilhados que convertem `node_exporter` e `windows_exporter` → `system.*`, coletor `mssql` → `sqlserver.*` (uma identidade por instância, contadores → `*.rate`), `postgres_exporter` → `postgresql.*` e `mysqld_exporter` → `mysql.*`, com os nomes, atributos e a semântica dos receivers do agente. Conversão no agente da stack, nunca no Gateway.
+  - Validado contra o agente no **mesmo servidor** (VM Debian, Windows Server 2022 com 2 instâncias SQL Server) e contra DBaaS MySQL 8.4.6 / PostgreSQL 16.11: valores iguais (ex.: filesystem e memória byte a byte).
+  - Subtrações entre métricas (memória `used`, filesystem `used`/`reserved`, inodes, swap, buffer pool clean, checkpoint age) feitas só com `metrics_transform` (cópia × −1 + `combine`); `metricsgeneration` descartado por não casar pontos por atributo.
+  - Templates pull: allowlists com os insumos da conversão (entram `SUnreclaim`, operações e tempos de disco do Windows, buffer pool/threads/erros do MySQL, checkpoints do PostgreSQL; saem PSI, `merged`/`weighted`, banda e fila do Windows, sessões por estado e WAL do PostgreSQL, memória target/erros/worker waits do SQL Server) — menos séries por host (ex.: Windows + SQL Server 156 → ~76). CoreDNS e etcd mantêm os nomes dos exporters (sem semconv).
+  - Sem equivalente calculável no pull: load average e disco ocupado no Windows, hit ratio e tempo médio de lock do SQL Server (exigem divisão entre métricas).
+  - `check-examples-consistency.py` valida os templates mesclados com `pull-semconv.yaml` e exige a conversão de cada exporter no pipeline.
+- `LGTM/lgtm-stack.json` reescrito: linha **Pipeline OpenTelemetry** (nova — coletores ativos, itens recebidos/enviados por sinal, recusas e falhas de envio, filas de exportação, erros de scraper, tail sampling, memória/CPU e versão de cada coletor, Gateway e agentes de todos os hosts), **Containers** (`container.*` do `docker_stats`: CPU, memória x limite, rede, throttling, imagens, logs) e **Servidor da Stack** (mesmas abas do Linux Hosts). Substitui as métricas de cAdvisor/`node_*` do Alloy.
+- **Dashboards como código:** geradores versionados em `artifacts/dashboards/` (módulos compartilhados `lib.py` e `hosts.py`, um gerador por dashboard) e `build.py`, que regenera os 7 JSONs de `grafana/provisioning/dashboards/` e roda o verificador da metodologia. Os JSONs passam a ser gerados (não editar à mão nem salvar mudanças da UI); `docs/DASHBOARDS.md` §4–6, PROJECT e CONTRIBUTING atualizados.
+- **Dashboards em conformidade com `docs/OBSERVABILITY-METHODOLOGY.md`** (novo verificador `artifacts/scripts/check-dashboards-methodology.py`):
+  - Health só com %, UP/DOWN ou p99: saem dos Health dos bancos as contagens, taxas, erros e eficiência de cache (já presentes em Capacity/Activity/Diagnostics); entram Slow Queries (%) no MySQL, Rollback (%) no PostgreSQL e Uso do Log de Transações (máx. %) no SQL Server; no pipeline OTel, recusas e falhas de envio em %; vazão de rede sem limiar fixo (não portável).
+  - Capacity em unidades absolutas: filesystem (bytes) e inodes (contagem) usados × total por mountpoint; CPU dos containers sai do Diagnostics para o Capacity.
+  - Limiares e cores de alarme só no Health (log de transações, PLE, contadores do CoreDNS, plugins).
+  - A aba "Applications (OBI)" vira a linha **Aplicações (OBI)** com os pilares do método RED (latência agora **p99**) e a aba Traces, também nos dashboards Linux + MySQL e Linux + PostgreSQL; só aparece para hosts com OBI (sem compartimentos vazios).
+- **Categorias de log alinhadas à metodologia** (*breaking change* para consultas por `category="platform"`): systemd, Service Control Manager, cron, Agendador de Tarefas, `dockerd` e `containerd` passam a `category=system`; `platform` deixa de existir; Erros de Negócio reservada (sem fonte). Agentes reimplantados e validados (falha de serviço systemd gravada como `system`).
+- Cada servidor aparece só no dashboard mais específico: Linux Hosts e Windows Hosts excluem (variável `host` com `unless`) servidores com banco (`mysql.uptime`, `postgresql.connection.max`, `sqlserver.user.connection.count` → Hosts + Database), nós DNS (`coredns_build_info` → DNS) e o servidor da stack (`container.cpu.usage.total` → LGTM).
+- `otel-agent`: métricas de containers (`docker_stats`) só dos containers da stack — o label `com.docker.compose.project` vira atributo e o `filter/stack_containers` descarta outros projetos do mesmo host (`LGTM_COMPOSE_PROJECT`, derivado do nome do projeto compose).
+- Servidor da stack com `host.name` fixo: nova variável `LGTM_HOST_NAME` (`.env.example`, padrão `lgtm-stack`) no `OTEL_RESOURCE_ATTRIBUTES` do `otel-agent` — o detector `env` vem antes do `system`, então o nome não depende mais do hostname da máquina (ex.: `docker-desktop`).
+- `DNS/mgc-internal-dns.json` em visão de cluster: variável `host` multi-seleção com **All** por padrão; a linha Linux usa as abas do Linux Hosts em modo multi-host (agrupadas por `host.name`, um valor/linha por nó).
+- Dashboards de banco com filtros multi-seleção: **Instância** no Windows + SQL Server (Mimir promove `sqlserver.instance.name` a label; legendas sem `label_replace`) e **Banco** no Linux + PostgreSQL (métricas por `db.namespace` e log). MySQL sem filtro de banco: as métricas do receiver/exporter são do servidor inteiro.
+- **Dashboards unificados por tipo de servidor** (push e pull no mesmo dashboard, mesmas consultas); estrutura e status em `docs/DASHBOARDS.md` §3 e §7. `DNS/mgc-internal-dns.json` portado: linha Linux sobre `system.*` (mesmas abas do Linux Hosts) e linhas CoreDNS/etcd com histogramas nativos e identidade OTel.
+  - `Hosts/linux-hosts.json` reescrito sobre `system.*` (variável `host` por `host.name`/`os.type`), com abas Health, Capacity, Activity, Diagnostics, Inventory, **Applications (OBI)** (taxa, erros 5xx e p95 por serviço com exemplars → Tempo), Logs (`category` em structured metadata) e Traces (`resource.host.name`). Painéis de PSI removidos (sem equivalente no `host_metrics`); entra o tempo de disco ocupado (`system.disk.io_time`).
+  - `Hosts/windows-hosts.json`, `Hosts + Database/linux-mysql-hosts.json`, `linux-pgsql-hosts.json` e `windows-hosts-mssql.json` reescritos sobre `system.*`, `mysql.*`, `postgresql.*` e `sqlserver.*`: linha do host compartilhada (Linux/Windows, com comandos de diagnóstico de cada SO) e linha do banco com Health, Capacity, Activity, Diagnostics, Inventory (versão via `target_info`) e Logs do banco. Validados ao vivo na VM Debian (MySQL 8.4, PostgreSQL 18) e no Windows Server 2022 (2 instâncias SQL Server).
+  - Datasource Mimir com `timeInterval: 60s`: `$__rate_interval` passa a cobrir as coletas de 60 s (receivers de banco), que ficavam sem dados no `rate()`.
+  - Consultas deduplicadas com `max by (...)` para não dobrar valores quando labels de recurso/escopo mudam (ex.: upgrade do Collector).
+- Agentes (5 templates push e `otel-agent`): `system.cpu.logical.count` habilitado (1 série/host, referência Load x CPUs) e `os.description` no detector `system` (inventário via `target_info`, sem série nova).
+- Mimir: `os.type` promovido a label (separa hosts Linux e Windows, que usam os mesmos nomes `system.*`).
+- **Auditoria pós-migração de docs e diagramas:**
+  - `docs/LOGS.md` reescrito: ingestão OTLP (`otlp_http/loki`), campos OTel no Loki (labels de índice x structured metadata), fontes e filtros de severidade por tipo de servidor e tabela de mapeamento das consultas legadas (`instance` → `host_name`, `level` → `severity_text`, `category` em structured metadata).
+  - `docs/METRICS.md` e `docs/SIZING.md` com séries medidas por template; `docs/ARCHITECTURE.md` e diagrama de topologia com os servidores legados (pull) e o caminho `otel-agent` → Gateway; `docs/TRACES.md` corrige o Service Graph (feature do OBI desligada); `docs/UPGRADE.md` sem o Alloy e com checklist pós-upgrade sobre `otelcol_process_uptime`; `docs/DASHBOARDS.md` com aviso de migração e legendas por `host.name`; `docs/ALERTS.md`, `docs/OBSERVABILITY-METHODOLOGY.md`, `CONTRIBUTING.md`, `README.md`, `ROADMAP.md`, `MEMORY.md` e `artifacts/load-test/LOAD-TEST.md` alinhados ao modelo OpenTelemetry.
+  - Diagramas `lgtm-architecture-topology`, `telemetry-signals-correlation` e `incident-resolution-journey` regenerados (SVG/PNG).
+  - Governança: link `BOOTSTRAP.md` (`harness-agent-platform`) e citações remapeadas (`BOOTSTRAP.md` §1.2, §3, §4, §5, §7); `decisions/` na raiz registrado como exceção de projeto ao `BOOTSTRAP.md` §1.3.
+- `artifacts/scripts/backup-rotation.sh` passa a incluir as coletas pull (`otel-agent/pull.d/*.yaml`, não versionadas); `docs/BACKUP.md` atualizado.
+- `docs/decisions/` movido para `decisions/` na raiz (ADRs); regra registrada no `PROJECT.md`.
+- **Grafana Alloy substituído pelo OpenTelemetry Collector + OBI** — *breaking change*:
+  - **Gateway:** `alloy-gateway/` → `otel-gateway/config.yaml` (OpenTelemetry
+    Collector Contrib `0.162.0`, imagem oficial): OTLP 4317/4318 →
+    `memory_limiter` → `tail_sampling` → `batch` → OTLP nativo no Mimir, Loki e
+    Tempo. Health check em `:13133` (substitui a UI `:12345`); self-monitoring
+    (`level: basic`) em OTLP para a própria entrada.
+  - **Agent da stack:** `alloy-agent/` → `otel-agent/` (Collector em container
+    com `journalctl`): `host_metrics` (`system.*`), `docker_stats`
+    (`container.*`), journald (ssh, kernel, docker, containerd, cron, systemd)
+    e logs dos containers via `json-file`. `network_mode: host`, `pid: host`,
+    root sem capabilities (`cap_drop: ALL`, `no-new-privileges`) e mounts
+    somente leitura — antes `privileged: true` com `/var/run` gravável.
+  - **Agent Linux** (`examples/push/linux`): `otelcol-contrib` (pacote oficial)
+    + **OBI** `v0.14.0` (OpenTelemetry eBPF Instrumentation, substitui o Beyla)
+    com `obi.service` próprio (usuário `obi`, capabilities eBPF). Métricas HTTP
+    com nomes da OTel Semantic Conventions (`http.server.request.duration`),
+    sobre 100% do tráfego, com exemplars `trace_id`; propagação de contexto W3C
+    validada (frontend → middleware → backend sob um único `traceID`).
+  - **Identidade única por host:** `OTEL_RESOURCE_ATTRIBUTES` + detector
+    `system` com `override: true` (`host.name`, `deployment.environment.name`,
+    `cloud.*`) — o OBI usa FQDN e passaria a divergir sem o override.
+  - **Política Lean explícita:** cada métrica (`enabled: true|false`) e cada
+    fonte de log é listada; severidade filtrada na origem; ~66 séries por host
+    Linux (antes ~356 com `node_exporter`). `check-examples-consistency.py`
+    valida configs do Collector e o espelhamento da política entre o template
+    de host e o `otel-agent`.
+  - **Compose:** logs de todos os serviços em `json-file` com rotação
+    (`x-logging`); novas variáveis `OTELCOL_CONTRIB_VERSION`, `OBI_VERSION`,
+    `OTEL_GATEWAY_*`, `OTEL_AGENT_*`.
+  - **Mimir:** `container.name` e `container.image.name` promovidos a label —
+    sem eles as séries `container.*` de containers diferentes se misturavam.
+  - Validado em VM Debian 13 (kernel 6.12): journald, host metrics, OBI,
+    Docker em container e queda de 70 s do Gateway sem perda de amostras.
+- **`examples/pull/windows` e `windows-mssql` migrados — Alloy removido do
+  repositório**: scrape do windows_exporter (`:9182`) pelo `otel-agent`, com a
+  mesma allowlist Lean do legado; no SQL Server, `mssql_instance` →
+  `sqlserver.instance.name` e `database` → `db.namespace` (mesmos atributos do
+  template push) e bancos internos ocultos descartados. Validado com
+  windows_exporter 0.31.8 (checksum conferido) em Windows Server 2022 com duas
+  instâncias: 34 séries (SO) e 156 (SO + SQL Server) contra ~1.650 expostas.
+  Com isso não resta nenhum `.alloy`: removidos `GRAFANA_ALLOY_VERSION`, as
+  verificações Alloy do `check-examples-consistency.py` e as menções a
+  "legado/em migração" na documentação; demo de traces passa a citar o OBI.
+- **`examples/push/windows-mssql` migrado para OpenTelemetry Collector**:
+  base do template Windows + receiver nativo `sqlserver` (contadores de
+  desempenho, sem credencial de banco), um receiver por instância. O agente
+  reescreve `service.instance.id` para `<host>\<instância>` (o receiver
+  repete `<host>:1433` em todas, misturando as séries), move o banco para
+  `db.namespace` e descarta bancos internos ocultos — 25 séries por instância.
+  Event Log com os providers de todas as instâncias (o legado perdia as
+  nomeadas) e Body reconstruído a partir de `event_data`, com o número do erro
+  em `db.response.status_code`. Validado com `MSSQLSERVER` + `MSSQL2`.
+- **`examples/push/windows` migrado para OpenTelemetry Collector** (MSI
+  oficial, serviço `otelcol-contrib`): `host_metrics` com os mesmos nomes
+  `system.*` e a mesma lista Lean dos agentes Linux (~29 séries; excluídos
+  CD/DVD, partições sem letra e interfaces virtuais) + 4 fontes
+  `windows_event_log` com XPath na origem. Corrigida a duplicação do template
+  legado (eventos do Service Control Manager entravam por duas fontes).
+  Identidade via variável `Environment` do serviço no registro. Validado em
+  Windows Server 2022: falha de logon 4625 como `WARN` com `user.name` e
+  `windows.logon.type`, falhas de serviço e de tarefa agendada como `ERROR`.
+- **`examples/pull/dns` migrado**: os três `.alloy` (node, CoreDNS, etcd)
+  viram um único `dns-hosts.yaml` carregado pelo `otel-agent`, com os nós e a
+  identidade declarados uma vez (âncora YAML) e reaproveitados pelos três jobs
+  (antes repetidos 9 vezes). Histogramas de latência do CoreDNS/etcd passam a
+  native histograms (consultas sem `_bucket`). Validado contra o cluster
+  `dns-se1-1/2/3`: 9 alvos com `up=1`, um líder etcd, contagem do histograma
+  idêntica à origem e p99 calculado sob carga de teste.
+- **`examples/pull/linux-dbaas-pgsql` migrado**: scrape de `/node/metrics` e
+  `/postgres/metrics` (proxy :8080 do DBaaS) pelo `otel-agent`, jobs
+  `node-exporter`/`postgres-exporter`, identidade por instância,
+  `db.system.name=postgresql` e `datname` → `db.namespace` (mesma dimensão do
+  template push). Descartados `template0`/`template1` e o label `server`:
+  44 séries de banco contra 597 expostas. Validado contra DBaaS PostgreSQL
+  16.11: `xact_commit` e `database_size` idênticos à origem.
+- **`examples/pull/linux-dbaas-mysql` migrado**: scrape de `/node/metrics` e
+  `/mysql/metrics` (proxy :8080 do DBaaS) pelo `otel-agent`, jobs
+  `node-exporter`/`mysqld-exporter`, identidade OpenTelemetry por instância e
+  `db.system.name=mysql` no resource do banco. Allowlist de SO alinhada à do
+  pull Linux; 14 métricas `mysql_*` (16 séries com `up`) contra ~3.000
+  expostas. Validado contra DBaaS MySQL 8.4.6 via bastion (túnel SSH).
+- **Coleta pull de servidores legados pelo `otel-agent`** (`examples/pull/linux`):
+  o scrape de `node_exporter` remotos sai do Gateway e passa ao `otel-agent`,
+  que carrega `otel-agent/pull.d/*.yaml` (novo `entrypoint.sh`; arquivos com
+  IPs do ambiente não versionados). Converte para OTLP com a identidade
+  OpenTelemetry declarada por alvo (sem `resource_detection`), mantém os nomes
+  `node_*` e a allowlist Lean (64 séries por servidor contra ~1.555 expostas;
+  `scrape_*` descartadas). O Gateway continua só OTLP. O `INSTALL.md` exige
+  restringir a `:9100` do servidor legado ao IP da stack. O
+  `check-examples-consistency.py` valida cada template pull mesclado com o
+  `otel-agent/config.yaml`.
+- **`examples/push/linux-pgsql` migrado para OpenTelemetry Collector**: host
+  (mesma base do template Linux) + receiver nativo `postgresql` com o feature
+  gate `receiver.postgresql.useOTelSemconv` (um resource por servidor e banco
+  em `db.namespace`; sem ele as séries de bancos diferentes se misturavam no
+  Mimir) e só métricas no nível de banco (~14 séries por banco; as por
+  tabela/índice, ligadas por padrão, desligadas) + log do PostgreSQL com
+  agrupamento de `DETAIL`/`HINT`/`CONTEXT`/`STATEMENT`, fuso `-03`/`UTC`
+  normalizado e filtro `WARN`+ preservando slow queries. Validado com
+  PostgreSQL 18.6 (PGDG): commits, rollbacks, deadlocks e tuplas batem com o
+  `pg_stat_database`; deadlock real chega como um único registro `ERROR`.
+- **`examples/push/linux-mysql` migrado para OpenTelemetry Collector**: host
+  (mesma base do template Linux, conferida pelo script de consistência) +
+  receiver nativo `mysql` (~38 séries, lista explícita; desligadas as
+  `table/index.io.wait.*`, que vêm ligadas por padrão com uma série por
+  tabela/índice) + error log (`file_log`, severidade OTel, `mysql.error.code`).
+  Usuário de monitoramento com privilégios mínimos e credencial no arquivo de
+  ambiente com modo `640`. Validado com MySQL Community 8.4.11 LTS: slow
+  queries, row lock waits e queries batem com o `global_status` da fonte.
+- **Bump de versões da stack** (primeiro passo da migração para OTLP nativo
+  fim-a-fim): Grafana `13.1.2` → `13.2.3`, Alloy `v1.18.0` → `v1.20.1`,
+  Loki `3.7.4` → `3.7.8`, Mimir `3.1.4` → `3.2.1`, Tempo `3.0.2` → `3.1.0`
+  (`.env.example`, `compose.yaml`). Configs validadas contra as novas imagens
+  (`-verify-config` no Loki, `-modules` no Mimir, startup do Tempo,
+  `alloy validate` no gateway, agent e todos os `examples/`). Breaking changes
+  avaliados em `docs/UPGRADE.md` §3.1 — nenhum afeta esta stack; Tempo passa a
+  gravar blocos novos em vParquet5 sem migração.
+- **Monolito single-tenant explícito**: `target: all` adicionado em
+  `loki/loki.yaml` e `tempo/tempo.yaml`, e `multitenancy_enabled: false` em
+  `tempo/tempo.yaml` (antes implícitos por default). Regra registrada em
+  `docs/UPGRADE.md` §3 (Regra 3).
+
+- **Data-root do Docker parametrizado**: os binds fixos `/var/lib/docker` e
+  `/docker` do `alloy-agent` (cAdvisor) foram substituídos por um único
+  `${DOCKER_DATA_ROOT}` montado no mesmo caminho do host (`.env.example`,
+  default `/docker`; fallback `/var/lib/docker` no `compose.yaml`). Permite
+  subir a stack em hosts sem o disco dedicado `/docker` (ex.: Docker Desktop).
+
+- **Backends e Gateway 100% OTLP (migração OpenTelemetry)** — *breaking change*:
+  - Alloy Gateway aceita **somente OTLP** (4317/4318) e grava em OTLP nativo no
+    Mimir (`/otlp/v1/metrics`), Loki (`/otlp/v1/logs`) e Tempo, sem conversões:
+    removidas as pontes `otelcol.exporter.prometheus`/`otelcol.exporter.loki`,
+    os writers `prometheus.remote_write`/`loki.write`, as portas 9998/9999
+    (`compose.yaml`) e os arquivos `000-metric-alloy-local.alloy`,
+    `001-metric-gtw-local.alloy` e `002-log-gtw-local.alloy`.
+  - Mimir: semântica OpenTelemetry preservada (`NoTranslation` + nomes UTF-8,
+    native histograms, promoção dos resource attributes de identidade,
+    exemplars habilitados). Loki: `host.name` e `cloud.provider` como index
+    labels; `trace_id`/`span_id`/`severity_text` em structured metadata.
+  - Tempo: `metrics_generator` desabilitado — cada backend guarda só o seu
+    sinal; RED e Service Graph passam a vir do Beyla nos agents.
+  - Regras arquiteturais revistas em `PROJECT.md` e `docs/ARCHITECTURE.md`:
+    só o Gateway escreve nos backends; dado sai correto da origem.
+  - **Impacto:** Alloy Agents e templates de `examples/` (ainda em
+    `remote_write`/Loki push para 9999/9998) param de entregar dados até a
+    migração dos clientes; dashboards serão refeitos sobre os nomes OTel.
+- `ROADMAP.md`: removido o item "Multi-tenancy" — toda instalação é
+  monolítica e single-tenant (`docs/UPGRADE.md` §3, Regra 3).
+
+### Corrigido
+- `otel-agent/pull-semconv.yaml`: `system.cpu.logical.count` errado em hosts de 1 núcleo (o `aggregation_type: count` do `metrics_transform` não agrega um único ponto e devolvia os segundos de CPU) — agora cada núcleo vale 1 e a contagem é uma soma (OTTL `aggregate_on_attributes`).
+- `examples/push/windows-mssql`: `sqlserver.memory.usage`, `sqlserver.deadlock.rate` e `sqlserver.database.execution.errors` desligadas — só existem com conexão direta ao banco e nunca eram emitidas no modo de contadores de desempenho; `INSTALL.md` corrigido.
+- `otel-agent`: logs de containers fora do compose (sem `com.docker.compose.service`) eram gravados como `unknown_service` e, sem nível reconhecido, furavam o filtro WARN+ — agora são descartados.
+- `otel-agent` e `otel-gateway`: erros registrados sem *stack trace* (`disable_stacktrace`); cada linha do trace virava um log sem nível no Loki.
+- Loki: `os.description` descartado dos logs (`otlp_config`), evitando o atributo repetido como structured metadata em toda linha.
+- `examples/push/windows-mssql`: logs do SQL Server com `category: application` (antes `database`, fora das 4 categorias canônicas).
+- `MEMORY.md`: a heurística "`sampling_traces_on_memory` ==
+  `new_trace_id_received` indica tail sampling travado" estava errada — os
+  traces permanecem em memória após a decisão, então os valores coincidem em
+  operação normal. O sinal correto é `global_count_traces_sampled` parado com
+  spans chegando.
+- `dockerd`/`containerd` gravam todos os logs no journal com `PRIORITY=6`;
+  o filtro por prioridade descartava os erros (`level=error`). Agora o nível
+  é extraído do texto.
+- **Exemplars**: estavam descartados pelo Mimir (`max_global_exemplars_per_user: 0`).
+- **Link Trace → Métricas** removido do datasource Tempo: apontava para
+  `traces_spanmetrics_duration_milliseconds_bucket` (inexistente) e as métricas
+  do Tempo foram desligadas; será refeito sobre as métricas do Beyla.
+- **Links Log ↔ Trace para logs OTLP**: derived field por label `trace_id`
+  (structured metadata) e query Trace → Logs `| trace_id="..."`; regex legado mantido.
+- **UI do Alloy Agent**: escutava só em `127.0.0.1` dentro do container, então a
+  porta publicada não respondia. Agora `--server.http.listen-addr=0.0.0.0:12345`,
+  publicada apenas em `127.0.0.1:12346` no host (agent root não expõe portas na rede).
+- `docs/UPGRADE.md`: dry-run do Tempo usava `-version` (não valida a config);
+  substituído por subida de container descartável. Dry-run do Loki passa a
+  injetar `LOKI_RETENTION`, e foi incluída a validação dos pipelines Alloy.
+
 ## [0.0.15] - 2026-08-16
 ### Adicionado
 - **Solução Completa MGC Internal DNS** (`grafana/provisioning/dashboards/DNS/mgc-internal-dns.json` - UID: `adth4vt`): monitoramento em 3 camadas interdependentes (*Linux, CoreDNS e etcd*) com SLIs de latência interna (<16ms) e forward (<250ms), Upstream Health, Process RSS, Cache Evictions e Cluster Role (Leader/Follower).

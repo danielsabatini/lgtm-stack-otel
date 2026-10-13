@@ -1,0 +1,71 @@
+# =============================================================================
+# OpenTelemetry eBPF Instrumentation (OBI) — Linux Agent (opcional)
+# =============================================================================
+# Arquivo: /etc/obi/obi.yaml   (serviço: obi, ver obi.service)
+#
+# Auto-instrumentação eBPF (sem alterar o código da aplicação): traces e
+# métricas HTTP/gRPC/SQL com nomes da OTel Semantic Conventions
+# (http.server.request.duration, rpc.server.call.duration, ...).
+#
+# Envia tudo em OTLP ao Collector local (127.0.0.1:4317), que aplica a
+# identidade do host e é a única saída para o Gateway.
+#
+# Requer kernel Linux >= 5.8 com BTF e capabilities eBPF (ver INSTALL.md,
+# seção "Traces e métricas HTTP (OBI)").
+# =============================================================================
+
+# Falha alto e cedo se faltar alguma capability eBPF, em vez de degradar
+# silenciosamente.
+enforce_sys_caps: true
+
+log_level: info
+
+# Propagação de contexto distribuído injetada pelo kernel (eBPF), sem nenhuma
+# linha de instrumentação no código da aplicação. É isto que costura serviços
+# que chamam uns aos outros sob um ÚNICO traceID.
+#
+# "headers" injeta apenas o cabeçalho HTTP `traceparent` (W3C Trace Context).
+# Suficiente para HTTP em texto claro e evita os programas de Linux Traffic
+# Control (TC) exigidos pelos modos "tcp"/"all" — necessários apenas para
+# HTTPS e capazes de conflitar com outros programas TC do host (ex: Cilium).
+ebpf:
+  context_propagation: headers
+
+discovery:
+  # Um item por serviço, sempre escopado por porta.
+  # NUNCA instrumente o host inteiro sem filtro: o volume de spans e a
+  # cardinalidade ficam impossíveis de prever.
+  instrument:
+    # TODO: ajuste a porta (ex: "8080", "80,443", "3000-3010") e o nome lógico
+    # do serviço (vira service.name).
+    - open_ports: "8080"
+      name: app
+
+    # Exemplo: replique para cada serviço adicional deste host.
+    # - open_ports: "8081"
+    #   name: middleware
+
+# Controle de cardinalidade de http.route: descomente e ajuste se o serviço
+# expõe paths com segmentos dinâmicos (IDs, UUIDs, slugs).
+# routes:
+#   patterns: ["/api/v1/users/{id}", "/api/v1/orders/{id}"]
+#   unmatched: heuristic
+#   max_path_segment_cardinality: 10
+
+otel_traces_export:
+  endpoint: http://127.0.0.1:4317
+  protocol: grpc
+  # NUNCA troque para um sampler por ratio (ex: "traceidratio"). O Gateway já
+  # aplica tail sampling (retém 100% de erros, 100% de traces >1s e 5% do
+  # restante); descartar aqui é cego a status/latência.
+  sampler:
+    name: always_on
+
+otel_metrics_export:
+  endpoint: http://127.0.0.1:4317
+  protocol: grpc
+  interval: 30s
+  # Política Lean: só as métricas de aplicação (RED por serviço/rota, sobre
+  # 100% do tráfego, antes do tail sampling do Gateway).
+  features: [application]
+  histogram_aggregation: base2_exponential_bucket_histogram

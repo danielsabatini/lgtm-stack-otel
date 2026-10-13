@@ -35,12 +35,11 @@ Todos os dados persistentes da stack residem em **volumes Docker nomeados**, arm
 ```text
 /docker/                        ← Ponto de montagem do disco dedicado (Docker data-root)
   volumes/
-    lgtm-stack_grafana-data/    ← Banco SQLite, usuários e preferências do Grafana
-    lgtm-stack_loki-data/       ← Chunks compactados e WAL do Loki
-    lgtm-stack_mimir-data/      ← Blocos TSDB e compactor do Mimir
-    lgtm-stack_tempo-data/      ← Blocos de traces e WAL do Tempo
-    lgtm-stack_alloy-gateway-data/
-    lgtm-stack_alloy-agent-data/
+    lgtm-stack-otel_grafana-data/    ← Banco SQLite, usuários e preferências do Grafana
+    lgtm-stack-otel_loki-data/       ← Chunks compactados e WAL do Loki
+    lgtm-stack-otel_mimir-data/      ← Blocos TSDB e compactor do Mimir
+    lgtm-stack-otel_tempo-data/      ← Blocos de traces e WAL do Tempo
+    lgtm-stack-otel_otel-agent-data/  ← Posição de leitura dos logs de container (otel-agent)
 ```
 
 ### Vantagens desse Modelo:
@@ -104,7 +103,11 @@ cd lgtm-stack
 
 # 2. Configurar o arquivo de variáveis de ambiente:
 cp .env.example .env
-# Edite as senhas e parâmetros de retenção conforme necessário no .env
+# Edite as senhas e parâmetros de retenção conforme necessário no .env.
+# DOCKER_DATA_ROOT deve ser igual ao "Docker Root Dir" do passo 5.3
+# (padrão /docker; use /var/lib/docker se o data-root não foi alterado):
+docker info --format '{{.DockerRootDir}}'
+grep DOCKER_DATA_ROOT .env
 
 # 3. Iniciar todos os containers em segundo plano:
 docker compose up -d

@@ -34,7 +34,7 @@ flowchart TD
         %% FASE 4
         subgraph Phase4 ["FASE 4: CAUSA RAIZ & RESOLUÇÃO (2m a 3m) — Pilar Logs & Ação Corretiva"]
             direction LR
-            P4_Logs["<b>📜 Evidência Textual (Logs via TraceID)</b><br/>• Salto direto: <i>Trace to Logs</i> via <code>trace_id</code><br/>• Filtro por <code>level=error</code> no Grafana Loki<br/>• Visualização da stack trace exata e payload da falha"]
+            P4_Logs["<b>📜 Evidência Textual (Logs via TraceID)</b><br/>• Salto direto: <i>Trace to Logs</i> via <code>trace_id</code><br/>• Filtro por <code>severity_text=#quot;ERROR#quot;</code> no Grafana Loki<br/>• Visualização da stack trace exata e payload da falha"]
             P4_Remediation["<b>✅ Resolução & Recuperação (MTTR)</b><br/>• Rollback de versão, ajuste de escala ou patch<br/>• Validação do retorno dos sinais vitais no Health<br/>• Fechamento do incidente e abertura de post-mortem"]
             P4_Logs --> P4_Remediation
         end
