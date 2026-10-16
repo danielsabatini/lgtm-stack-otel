@@ -9,8 +9,8 @@ Verificações (contra OTELCOL_CONTRIB_VERSION do .env.example; requer Docker):
   2. Identidade OpenTelemetry dos agentes (resource_detection env+system com
      override, saída para o Gateway).
   3. Política Lean de métricas de host idêntica entre agentes e otel-agent.
-  4. Coletas pull (examples/pull): validação mesclada com otel-agent/config.yaml e
-     otel-agent/pull-semconv.yaml, identidade por alvo, ausência de
+  4. Coletas pull (examples/pull): validação mesclada com otel-remote/config.yaml e
+     otel-remote/pull-semconv.yaml, identidade por alvo, ausência de
      resource_detection e conversão OTel de cada exporter no pipeline.
   5. Allowlists idênticas entre templates pull que coletam o mesmo exporter.
 
@@ -61,15 +61,15 @@ def otelcol_configs() -> list[Path]:
 
 
 def pull_configs() -> list[Path]:
-    """Templates de coleta pull (examples/pull/), carregados pelo otel-agent."""
+    """Templates de coleta pull (examples/pull/), carregados pelo otel-remote."""
     return sorted(
         f for f in (EXAMPLES / "pull").rglob("*.yaml")
         if re.search(r"^receivers:", f.read_text(), re.MULTILINE)
     )
 
 
-OTEL_AGENT_CONFIG = ROOT / "otel-agent/config.yaml"
-PULL_SEMCONV = ROOT / "otel-agent/pull-semconv.yaml"
+OTEL_REMOTE_CONFIG = ROOT / "otel-remote/config.yaml"
+PULL_SEMCONV = ROOT / "otel-remote/pull-semconv.yaml"
 
 # Cada exporter coletado por pull precisa da conversão para a OTel Semantic
 # Conventions no pipeline (push e pull gravam o mesmo formato).
@@ -83,42 +83,40 @@ PULL_CONVERSIONS = {
 
 
 def validate_pull() -> bool:
-    """Valida cada template pull MESCLADO com config.yaml + pull-semconv.yaml (como roda)."""
+    """Valida cada template pull MESCLADO com otel-remote/config.yaml + pull-semconv.yaml (como roda)."""
     image = otelcol_image()
     ok = True
-    with tempfile.TemporaryDirectory() as hostfs:
-        for f in pull_configs():
-            result = subprocess.run(
-                ["docker", "run", "--rm",
-                 "-v", f"{hostfs}:/hostfs:ro",
-                 "-v", f"{OTEL_AGENT_CONFIG}:/etc/otelcol-contrib/config.yaml:ro",
-                 "-v", f"{PULL_SEMCONV}:/etc/otelcol-contrib/pull-semconv.yaml:ro",
-                 "-v", f"{f}:/etc/otelcol-contrib/pull.d/pull.yaml:ro",
-                 image, "validate",
-                 "--config=/etc/otelcol-contrib/config.yaml",
-                 "--config=/etc/otelcol-contrib/pull-semconv.yaml",
-                 "--config=/etc/otelcol-contrib/pull.d/pull.yaml"],
-                capture_output=True, text=True,
-            )
-            rel = f.relative_to(ROOT)
-            text = f.read_text()
-            problems = []
-            if result.returncode != 0:
-                problems.append(result.stderr.strip()[-1500:])
-            if "resource_detection" in re.sub(r"#.*", "", text):
-                problems.append("pipeline pull não pode usar resource_detection (atribuiria a identidade da stack)")
-            if "host_name:" not in text:
-                problems.append("alvos sem identidade host_name")
-            for marker, proc in PULL_CONVERSIONS.items():
-                if marker in text and proc not in text:
-                    problems.append(f"falta a conversão OTel ({proc} de otel-agent/pull-semconv.yaml) no pipeline")
-            if problems:
-                ok = False
-                print(f"FAIL {rel}")
-                for pr in problems:
-                    print(f"     {pr}")
-            else:
-                print(f"OK   {rel} (mesclado com config.yaml + pull-semconv.yaml; identidade por alvo; conversão OTel)")
+    for f in pull_configs():
+        result = subprocess.run(
+            ["docker", "run", "--rm",
+             "-v", f"{OTEL_REMOTE_CONFIG}:/etc/otelcol-contrib/config.yaml:ro",
+             "-v", f"{PULL_SEMCONV}:/etc/otelcol-contrib/pull-semconv.yaml:ro",
+             "-v", f"{f}:/etc/otelcol-contrib/pull.d/pull.yaml:ro",
+             image, "validate",
+             "--config=/etc/otelcol-contrib/config.yaml",
+             "--config=/etc/otelcol-contrib/pull-semconv.yaml",
+             "--config=/etc/otelcol-contrib/pull.d/pull.yaml"],
+            capture_output=True, text=True,
+        )
+        rel = f.relative_to(ROOT)
+        text = f.read_text()
+        problems = []
+        if result.returncode != 0:
+            problems.append(result.stderr.strip()[-1500:])
+        if "resource_detection" in re.sub(r"#.*", "", text):
+            problems.append("pipeline pull não pode usar resource_detection (atribuiria a identidade da stack)")
+        if "host_name:" not in text:
+            problems.append("alvos sem identidade host_name")
+        for marker, proc in PULL_CONVERSIONS.items():
+            if marker in text and proc not in text:
+                problems.append(f"falta a conversão OTel ({proc} de otel-remote/pull-semconv.yaml) no pipeline")
+        if problems:
+            ok = False
+            print(f"FAIL {rel}")
+            for pr in problems:
+                print(f"     {pr}")
+        else:
+            print(f"OK   {rel} (mesclado com otel-remote/config.yaml + pull-semconv.yaml; identidade por alvo; conversão OTel)")
     return ok
 
 
@@ -262,7 +260,7 @@ def main() -> None:
     print("\n== 3. Política Lean de métricas de host (agentes x otel-agent) ==")
     ok = check_host_metrics_mirrors() and ok
 
-    print("\n== 4. Coletas pull (otel-agent/pull.d) ==")
+    print("\n== 4. Coletas pull (otel-remote/pull.d) ==")
     ok = validate_pull() and ok
 
     print("\n== 5. Allowlists dos templates pull ==")

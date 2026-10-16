@@ -1,0 +1,540 @@
+# =============================================================================
+# otel-gateway — conversão e filtragem OTel Semantic Conventions (OPNsense)
+# =============================================================================
+# Exceção arquitetural documentada: o firewall OPNsense (FreeBSD) envia métricas
+# via Telegraf (outputs.opentelemetry) diretamente ao otel-gateway (:4317), sem
+# passar por um otel-agent intermediário.
+#
+# Como funciona sem afetar os demais agentes (Linux, Windows, OBI, otel-agent):
+#   1. groupbyattrs/opnsense move o atributo de datapoint "host" (exclusivo do
+#      Telegraf; agentes OTel usam "host.name" no Resource) para o Resource.
+#   2. O connector routing/opnsense desvia APENAS os recursos com "host != nil"
+#      para a pipeline "metrics/opnsense". Todo o restante segue intocado pela
+#      pipeline "metrics/otlp" (apenas batch -> Mimir).
+#   3. Na pipeline "metrics/opnsense", as métricas de sistema viram system.*
+#      (mesmo formato do host_metrics e do pull-semconv.yaml) e as métricas de
+#      serviços do firewall seguem 100% as regras de autoria da OTel Semantic
+#      Conventions (namespaces com pontos, unidades base UCUM s/By/1/bit/s,
+#      consolidação de séries via atributos e tipos Sum/Gauge corretos).
+# =============================================================================
+
+connectors:
+  routing/opnsense:
+    default_pipelines: [metrics/otlp]
+    table:
+      - context: resource
+        condition: resource.attributes["host"] != nil
+        pipelines: [metrics/opnsense]
+
+processors:
+  # Promove o atributo "host" (enviado pelo Telegraf em cada datapoint) para o
+  # Resource, permitindo que o routing/opnsense separe o tráfego do firewall.
+  groupbyattrs/opnsense:
+    keys: [host]
+
+  # ---------------------------------------------------------------------------
+  # 1. Filtro de entrada (Política Lean) — descarta ruído e alta cardinalidade
+  # ---------------------------------------------------------------------------
+  filter/opnsense_in:
+    error_mode: ignore
+    metrics:
+      metric:
+        # Estados guest não existem em system.cpu.time / system.cpu.utilization da OTel SemConv
+        - IsMatch(metric.name, "^cpu_(time|usage)_guest(_nice)?$")
+        # Totais/percentuais redundantes (calculados via soma de state no PromQL)
+        - IsMatch(metric.name, "^(disk_total|disk_inodes_total|disk_inodes_used_percent|processes_total|mem_available|mem_active|mem_laundry)$")
+        # Derivados de disco (calculados via system.disk.operation_time / operations / io_time)
+        - IsMatch(metric.name, "^diskio_(io_await|io_svctm|io_util|weighted_io_time)$")
+        # Explosão por thread do Unbound (mantém apenas unbound_total_* e unbound_time_up)
+        - IsMatch(metric.name, "^unbound_(threads_|time_(now|elapsed)$)")
+        # Explosão interna do ZFS ARC (131 métricas): mantém apenas tamanho, limites e hits/misses
+        - IsMatch(metric.name, "^zfs_arcstats_") and not IsMatch(metric.name, "^zfs_arcstats_(size|c|c_max|c_min|hits|misses)$")
+        - IsMatch(metric.name, "^zfs_zfetchstats_") and not IsMatch(metric.name, "^zfs_zfetchstats_(hits|misses)$")
+      datapoint:
+        # O host_metrics agrega CPU por estado (cpu-total já é a soma dos núcleos no Telegraf)
+        - IsMatch(metric.name, "^cpu_(time|usage)_") and datapoint.attributes["cpu"] != "cpu-total"
+        # Pseudo-filesystems do FreeBSD e mounts nullfs/devfs do chroot do Unbound
+        - IsMatch(metric.name, "^disk_") and IsMatch(datapoint.attributes["fstype"], "^(devfs|nullfs|procfs|fdescfs|tmpfs)$")
+        # Pseudo-dispositivos de bloco do FreeBSD (CD-ROM, passthrough SCSI, memory disk)
+        - IsMatch(metric.name, "^diskio_") and IsMatch(datapoint.attributes["name"], "^(cd|pass|md|fd)[0-9]*$")
+        # Placeholders de pool NTP (stratum 16 / type "p", sem par real sincronizado)
+        - IsMatch(metric.name, "^ntpq_") and datapoint.attributes["type"] == "p"
+
+  # ---------------------------------------------------------------------------
+  # 2. Pré-processamento: Resource Attributes, tipos (Sum/Gauge) e unidades UCUM
+  # ---------------------------------------------------------------------------
+  transform/opnsense_pre:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - set(resource.attributes["host.name"], resource.attributes["host"]) where resource.attributes["host"] != nil
+          - delete_key(resource.attributes, "host")
+          - set(resource.attributes["os.type"], "freebsd")
+          - set(resource.attributes["service.name"], "opnsense") where resource.attributes["service.name"] == nil
+          - set(resource.attributes["service.namespace"], "firewall") where resource.attributes["service.namespace"] == nil
+          - set(resource.attributes["deployment.environment.name"], "${env:ENVIRONMENT:-prd}") where resource.attributes["deployment.environment.name"] == nil
+          - set(resource.attributes["cloud.provider"], "${env:CLOUD_PROVIDER:-mgc}") where resource.attributes["cloud.provider"] == nil
+          - set(resource.attributes["cloud.region"], "${env:CLOUD_REGION:-br-se1}") where resource.attributes["cloud.region"] == nil
+          - set(resource.attributes["cloud.availability_zone"], "${env:CLOUD_AVAILABILITY_ZONE:-a}") where resource.attributes["cloud.availability_zone"] == nil
+
+      - context: metric
+        statements:
+          # Métricas que chegam como Counter/Sum no Telegraf mas são Gauge na OTel SemConv
+          - convert_sum_to_gauge() where IsMatch(metric.name, "^(system_uptime|net_speed|diskio_iops_in_progress)$")
+          # Contadores cumulativos que chegam como Gauge no Telegraf -> Sum monotônico cumulativo
+          - convert_gauge_to_sum("cumulative", true) where IsMatch(metric.name, "^pf_") and metric.name != "pf_entries"
+          - convert_gauge_to_sum("cumulative", true) where IsMatch(metric.name, "^unbound_total_(num_|requestlist_(exceeded|overwritten)$)")
+          - convert_gauge_to_sum("cumulative", true) where IsMatch(metric.name, "^zfs_(arcstats|zfetchstats)_(hits|misses)$")
+
+      - context: datapoint
+        statements:
+          # Normaliza todos os pontos para Double antes de escalar unidades e combinar séries
+          - set(datapoint.value_double, Double(datapoint.value_int)) where datapoint.value_double == 0.0
+          # ms -> s (divisão por 1000)
+          - set(datapoint.value_double, datapoint.value_double / 1000.0) where IsMatch(metric.name, "^(diskio_(read|write|io)_time|ntpq_(offset|delay|jitter)|ping_(average|minimum|maximum|standard_deviation)_response_ms|internet_speed_(latency|jitter))$")
+          # us -> s (divisão por 1.000.000)
+          - set(datapoint.value_double, datapoint.value_double / 1000000.0) where metric.name == "unbound_total_query_queue_time_us_max"
+          # % (0..100) -> razão UCUM "1" (0..1) (divisão por 100)
+          - set(datapoint.value_double, datapoint.value_double / 100.0) where IsMatch(metric.name, "^(cpu_usage_|mem_(used|available)_percent|disk_used_percent|ping_percent_packet_loss|zfs_pool_(capacity|fragmentation)|internet_speed_packet_loss)")
+          # Mbit/s -> bit/s (multiplicação por 1.000.000)
+          - set(datapoint.value_double, datapoint.value_double * 1000000.0) where IsMatch(metric.name, "^internet_speed_(download|upload)$")
+
+  # ---------------------------------------------------------------------------
+  # 3. Renomeação e consolidação para OTel Semantic Conventions
+  # ---------------------------------------------------------------------------
+  metrics_transform/opnsense_semconv:
+    transforms:
+      # --- 3.1 CPU e Sistema (system.cpu.*, system.uptime) ---
+      - include: '^cpu_time_(?P<state>user|system|idle|nice|iowait|irq|softirq|steal)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.cpu.time
+        operations:
+          - action: update_label
+            label: state
+            value_actions:
+              - {value: iowait, new_value: wait}
+              - {value: irq, new_value: interrupt}
+          - {action: aggregate_labels, label_set: [state], aggregation_type: sum}
+      - include: '^cpu_usage_(?P<state>user|system|idle|nice|iowait|irq|softirq|steal)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.cpu.utilization
+        operations:
+          - action: update_label
+            label: state
+            value_actions:
+              - {value: iowait, new_value: wait}
+              - {value: irq, new_value: interrupt}
+          - {action: aggregate_labels, label_set: [state], aggregation_type: sum}
+      - {include: system_n_cpus, action: update, new_name: system.cpu.logical.count}
+      - {include: system_n_physical_cpus, action: update, new_name: system.cpu.physical.count}
+      - {include: system_load1, action: update, new_name: system.cpu.load_average.1m}
+      - {include: system_load5, action: update, new_name: system.cpu.load_average.5m}
+      - {include: system_load15, action: update, new_name: system.cpu.load_average.15m}
+      - {include: system_uptime, action: update, new_name: system.uptime}
+
+      # --- 3.2 Memória (system.memory.*) ---
+      - {include: mem_total, action: update, new_name: system.memory.limit}
+      - include: '^mem_(?P<state>used|free|buffered|cached|inactive|wired)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.memory.usage
+      - include: '^mem_(?P<state>used|available)_percent$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.memory.utilization
+        operations:
+          - {action: update_label, label: state, value_actions: [{value: available, new_value: free}]}
+
+      # --- 3.3 Filesystem (system.filesystem.*) ---
+      - include: '^disk_(?P<state>used|free)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.filesystem.usage
+        operations:
+          - {action: update_label, label: path, new_label: mountpoint}
+          - {action: update_label, label: fstype, new_label: type}
+      - include: disk_used_percent
+        action: update
+        new_name: system.filesystem.utilization
+        operations:
+          - {action: update_label, label: path, new_label: mountpoint}
+          - {action: update_label, label: fstype, new_label: type}
+      - include: '^disk_inodes_(?P<state>used|free)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.filesystem.inodes.usage
+        operations:
+          - {action: update_label, label: path, new_label: mountpoint}
+          - {action: update_label, label: fstype, new_label: type}
+
+      # --- 3.4 Disco I/O (system.disk.*) ---
+      - include: '^diskio_(?P<direction>read|write)_bytes$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.io
+        operations:
+          - {action: update_label, label: name, new_label: device}
+      - include: '^diskio_(?P<direction>read|write)s$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.operations
+        operations:
+          - {action: update_label, label: name, new_label: device}
+      - include: '^diskio_(?P<direction>read|write)_time$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.operation_time
+        operations:
+          - {action: update_label, label: name, new_label: device}
+      - include: diskio_io_time
+        action: update
+        new_name: system.disk.io_time
+        operations:
+          - {action: update_label, label: name, new_label: device}
+      - include: '^diskio_merged_(?P<direction>read|write)s$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.disk.merged
+        operations:
+          - {action: update_label, label: name, new_label: device}
+      - include: diskio_iops_in_progress
+        action: update
+        new_name: system.disk.pending_operations
+        operations:
+          - {action: update_label, label: name, new_label: device}
+
+      # --- 3.5 Rede / Interfaces (system.network.*) ---
+      - include: '^net_bytes_(?P<direction>recv|sent)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.io
+        operations:
+          - {action: update_label, label: interface, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: recv, new_value: receive}, {value: sent, new_value: transmit}]}
+      - include: '^net_packets_(?P<direction>recv|sent)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.packets
+        operations:
+          - {action: update_label, label: interface, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: recv, new_value: receive}, {value: sent, new_value: transmit}]}
+      - include: '^net_err_(?P<direction>in|out)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.errors
+        operations:
+          - {action: update_label, label: interface, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: in, new_value: receive}, {value: out, new_value: transmit}]}
+      - include: '^net_drop_(?P<direction>in|out)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.network.dropped
+        operations:
+          - {action: update_label, label: interface, new_label: device}
+          - {action: update_label, label: direction, value_actions: [{value: in, new_value: receive}, {value: out, new_value: transmit}]}
+      - include: net_speed
+        action: update
+        new_name: system.network.speed
+        operations:
+          - {action: update_label, label: interface, new_label: device}
+
+      # --- 3.6 Processos (system.processes.*) ---
+      - include: '^processes_(?P<status>running|sleeping|stopped|zombies|blocked|idle|wait|unknown)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: system.processes.count
+        operations:
+          - {action: update_label, label: status, value_actions: [{value: zombies, new_value: defunct}]}
+
+      # --- 3.7 Packet Filter / PF (opnsense.pf.*) ---
+      - {include: pf_entries, action: update, new_name: opnsense.pf.states.count}
+      - include: '^pf_(?P<operation>searches|inserts|removals)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: opnsense.pf.state.operations
+        operations:
+          - action: update_label
+            label: operation
+            value_actions:
+              - {value: searches, new_value: search}
+              - {value: inserts, new_value: insert}
+              - {value: removals, new_value: removal}
+      - include: '^pf_(?P<reason>match|bad-offset|fragment|short|normalize|memory|bad-timestamp|congestion|ip-option|proto-cksum|state-mismatch|state-insert|state-limit|src-limit|synproxy)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: opnsense.pf.packets
+        operations:
+          - action: update_label
+            label: reason
+            value_actions:
+              - {value: bad-offset, new_value: bad_offset}
+              - {value: bad-timestamp, new_value: bad_timestamp}
+              - {value: ip-option, new_value: ip_option}
+              - {value: proto-cksum, new_value: proto_cksum}
+              - {value: state-mismatch, new_value: state_mismatch}
+              - {value: state-insert, new_value: state_insert}
+              - {value: state-limit, new_value: state_limit}
+              - {value: src-limit, new_value: src_limit}
+
+      # --- 3.8 IPsec (ipsec.tunnel.*) ---
+      - include: ipsec_tunnel_established
+        action: update
+        new_name: ipsec.tunnel.status
+        operations:
+          - {action: update_label, label: tunnel, new_label: ipsec.tunnel.name}
+          - {action: update_label, label: remote, new_label: network.peer.address}
+          - {action: update_label, label: version, new_label: network.protocol.version}
+      - include: ipsec_tunnel_ike_sas
+        action: update
+        new_name: ipsec.tunnel.ike_sa.count
+        operations:
+          - {action: update_label, label: tunnel, new_label: ipsec.tunnel.name}
+          - {action: update_label, label: remote, new_label: network.peer.address}
+          - {action: update_label, label: version, new_label: network.protocol.version}
+      - include: '^ipsec_tunnel_(?P<state>child_sas|children_configured)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: ipsec.tunnel.child_sa.count
+        operations:
+          - {action: update_label, label: tunnel, new_label: ipsec.tunnel.name}
+          - {action: update_label, label: remote, new_label: network.peer.address}
+          - {action: update_label, label: version, new_label: network.protocol.version}
+          - {action: update_label, label: state, value_actions: [{value: child_sas, new_value: active}, {value: children_configured, new_value: configured}]}
+
+      # --- 3.9 Unbound DNS (unbound.*) ---
+      - {include: unbound_time_up, action: update, new_name: unbound.uptime}
+      - {include: unbound_total_num_queries, action: update, new_name: unbound.queries}
+      - {include: unbound_total_num_recursivereplies, action: update, new_name: unbound.queries.recursive_replies}
+      - include: '^unbound_total_num_(?P<result>cachehits|cachemiss|prefetch|expired)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.cache.operations
+        operations:
+          - {action: update_label, label: result, value_actions: [{value: cachehits, new_value: hit}, {value: cachemiss, new_value: miss}]}
+      - include: '^unbound_total_num_(?P<error_type>queries_timed_out|queries_discard_timeout|queries_wait_limit|queries_ip_ratelimited|queries_replyaddr_limit|dns_error_reports|queries_cookie_invalid|dnscrypt_malformed)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.queries.errors
+        operations:
+          - action: update_label
+            label: error_type
+            new_label: error.type
+            value_actions:
+              - {value: queries_timed_out, new_value: timed_out}
+              - {value: queries_discard_timeout, new_value: discard_timeout}
+              - {value: queries_wait_limit, new_value: wait_limit}
+              - {value: queries_ip_ratelimited, new_value: ip_ratelimited}
+              - {value: queries_replyaddr_limit, new_value: replyaddr_limit}
+              - {value: queries_cookie_invalid, new_value: cookie_invalid}
+      - include: '^unbound_total_num_queries_cookie_(?P<state>client|valid)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.queries.cookies
+      - include: '^unbound_total_num_dnscrypt_(?P<type>crypted|cert|cleartext)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.dnscrypt.queries
+      - {include: unbound_total_recursion_time_avg, action: update, new_name: unbound.recursion.duration.avg}
+      - {include: unbound_total_recursion_time_median, action: update, new_name: unbound.recursion.duration.median}
+      - {include: unbound_total_query_queue_time_us_max, action: update, new_name: unbound.query_queue.duration.max}
+      - include: '^unbound_total_requestlist_current_(?P<state>all|user|replies)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.request_list.usage
+      - {include: unbound_total_requestlist_avg, action: update, new_name: unbound.request_list.avg}
+      - {include: unbound_total_requestlist_max, action: update, new_name: unbound.request_list.limit}
+      - include: '^unbound_total_requestlist_(?P<reason>exceeded|overwritten)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: unbound.request_list.dropped
+      - {include: unbound_total_tcpusage, action: update, new_name: unbound.tcp.usage}
+
+      # --- 3.10 NTP (ntp.*) ---
+      - {include: ntpq_offset, action: update, new_name: ntp.offset}
+      - {include: ntpq_delay, action: update, new_name: ntp.delay}
+      - {include: ntpq_jitter, action: update, new_name: ntp.jitter}
+      - {include: ntpq_poll, action: update, new_name: ntp.poll.interval}
+      - {include: ntpq_reach, action: update, new_name: ntp.reachability}
+      - {include: ntpq_when, action: update, new_name: ntp.last_sync.age}
+
+      # --- 3.11 Ping / Gateway Monitor (network.ping.*) ---
+      - include: '^ping_(?P<stat>average|minimum|maximum|standard_deviation)_response_ms$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: network.ping.rtt
+        operations:
+          - {action: update_label, label: url, new_label: server.address}
+          - action: update_label
+            label: stat
+            value_actions:
+              - {value: average, new_value: avg}
+              - {value: minimum, new_value: min}
+              - {value: maximum, new_value: max}
+              - {value: standard_deviation, new_value: stddev}
+      - include: '^ping_packets_(?P<direction>transmitted|received)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: network.ping.packets
+        operations:
+          - {action: update_label, label: url, new_label: server.address}
+          - {action: update_label, label: direction, value_actions: [{value: transmitted, new_value: transmit}, {value: received, new_value: receive}]}
+      - include: ping_percent_packet_loss
+        action: update
+        new_name: network.ping.packet_loss.ratio
+        operations:
+          - {action: update_label, label: url, new_label: server.address}
+      - include: ping_ttl
+        action: update
+        new_name: network.ping.ttl
+        operations:
+          - {action: update_label, label: url, new_label: server.address}
+      - include: ping_result_code
+        action: update
+        new_name: network.ping.status
+        operations:
+          - {action: update_label, label: url, new_label: server.address}
+
+      # --- 3.12 Internet Speedtest (network.speedtest.*) ---
+      - include: '^internet_speed_(?P<direction>download|upload)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: network.speedtest.bandwidth
+        operations:
+          - {action: update_label, label: direction, value_actions: [{value: download, new_value: receive}, {value: upload, new_value: transmit}]}
+      - {include: internet_speed_latency, action: update, new_name: network.speedtest.rtt}
+      - {include: internet_speed_jitter, action: update, new_name: network.speedtest.jitter}
+      - {include: internet_speed_packet_loss, action: update, new_name: network.speedtest.packet_loss.ratio}
+
+      # --- 3.13 ZFS (zfs.*) ---
+      - include: '^zfs_pool_(?P<state>allocated|free)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: zfs.pool.usage
+      - {include: zfs_pool_size, action: update, new_name: zfs.pool.limit}
+      - {include: zfs_pool_capacity, action: update, new_name: zfs.pool.utilization}
+      - {include: zfs_pool_fragmentation, action: update, new_name: zfs.pool.fragmentation}
+      - {include: zfs_pool_dedupratio, action: update, new_name: zfs.pool.deduplication.ratio}
+      - {include: zfs_arcstats_size, action: update, new_name: zfs.arc.size}
+      - include: '^zfs_arcstats_(?P<type>c|c_max|c_min)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: zfs.arc.limit
+        operations:
+          - action: update_label
+            label: type
+            value_actions:
+              - {value: c, new_value: target}
+              - {value: c_max, new_value: max}
+              - {value: c_min, new_value: min}
+      - include: '^zfs_arcstats_(?P<result>hits|misses)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: zfs.arc.requests
+        operations:
+          - {action: update_label, label: result, value_actions: [{value: hits, new_value: hit}, {value: misses, new_value: miss}]}
+      - include: '^zfs_zfetchstats_(?P<result>hits|misses)$'
+        match_type: regexp
+        action: combine
+        aggregation_type: sum
+        new_name: zfs.zfetch.requests
+        operations:
+          - {action: update_label, label: result, value_actions: [{value: hits, new_value: hit}, {value: misses, new_value: miss}]}
+
+  # ---------------------------------------------------------------------------
+  # 4. Pós-processamento: normalização de atributos e unidades UCUM (OTel)
+  # ---------------------------------------------------------------------------
+  transform/opnsense_post:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          # NTP: renomeia atributos para convenção OTel e remove state_prefix/type voláteis
+          - set(datapoint.attributes["server.address"], datapoint.attributes["remote"]) where IsMatch(metric.name, "^ntp\\.") and datapoint.attributes["remote"] != nil
+          - set(datapoint.attributes["ntp.stratum"], datapoint.attributes["stratum"]) where IsMatch(metric.name, "^ntp\\.") and datapoint.attributes["stratum"] != nil
+          - set(datapoint.attributes["ntp.reference_id"], datapoint.attributes["refid"]) where IsMatch(metric.name, "^ntp\\.") and datapoint.attributes["refid"] != nil
+          - delete_matching_keys(datapoint.attributes, "^(remote|stratum|refid|state_prefix|type)$") where IsMatch(metric.name, "^ntp\\.")
+          # Speedtest: renomeia atributos para convenção OTel
+          - set(datapoint.attributes["server.address"], datapoint.attributes["source"]) where IsMatch(metric.name, "^network\\.speedtest\\.") and datapoint.attributes["source"] != nil
+          - set(datapoint.attributes["speedtest.server.id"], datapoint.attributes["server_id"]) where IsMatch(metric.name, "^network\\.speedtest\\.") and datapoint.attributes["server_id"] != nil
+          - set(datapoint.attributes["speedtest.mode"], datapoint.attributes["test_mode"]) where IsMatch(metric.name, "^network\\.speedtest\\.") and datapoint.attributes["test_mode"] != nil
+          - delete_matching_keys(datapoint.attributes, "^(source|server_id|test_mode)$") where IsMatch(metric.name, "^network\\.speedtest\\.")
+          # ZFS Pool: renomeia atributos para convenção OTel
+          - set(datapoint.attributes["zfs.pool.name"], datapoint.attributes["pool"]) where IsMatch(metric.name, "^zfs\\.pool\\.") and datapoint.attributes["pool"] != nil
+          - set(datapoint.attributes["zfs.pool.health"], datapoint.attributes["health"]) where IsMatch(metric.name, "^zfs\\.pool\\.") and datapoint.attributes["health"] != nil
+          - delete_matching_keys(datapoint.attributes, "^(pool|health)$") where IsMatch(metric.name, "^zfs\\.pool\\.")
+
+      - context: metric
+        statements:
+          # Unidades UCUM canônicas da OTel Semantic Conventions
+          - set(metric.unit, "s") where IsMatch(metric.name, "^(system\\.(cpu\\.time|disk\\.(operation_time|io_time)|uptime)|unbound\\.(uptime|recursion\\.duration\\.(avg|median)|query_queue\\.duration\\.max)|ntp\\.(offset|delay|jitter|poll\\.interval|last_sync\\.age)|network\\.(ping\\.rtt|speedtest\\.(rtt|jitter)))$")
+          - set(metric.unit, "By") where IsMatch(metric.name, "^(system\\.(memory\\.(usage|limit)|filesystem\\.usage|disk\\.io|network\\.io)|zfs\\.(pool\\.(usage|limit)|arc\\.(size|limit)))$")
+          - set(metric.unit, "1") where IsMatch(metric.name, "^(system\\.(cpu|memory|filesystem)\\.utilization|ntp\\.reachability|network\\.(ping\\.(packet_loss\\.ratio|status)|speedtest\\.packet_loss\\.ratio)|zfs\\.pool\\.(utilization|fragmentation|deduplication\\.ratio))$")
+          - set(metric.unit, "bit/s") where metric.name == "network.speedtest.bandwidth"
+
+  # ---------------------------------------------------------------------------
+  # 5. Filtro de saída: descarta qualquer métrica legada sem ponto que sobrar
+  # ---------------------------------------------------------------------------
+  filter/opnsense_out:
+    error_mode: ignore
+    metrics:
+      metric:
+        - not IsMatch(metric.name, "\\.")
+
+service:
+  pipelines:
+    # Entrada única de métricas: separa OPNsense (com "host") do restante OTLP
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, groupbyattrs/opnsense]
+      exporters: [routing/opnsense]
+
+    # Fluxo padrão da stack (agentes OTel e aplicações): segue direto ao Mimir
+    metrics/otlp:
+      receivers: [routing/opnsense]
+      processors: [batch]
+      exporters: [otlp_http/mimir]
+
+    # Fluxo exclusivo do OPNsense (Telegraf): filtra e converte para 100% OTel SemConv
+    metrics/opnsense:
+      receivers: [routing/opnsense]
+      processors:
+        - filter/opnsense_in
+        - transform/opnsense_pre
+        - metrics_transform/opnsense_semconv
+        - transform/opnsense_post
+        - filter/opnsense_out
+        - batch
+      exporters: [otlp_http/mimir]

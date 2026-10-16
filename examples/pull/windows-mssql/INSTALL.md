@@ -1,7 +1,7 @@
 # Coleta Remota — Servidores Windows + SQL Server Legados (windows_exporter)
 
 Para servidores Windows com SQL Server onde **não é possível instalar o agente
-OpenTelemetry** e há o `windows_exporter` com o coletor `mssql`. O `otel-agent`
+OpenTelemetry** e há o `windows_exporter` com o coletor `mssql`. O `otel-remote`
 da stack faz o scrape (`:9182`), converte as métricas para o **mesmo formato do
 agente** (`system.*` e `sqlserver.*`, OTel Semantic Conventions) com a
 identidade OpenTelemetry do servidor e envia ao `otel-gateway` — o Gateway
@@ -46,10 +46,10 @@ Igual à seção 1.2 de [examples/pull/windows](../windows/INSTALL.md): liberar 
 ## 2. No servidor da stack LGTM
 
 ```bash
-cp examples/pull/windows-mssql/windows-mssql-hosts.yaml otel-agent/pull.d/
+cp examples/pull/windows-mssql/windows-mssql-hosts.yaml otel-remote/pull.d/
 ```
 
-Edite `otel-agent/pull.d/windows-mssql-hosts.yaml` — um item por servidor:
+Edite `otel-remote/pull.d/windows-mssql-hosts.yaml` — um item por servidor:
 
 ```yaml
 - targets: ["10.0.0.41:9182"]
@@ -62,8 +62,8 @@ Edite `otel-agent/pull.d/windows-mssql-hosts.yaml` — um item por servidor:
 ```
 
 ```bash
-docker compose restart otel-agent
-docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is ready"
+docker compose restart otel-remote
+docker logs otel-remote 2>&1 | grep -E "carregando coleta pull|Everything is ready"
 ```
 
 > Use `windows-mssql-hosts.yaml` **ou** `windows-hosts.yaml` para um mesmo
@@ -74,7 +74,7 @@ docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is read
 ## 3. O que é coletado (Política Lean)
 
 - **SO:** mesma lista do [pull Windows](../windows/INSTALL.md) (conferida pelo script de consistência).
-- **SQL Server:** 13 métricas do coletor `mssql`, convertidas para `sqlserver.*` (`*_mssql_semconv` em `otel-agent/pull-semconv.yaml`) com o formato do receiver do agente — validado contra o agente no mesmo servidor:
+- **SQL Server:** 13 métricas do coletor `mssql`, convertidas para `sqlserver.*` (`*_mssql_semconv` em `otel-remote/pull-semconv.yaml`) com o formato do receiver do agente — validado contra o agente no mesmo servidor:
 
 | windows_exporter (mssql) | OpenTelemetry (`sqlserver.*`) |
 |---|---|
@@ -125,7 +125,7 @@ No Grafana: dashboard **Hosts + Database → Windows + SQL Server Hosts**.
 |---|---|
 | `up = 0` | Firewall do Windows, serviço `windows_exporter` parado ou IP errado |
 | Sem métricas `sqlserver.*` | Coletor `mssql` ausente no `ENABLED_COLLECTORS` da instalação |
-| Template não carregado | Arquivo precisa ter extensão `.yaml` em `otel-agent/pull.d/`; reinicie o `otel-agent` |
+| Template não carregado | Arquivo precisa ter extensão `.yaml` em `otel-remote/pull.d/`; reinicie o `otel-remote` |
 
 ---
 🔙 Voltar: [README Principal](../../../README.md)

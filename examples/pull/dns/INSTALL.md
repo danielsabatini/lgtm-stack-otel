@@ -1,14 +1,14 @@
 # Coleta Remota — Cluster DNS Interno (CoreDNS + etcd + node_exporter)
 
 Monitoramento dos **3 nós do cluster de DNS interno**. Cada nó expõe três
-exporters; o `otel-agent` da stack faz o scrape, converte para OTLP com a
+exporters; o `otel-remote` da stack faz o scrape, converte para OTLP com a
 identidade OpenTelemetry de cada nó e envia ao `otel-gateway` (que continua só
 OTLP).
 
 ```text
 nó DNS (x3)                                       servidor da stack LGTM
 :9100/metrics  node_exporter (SO)        <──┐
-:9153/metrics  CoreDNS (resolução DNS)   <──┼─scrape── otel-agent ──OTLP──> otel-gateway
+:9153/metrics  CoreDNS (resolução DNS)   <──┼─scrape── otel-remote ──OTLP──> otel-gateway
 :2379/metrics  etcd (backend do CoreDNS) <──┘
 ```
 
@@ -48,14 +48,14 @@ Os endpoints são HTTP sem autenticação: mantenha essas portas acessíveis
 
 ---
 
-## 2. Configurar o otel-agent
+## 2. Configurar o otel-remote
 
 ```bash
 cd /caminho/para/lgtm-stack
-cp examples/pull/dns/dns-hosts.yaml otel-agent/pull.d/dns-hosts.yaml
+cp examples/pull/dns/dns-hosts.yaml otel-remote/pull.d/dns-hosts.yaml
 ```
 
-Edite `otel-agent/pull.d/dns-hosts.yaml`. Os nós são declarados **uma única
+Edite `otel-remote/pull.d/dns-hosts.yaml`. Os nós são declarados **uma única
 vez** (âncora `&dns_nodes` no job `node-exporter`) e reaproveitados pelos jobs
 `coredns` e `etcd`, que só trocam a porta. Informe o IP **sem porta**:
 
@@ -77,11 +77,11 @@ static_configs: &dns_nodes
 Aplique:
 
 ```bash
-docker compose restart otel-agent
-docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is ready"
+docker compose restart otel-remote
+docker logs otel-remote 2>&1 | grep -E "carregando coleta pull|Everything is ready"
 ```
 
-O arquivo em `otel-agent/pull.d/` contém IPs do ambiente e não é versionado.
+O arquivo em `otel-remote/pull.d/` contém IPs do ambiente e não é versionado.
 
 ---
 

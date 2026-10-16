@@ -2,13 +2,13 @@
 
 Para instâncias **MySQL gerenciadas (DBaaS)**, onde não é possível instalar o
 agente. O serviço expõe os exporters atrás de um proxy na porta `8080`; o
-`otel-agent` da stack faz o scrape, converte para OTLP com a identidade
+`otel-remote` da stack faz o scrape, converte para OTLP com a identidade
 OpenTelemetry da instância e envia ao `otel-gateway` (que continua só OTLP).
 
 ```text
 instância DBaaS (rede privada)                 servidor da stack LGTM
 :8080/node/metrics   (node_exporter)   <──┐
-:8080/mysql/metrics  (mysqld_exporter) <──┴─scrape── otel-agent ──OTLP──> otel-gateway
+:8080/mysql/metrics  (mysqld_exporter) <──┴─scrape── otel-remote ──OTLP──> otel-gateway
 ```
 
 | Endpoint | Exporter | Job / `service.name` |
@@ -16,9 +16,9 @@ instância DBaaS (rede privada)                 servidor da stack LGTM
 | `http://<IP>:8080/node/metrics` | node_exporter (SO da instância) | `node-exporter` |
 | `http://<IP>:8080/mysql/metrics` | mysqld_exporter (banco) | `mysql` (convertido; `db.system.name=mysql`) |
 
-As métricas são convertidas no `otel-agent` para o **mesmo formato do agente**
+As métricas são convertidas no `otel-remote` para o **mesmo formato do agente**
 (`system.*` e `mysql.*`, OTel Semantic Conventions — processors `*_node_semconv`
-e `*_mysql_semconv` de `otel-agent/pull-semconv.yaml`): a instância aparece no
+e `*_mysql_semconv` de `otel-remote/pull-semconv.yaml`): a instância aparece no
 dashboard **Linux + MySQL Hosts**, igual a um MySQL com agente
 ([examples/push/linux-mysql](../../push/linux-mysql/INSTALL.md)).
 
@@ -43,18 +43,18 @@ acessível **somente** a partir da rede da stack (regras do security group / VPC
 > **Sem rota direta (laboratório):** use túneis SSH por um bastion, como em
 > `artifacts/scripts/dns-tunnels.sh` — ex.:
 > `ssh -f -N -L 127.0.0.1:18081:<IP>:8080 <bastion>` e alvo
-> `host.docker.internal:18081` (o `otel-agent` usa a rede do host).
+> `host.docker.internal:18081` (o `otel-remote` usa a rede do host).
 
 ---
 
-## 2. Configurar o otel-agent
+## 2. Configurar o otel-remote
 
 ```bash
 cd /caminho/para/lgtm-stack
-cp examples/pull/linux-dbaas-mysql/linux-dbaas-mysql-hosts.yaml otel-agent/pull.d/
+cp examples/pull/linux-dbaas-mysql/linux-dbaas-mysql-hosts.yaml otel-remote/pull.d/
 ```
 
-Edite `otel-agent/pull.d/linux-dbaas-mysql-hosts.yaml` e declare cada
+Edite `otel-remote/pull.d/linux-dbaas-mysql-hosts.yaml` e declare cada
 instância **nos dois jobs** (`node-exporter` e `mysqld-exporter`), com o mesmo
 IP e a mesma identidade:
 
@@ -71,11 +71,11 @@ IP e a mesma identidade:
 Aplique:
 
 ```bash
-docker compose restart otel-agent
-docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is ready"
+docker compose restart otel-remote
+docker logs otel-remote 2>&1 | grep -E "carregando coleta pull|Everything is ready"
 ```
 
-O arquivo em `otel-agent/pull.d/` contém IPs do ambiente e não é versionado.
+O arquivo em `otel-remote/pull.d/` contém IPs do ambiente e não é versionado.
 
 ---
 

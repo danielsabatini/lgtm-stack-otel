@@ -1,20 +1,20 @@
 # =============================================================================
 # PULL — DBaaS PostgreSQL (node_exporter + postgres_exporter expostos pelo serviço)
 # =============================================================================
-# Carregado pelo otel-agent da stack: copie para
-# otel-agent/pull.d/linux-dbaas-pgsql-hosts.yaml, ajuste os alvos e reinicie
-# (docker compose restart otel-agent).
+# Carregado pelo otel-remote da stack: copie para
+# otel-remote/pull.d/linux-dbaas-pgsql-hosts.yaml, ajuste os alvos e reinicie
+# (docker compose restart otel-remote).
 #
 # Instâncias gerenciadas (DBaaS) não permitem instalar agente: o serviço expõe
 # os exporters atrás de um proxy na porta 8080:
 #   http://<IP>:8080/node/metrics    -> node_exporter   (SO da instância)
 #   http://<IP>:8080/postgres/metrics -> postgres_exporter (banco)
-# O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
+# O otel-remote faz o scrape, converte para OTLP com a identidade OpenTelemetry
 # declarada por instância e envia ao otel-gateway (que continua só OTLP).
 #
 # Formato: o mesmo do agente (examples/push/linux-pgsql). O label datname vira
 # db.namespace e os processors *_node_semconv e *_pgsql_semconv
-# (otel-agent/pull-semconv.yaml) convertem node_* e pg_* para system.* e
+# (otel-remote/pull-semconv.yaml) convertem node_* e pg_* para system.* e
 # postgresql.* — os dashboards não distinguem push de pull.
 #
 # Política Lean: só as allowlists abaixo, sem os bancos internos template0 /

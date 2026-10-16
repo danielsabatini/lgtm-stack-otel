@@ -1,22 +1,22 @@
 # =============================================================================
 # OpenTelemetry Collector (contrib) — Agent local da LGTM Stack (container)
 # =============================================================================
-# Coleta o próprio servidor da stack e envia tudo em OTLP ao otel-gateway:
+# Coleta o próprio servidor e os containers da stack e envia em OTLP ao Gateway:
 #   - Métricas de host ............ host_metrics  (system.*, via /hostfs)
 #   - Métricas de containers ...... docker_stats  (container.*)
-#   - Logs do host (journald) ..... ssh, kernel, docker, containerd, cron, systemd
 #   - Logs dos containers ......... file_log      (json-file do Docker)
 #   - Self-monitoring ............. telemetria interna -> OTLP local
 #
-# Roda com network_mode: host e pid: host (ver compose.yaml) para enxergar as
-# interfaces de rede e os processos do host, não os do container.
+# Roda com a imagem oficial (sem build customizado) usando network_mode: host e
+# pid: host (ver compose.yaml) para enxergar as interfaces de rede e os
+# processos do host, não os do container.
 #
 # Identidade (OTel Semantic Conventions) via ambiente (compose.yaml / .env):
 #   OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=...,cloud.provider=...,..."
 #   host.name e os.type vêm do detector "system".
 #
 # Política Lean: cada métrica e cada fonte de log é explícita.
-# Mesma base do template examples/push/linux/config.yaml — mantenha alinhados.
+# Mesma base de host_metrics do template examples/push/linux/config.yaml.
 # =============================================================================
 
 receivers:
@@ -116,121 +116,6 @@ receivers:
       container.network.io.usage.rx_dropped: { enabled: false }
       container.network.io.usage.tx_dropped: { enabled: false }
       container.blockio.io_service_bytes_recursive: { enabled: false }
-
-  # ---------------------------------------------------------------------------
-  # LOGS DO HOST (journald do host montado em /var/log/journal)
-  # ---------------------------------------------------------------------------
-  journald/ssh:
-    directory: /var/log/journal
-    units: [ssh.service, sshd.service]
-    priority: info
-    resource:
-      service.name: ssh
-    attributes:
-      category: security
-    operators: &journal_operators
-      - type: severity_parser
-        parse_from: body.PRIORITY
-        overwrite_text: true
-        mapping:
-          fatal: ["0", "1", "2"]
-          error: "3"
-          warn: "4"
-          info2: "5"
-          info: "6"
-          debug: "7"
-      - type: move
-        if: body._PID != nil
-        from: body._PID
-        to: attributes["process.pid"]
-      - type: move
-        if: body._COMM != nil
-        from: body._COMM
-        to: attributes["process.executable.name"]
-      - type: move
-        from: body.MESSAGE
-        to: body
-
-  journald/kernel:
-    directory: /var/log/journal
-    matches:
-      - _TRANSPORT: kernel
-    priority: warning
-    resource:
-      service.name: kernel
-    attributes:
-      category: system
-    operators: *journal_operators
-
-  # dockerd e containerd gravam TUDO no journal com PRIORITY 6 (info), inclusive
-  # erros: o nível real está no texto (level=error). Por isso leem a partir de
-  # info, extraem o nível da mensagem e o pipeline logs/engine mantém só WARN+.
-  journald/docker:
-    directory: /var/log/journal
-    units: [docker.service]
-    priority: info
-    resource:
-      service.name: container-engine
-    attributes:
-      category: system
-    operators: &engine_operators
-      - type: move
-        if: body._PID != nil
-        from: body._PID
-        to: attributes["process.pid"]
-      - type: move
-        if: body._COMM != nil
-        from: body._COMM
-        to: attributes["process.executable.name"]
-      - type: move
-        from: body.MESSAGE
-        to: body
-      - type: regex_parser
-        if: body matches 'level=\\w+'
-        regex: 'level=(?P<level>[A-Za-z]+)'
-        severity:
-          parse_from: attributes.level
-          overwrite_text: true
-          mapping:
-            fatal: [fatal, panic]
-            error: error
-            warn: [warn, warning]
-            info: info
-            debug: [debug, trace]
-      - type: remove
-        if: attributes.level != nil
-        field: attributes.level
-
-  journald/containerd:
-    directory: /var/log/journal
-    units: [containerd.service]
-    priority: info
-    resource:
-      service.name: containerd
-    attributes:
-      category: system
-    operators: *engine_operators
-
-  journald/cron:
-    directory: /var/log/journal
-    units: [cron.service, crond.service]
-    priority: warning
-    resource:
-      service.name: cron
-    attributes:
-      category: system
-    operators: *journal_operators
-
-  journald/systemd:
-    directory: /var/log/journal
-    matches:
-      - SYSLOG_IDENTIFIER: systemd
-    priority: warning
-    resource:
-      service.name: systemd
-    attributes:
-      category: system
-    operators: *journal_operators
 
   # ---------------------------------------------------------------------------
   # LOGS DOS CONTAINERS (driver json-file, ver x-logging no compose.yaml)
@@ -365,14 +250,8 @@ service:
       processors: [memory_limiter, filter/stack_containers, resource_detection, batch]
       exporters: [otlp_grpc/gateway]
 
-    # Severidade já filtrada na origem (priority do journalctl)
-    logs/host:
-      receivers: [journald/ssh, journald/kernel, journald/cron, journald/systemd]
-      processors: [memory_limiter, resource_detection, batch]
-      exporters: [otlp_grpc/gateway]
-
-    # Severidade extraída do texto: filtro WARN+ no pipeline
-    logs/engine:
-      receivers: [journald/docker, journald/containerd, file_log/containers]
+    # Logs dos containers da stack (severidade extraída do texto: filtro WARN+)
+    logs:
+      receivers: [file_log/containers]
       processors: [memory_limiter, filter/min_warn, resource_detection, batch]
       exporters: [otlp_grpc/gateway]

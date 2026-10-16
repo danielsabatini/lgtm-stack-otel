@@ -1,16 +1,16 @@
 # =============================================================================
-# otel-agent — conversão das coletas pull para a OTel Semantic Conventions
+# otel-remote — conversão das coletas pull para a OTel Semantic Conventions
 # =============================================================================
-# Carregado sempre pelo entrypoint (junto do config.yaml). Define processors
-# compartilhados que os templates pull (otel-agent/pull.d/*.yaml) referenciam
+# Carregado sempre pelo otel-remote (junto do config.yaml). Define processors
+# compartilhados que os templates pull (otel-remote/pull.d/*.yaml) referenciam
 # nos seus pipelines, logo após a identidade do alvo:
 #
 #   processors: [memory_limiter, filter/pull_x, groupbyattrs/pull_x,
 #                transform/pull_x, <conversões abaixo>, batch]
 #
 # Objetivo: push e pull gravam o MESMO formato no Mimir (nomes, atributos e
-# semântica do receiver nativo do agente). A conversão é feita aqui, no agente
-# da stack — nunca no Gateway. Processors definidos e não usados por nenhum
+# semântica do receiver nativo do agente). A conversão é feita aqui, no
+# otel-remote — nunca no Gateway. Processors definidos e não usados por nenhum
 # pipeline são ignorados pelo Collector.
 #
 # Métricas sem equivalente na OTel Semantic Conventions (CoreDNS, etcd) seguem

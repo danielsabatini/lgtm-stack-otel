@@ -119,9 +119,16 @@ services:
     logging: *default-logging
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-prd}
+      - CLOUD_PROVIDER=${CLOUD_PROVIDER:-mgc}
+      - CLOUD_REGION=${CLOUD_REGION:-br-se1}
+      - CLOUD_AVAILABILITY_ZONE=${CLOUD_AVAILABILITY_ZONE:-a}
     volumes:
       - ./otel-gateway/config.yaml:/etc/otelcol-contrib/config.yaml:ro
-    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+      # Exceção OPNsense (Telegraf -> OTLP direto no Gateway): filtra e converte para 100% OTel SemConv
+      - ./otel-gateway/opnsense.yaml:/etc/otelcol-contrib/opnsense.yaml:ro
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+      - "--config=/etc/otelcol-contrib/opnsense.yaml"
     healthcheck:
       disable: true
     ports:
@@ -141,18 +148,14 @@ services:
           memory: ${OTEL_GATEWAY_MEMORY:-2GB}
 
   otel-agent:
-    build:
-      context: ./otel-agent
-      args:
-        OTELCOL_CONTRIB_VERSION: ${OTELCOL_CONTRIB_VERSION:-0.162.0}
-    image: lgtm-stack/otel-agent:${OTELCOL_CONTRIB_VERSION:-0.162.0}
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_CONTRIB_VERSION:-0.162.0}
     container_name: otel-agent
     restart: unless-stopped
     logging: *default-logging
     # Enxerga a rede e os processos do HOST (não os do container).
     network_mode: host
     pid: host
-    # root apenas para ler socket do Docker, journal e logs de containers
+    # root apenas para ler socket do Docker e logs de containers
     # (arquivos do root); sem nenhuma capability e sem escalonamento.
     user: "0:0"
     cap_drop: [ALL]
@@ -167,19 +170,14 @@ services:
       - LGTM_COMPOSE_PROJECT=${COMPOSE_PROJECT_NAME:-lgtm-stack-otel}
     volumes:
       - ./otel-agent/config.yaml:/etc/otelcol-contrib/config.yaml:ro
-      # Conversão das coletas pull para a OTel Semantic Conventions (processors compartilhados)
-      - ./otel-agent/pull-semconv.yaml:/etc/otelcol-contrib/pull-semconv.yaml:ro
-      # Coletas pull de servidores legados (templates em examples/pull/)
-      - ./otel-agent/pull.d:/etc/otelcol-contrib/pull.d:ro
       - otel-agent-data:/var/lib/otelcol
       # Métricas de host (host_metrics root_path)
       - /:/hostfs:ro
       # Métricas e logs de containers
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${DOCKER_DATA_ROOT:-/var/lib/docker}/containers:/var/lib/docker/containers:ro
-      # Logs do host (journald)
-      - /var/log/journal:/var/log/journal:ro
-      - /etc/machine-id:/etc/machine-id:ro
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
     healthcheck:
       disable: true
     depends_on:
@@ -190,6 +188,48 @@ services:
           cpus: '${OTEL_AGENT_CPUS:-0.5}'
           memory: ${OTEL_AGENT_MEMORY:-512MB}
 
+  otel-remote:
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_CONTRIB_VERSION:-0.162.0}
+    container_name: otel-remote
+    hostname: otel-remote
+    restart: unless-stopped
+    logging: *default-logging
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges=true"]
+    environment:
+      # Identidade usada apenas no self-monitoring do otel-remote (os alvos pull
+      # declaram sua própria identidade e não passam por resource_detection)
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=${LGTM_HOST_NAME:-lgtm-stack},deployment.environment.name=${ENVIRONMENT:-prd},cloud.provider=${CLOUD_PROVIDER:-mgc},cloud.region=${CLOUD_REGION:-br-se1},cloud.availability_zone=${CLOUD_AVAILABILITY_ZONE:-a}
+      - LGTM_GATEWAY_ENDPOINT=otel-gateway:4317
+    volumes:
+      - ./otel-remote/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      # Conversão das coletas pull para a OTel Semantic Conventions (processors compartilhados)
+      - ./otel-remote/pull-semconv.yaml:/etc/otelcol-contrib/pull-semconv.yaml:ro
+      # Coletas pull de servidores legados (templates em examples/pull/)
+      - ./otel-remote/pull.d:/etc/otelcol-contrib/pull.d:ro
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+      - "--config=/etc/otelcol-contrib/pull-semconv.yaml"
+      # Alvos pull ativos (descomente conforme os arquivos em otel-remote/pull.d/):
+      # - "--config=/etc/otelcol-contrib/pull.d/linux-hosts.yaml"
+      # - "--config=/etc/otelcol-contrib/pull.d/linux-dbaas-mysql-hosts.yaml"
+      # - "--config=/etc/otelcol-contrib/pull.d/linux-dbaas-pgsql-hosts.yaml"
+      # - "--config=/etc/otelcol-contrib/pull.d/windows-hosts.yaml"
+      # - "--config=/etc/otelcol-contrib/pull.d/windows-mssql-hosts.yaml"
+      # - "--config=/etc/otelcol-contrib/pull.d/dns-hosts.yaml"
+    healthcheck:
+      disable: true
+    depends_on:
+      - otel-gateway
+    networks:
+      - lgtm
+    deploy:
+      resources:
+        limits:
+          cpus: '${OTEL_REMOTE_CPUS:-0.5}'
+          memory: ${OTEL_REMOTE_MEMORY:-512MB}
+
 networks:
   lgtm:
     name: lgtm
@@ -197,7 +237,12 @@ networks:
 
 volumes:
   grafana-data:
+    name: grafana-data
   otel-agent-data:
+    name: otel-agent-data
   loki-data:
+    name: loki-data
   mimir-data:
+    name: mimir-data
   tempo-data:
+    name: tempo-data

@@ -1,17 +1,17 @@
 # =============================================================================
 # PULL LEGADO — node_exporter remoto (servidor sem agente OpenTelemetry)
 # =============================================================================
-# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/linux-hosts.yaml,
-# ajuste os alvos e reinicie (docker compose restart otel-agent).
+# Carregado pelo otel-remote da stack: copie para otel-remote/pull.d/linux-hosts.yaml,
+# ajuste os alvos e reinicie (docker compose restart otel-remote).
 #
-# O otel-agent faz o scrape do node_exporter (:9100) de cada servidor, converte
+# O otel-remote faz o scrape do node_exporter (:9100) de cada servidor, converte
 # para OTLP e envia ao otel-gateway — o Gateway continua só OTLP, sem conversão.
 # A identidade OpenTelemetry de cada servidor (host.name,
 # deployment.environment.name, cloud.*) é declarada por alvo: o servidor
 # remoto não tem agente para detectá-la.
 #
 # Formato: o mesmo do agente (examples/push/linux). Os processors
-# *_node_semconv (otel-agent/pull-semconv.yaml) convertem node_* para system.*
+# *_node_semconv (otel-remote/pull-semconv.yaml) convertem node_* para system.*
 # com os nomes, atributos e a semântica do host_metrics (ex.: memória "used" =
 # MemTotal - MemAvailable) — os dashboards não distinguem push de pull. Logs
 # exigem o agente.

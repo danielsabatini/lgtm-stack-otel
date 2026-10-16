@@ -1,14 +1,14 @@
 # Coleta Remota — Servidores Windows Legados (windows_exporter)
 
 Para servidores Windows onde **não é possível instalar o agente OpenTelemetry**
-e há o `windows_exporter`. O `otel-agent` da stack faz o scrape (`:9182`),
+e há o `windows_exporter`. O `otel-remote` da stack faz o scrape (`:9182`),
 converte as métricas para o **mesmo formato do agente** (`system.*`, OTel
 Semantic Conventions) com a identidade OpenTelemetry do servidor e envia ao
 `otel-gateway` — o Gateway continua recebendo só OTLP, sem conversão.
 
 | Aspecto | Pull legado (este guia) | Agente OpenTelemetry ([push/windows](../../push/windows/INSTALL.md)) |
 |---|---|---|
-| Métricas de SO | `system.*` (convertidas de `windows_*` no `otel-agent`) | `system.*` (mesmos nomes do Linux) |
+| Métricas de SO | `system.*` (convertidas de `windows_*` no `otel-remote`) | `system.*` (mesmos nomes do Linux) |
 | Dashboard | **Windows Hosts** (o mesmo do agente) | **Windows Hosts** |
 | Event Log | ❌ | ✅ |
 | Identidade | declarada por alvo neste template | detectada no próprio host |
@@ -55,10 +55,10 @@ New-NetFirewallRule -DisplayName "windows_exporter (stack LGTM)" -Direction Inbo
 ## 2. No servidor da stack LGTM
 
 ```bash
-cp examples/pull/windows/windows-hosts.yaml otel-agent/pull.d/
+cp examples/pull/windows/windows-hosts.yaml otel-remote/pull.d/
 ```
 
-Edite `otel-agent/pull.d/windows-hosts.yaml` — um item por servidor:
+Edite `otel-remote/pull.d/windows-hosts.yaml` — um item por servidor:
 
 ```yaml
 - targets: ["10.0.0.31:9182"]
@@ -72,11 +72,11 @@ Edite `otel-agent/pull.d/windows-hosts.yaml` — um item por servidor:
 
 ```bash
 curl -s -m 5 -o /dev/null -w "%{http_code}\n" http://10.0.0.31:9182/metrics   # 200
-docker compose restart otel-agent
-docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is ready"
+docker compose restart otel-remote
+docker logs otel-remote 2>&1 | grep -E "carregando coleta pull|Everything is ready"
 ```
 
-O arquivo em `otel-agent/pull.d/` contém IPs do ambiente e não é versionado.
+O arquivo em `otel-remote/pull.d/` contém IPs do ambiente e não é versionado.
 
 ---
 
@@ -87,7 +87,7 @@ memória, pagefile, discos lógicos com letra, rede, boot e `windows_os_info`) �
 o `up`. Descartados: partições sem letra (`HarddiskVolumeN`), interfaces
 virtuais e séries sintéticas `scrape_*`.
 
-A conversão (`*_windows_semconv` em `otel-agent/pull-semconv.yaml`) grava os
+A conversão (`*_windows_semconv` em `otel-remote/pull-semconv.yaml`) grava os
 mesmos nomes, atributos e semântica do `host_metrics` do agente no Windows —
 validada contra o agente no mesmo servidor: `privileged` → `system`, memória
 `free` = disponível, `volume`/`nic` → `device`; o SO vai para o `target_info`
@@ -119,7 +119,7 @@ No Grafana: dashboard **Hosts → Windows Hosts**, selecionando o servidor.
 | Sintoma | Causa provável |
 |---|---|
 | `up = 0` | Firewall do Windows (seção 1.2), serviço `windows_exporter` parado ou IP errado |
-| Template não carregado | Arquivo precisa ter extensão `.yaml` em `otel-agent/pull.d/`; reinicie o `otel-agent` |
+| Template não carregado | Arquivo precisa ter extensão `.yaml` em `otel-remote/pull.d/`; reinicie o `otel-remote` |
 
 ---
 🔙 Voltar: [README Principal](../../../README.md)

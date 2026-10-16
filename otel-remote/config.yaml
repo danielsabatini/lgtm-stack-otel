@@ -1,0 +1,75 @@
+# =============================================================================
+# OpenTelemetry Collector (contrib) — Coletor Remoto Pull (otel-remote)
+# =============================================================================
+# Serviço dedicado a coletar sistemas legados que apenas expõem métricas via
+# HTTP (modo Pull: node_exporter, windows_exporter, mysqld_exporter,
+# postgres_exporter, CoreDNS, etcd), convertendo-as para a OTel Semantic
+# Conventions (via pull-semconv.yaml) e enviando em OTLP ao otel-gateway.
+#
+# Roda em container isolado (sem privilégios de host, usuário 10001:10001, rede
+# bridge lgtm), separado do otel-agent (que monitora apenas o host e os
+# containers da própria LGTM Stack).
+#
+# Para ativar uma coleta pull:
+#   1. Copie o template de examples/pull/<tipo>/<arquivo>.yaml para
+#      otel-remote/pull.d/<arquivo>.yaml e preencha os alvos.
+#   2. Adicione "--config=/etc/otelcol-contrib/pull.d/<arquivo>.yaml" no
+#      command do serviço otel-remote no compose.yaml.
+#   3. Reinicie: docker compose up -d otel-remote
+# =============================================================================
+
+receivers:
+  # Entrada local exclusiva para o self-monitoring deste coletor.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  # Usado APENAS na pipeline de self-monitoring (metrics) deste coletor.
+  # As pipelines de scrape remoto (metrics/pull_*) NÃO usam resource_detection
+  # porque cada alvo declara sua própria identidade (host.name, cloud.*, etc.).
+  resource_detection:
+    detectors: [env, system]
+    override: true
+    system:
+      hostname_sources: [os]
+
+  batch: {}
+
+exporters:
+  otlp_grpc/gateway:
+    endpoint: ${env:LGTM_GATEWAY_ENDPOINT:-otel-gateway:4317}
+    tls:
+      insecure: true
+
+service:
+  telemetry:
+    logs:
+      disable_stacktrace: true
+    resource:
+      attributes:
+        - name: service.name
+          value: otel-remote
+    metrics:
+      level: basic
+      readers:
+        - periodic:
+            interval: 30000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://127.0.0.1:4317
+                insecure: true
+
+  pipelines:
+    # Self-monitoring do otel-remote (permite subir mesmo sem pull.d/*.yaml ativo)
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource_detection, batch]
+      exporters: [otlp_grpc/gateway]

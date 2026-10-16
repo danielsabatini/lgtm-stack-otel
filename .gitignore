@@ -51,5 +51,5 @@ BOOTSTRAP.md
 # Journal de execução — histórico local, não atravessa clone/máquina (BOOTSTRAP.md §1.2)
 .journal/
 
-# Ignore instance-specific remote scrape configurations in gateway
-otel-agent/pull.d/*.yaml
+# Ignore instance-specific remote scrape configurations in otel-remote
+otel-remote/pull.d/*.yaml

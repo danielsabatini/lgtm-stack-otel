@@ -1,16 +1,16 @@
 # =============================================================================
 # PULL LEGADO — Windows + SQL Server (windows_exporter com coletor mssql)
 # =============================================================================
-# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/windows-mssql-hosts.yaml,
-# ajuste os alvos e reinicie (docker compose restart otel-agent).
+# Carregado pelo otel-remote da stack: copie para otel-remote/pull.d/windows-mssql-hosts.yaml,
+# ajuste os alvos e reinicie (docker compose restart otel-remote).
 #
-# Para servidores Windows sem o agente OpenTelemetry: o otel-agent faz o
+# Para servidores Windows sem o agente OpenTelemetry: o otel-remote faz o
 # scrape do windows_exporter (:9182), converte para OTLP com a identidade
 # OpenTelemetry declarada por alvo e envia ao otel-gateway (que continua só
 # OTLP).
 #
 # Formato: o mesmo do agente (examples/push/windows). Os processors
-# *_windows_semconv (otel-agent/pull-semconv.yaml) convertem windows_* para
+# *_windows_semconv (otel-remote/pull-semconv.yaml) convertem windows_* para
 # system.* com os nomes, atributos e a semântica do host_metrics — os
 # dashboards não distinguem push de pull. Event Log exige o agente.
 #

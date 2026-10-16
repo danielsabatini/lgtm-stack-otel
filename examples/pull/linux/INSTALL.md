@@ -1,19 +1,19 @@
 # Coleta Remota — Servidores Linux Legados (node_exporter)
 
 Para servidores onde **não é possível instalar o agente OpenTelemetry** e só há
-o `node_exporter`. O `otel-agent` da stack faz o scrape do `node_exporter`
+o `node_exporter`. O `otel-remote` da stack faz o scrape do `node_exporter`
 (`:9100`), converte as métricas para o **mesmo formato do agente** (`system.*`,
 OTel Semantic Conventions) com a identidade OpenTelemetry do servidor e envia ao
 `otel-gateway` — o Gateway continua recebendo só OTLP, sem conversão.
 
 ```text
 servidor legado            servidor da stack LGTM
-node_exporter :9100  <──scrape──  otel-agent ──OTLP──> otel-gateway ──> Mimir
+node_exporter :9100  <──scrape──  otel-remote ──OTLP──> otel-gateway ──> Mimir
 ```
 
 | Aspecto | Pull legado (este guia) | Agente OpenTelemetry ([push/linux](../../push/linux/INSTALL.md)) |
 |---|---|---|
-| Métricas | `system.*` (convertidas de `node_*` no `otel-agent`) | `system.*` (OTel Semantic Conventions) |
+| Métricas | `system.*` (convertidas de `node_*` no `otel-remote`) | `system.*` (OTel Semantic Conventions) |
 | Dashboard | **Linux Hosts** (o mesmo do agente) | **Linux Hosts** |
 | Logs (journald) | ❌ não disponível | ✅ |
 | Traces / métricas HTTP (OBI) | ❌ | ✅ |
@@ -40,7 +40,7 @@ curl -s localhost:9100/metrics | grep -c '^node_'
 ### 1.2 Restringir o acesso à porta 9100 (obrigatório)
 
 O `node_exporter` expõe `:9100` em HTTP **sem autenticação**. Libere a porta
-**somente para o IP do servidor da stack** (o `otel-agent` usa a rede do host):
+**somente para o IP do servidor da stack** (o `otel-remote` usa a rede do host):
 
 ```bash
 STACK_IP="<IP_DO_SERVIDOR_LGTM>"
@@ -54,27 +54,27 @@ sudo iptables -A INPUT -p tcp --dport 9100 -s "$STACK_IP" -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport 9100 -j DROP
 ```
 
-> O `otel-agent` não abre portas: ele só **inicia** conexões (stack → `:9100`
+> O `otel-remote` não abre portas: ele só **inicia** conexões (stack → `:9100`
 > do servidor legado). O que precisa de proteção é o `node_exporter`.
 
 ---
 
 ## 2. No servidor da stack LGTM
 
-### 2.1 Copiar o template para o otel-agent
+### 2.1 Copiar o template para o otel-remote
 
 ```bash
 cd /caminho/para/lgtm-stack
-cp examples/pull/linux/linux-hosts.yaml otel-agent/pull.d/linux-hosts.yaml
+cp examples/pull/linux/linux-hosts.yaml otel-remote/pull.d/linux-hosts.yaml
 ```
 
-Todo arquivo `*.yaml` em `otel-agent/pull.d/` é carregado pelo `otel-agent`
-junto com o `config.yaml` (ver `otel-agent/entrypoint.sh`). Esses arquivos
-contêm IPs do ambiente e **não são versionados** (`.gitignore`).
+Descomente a linha `- "--config=/etc/otelcol-contrib/pull.d/linux-hosts.yaml"`
+no serviço `otel-remote` do `compose.yaml`. Esses arquivos contêm IPs do
+ambiente e **não são versionados** (`.gitignore`).
 
 ### 2.2 Declarar os alvos e a identidade de cada servidor
 
-Edite `otel-agent/pull.d/linux-hosts.yaml` — um item por servidor:
+Edite `otel-remote/pull.d/linux-hosts.yaml` — um item por servidor:
 
 ```yaml
 static_configs:
@@ -101,11 +101,11 @@ usa o `resource_detection`: senão os dados receberiam a identidade da stack.
 ### 2.3 Testar a conectividade e aplicar
 
 ```bash
-# A partir do servidor da stack (mesma rede usada pelo otel-agent)
+# A partir do servidor da stack (mesma rede usada pelo otel-remote)
 curl -s -m 5 -o /dev/null -w "%{http_code}\n" http://10.0.0.21:9100/metrics   # 200
 
-docker compose restart otel-agent
-docker logs otel-agent 2>&1 | grep -E "carregando coleta pull|Everything is ready"
+docker compose restart otel-remote
+docker logs otel-remote 2>&1 | grep -E "carregando coleta pull|Everything is ready"
 ```
 
 ---
@@ -118,7 +118,7 @@ Só as métricas da lista `keep` do template — os insumos da conversão para
 descartados pseudo-dispositivos (`loop`, `ram`, `dm-*`), pseudo-filesystems
 (`tmpfs`, `overlay`...), interfaces virtuais e as séries sintéticas `scrape_*`.
 
-A conversão (`*_node_semconv` em `otel-agent/pull-semconv.yaml`) grava os mesmos
+A conversão (`*_node_semconv` em `otel-remote/pull-semconv.yaml`) grava os mesmos
 nomes, atributos e a mesma semântica do `host_metrics` do agente — validada
 contra o agente no mesmo servidor, com valores iguais (memória `used` =
 MemTotal − MemAvailable, filesystem `used`/`free`/`reserved` etc.; detalhes em
@@ -159,14 +159,14 @@ o dashboard **Hosts → Linux Hosts**, selecionando o servidor.
 **`up = 0` ou série ausente**
 ```bash
 curl -s -m 5 http://<IP>:9100/metrics | head -3        # do servidor da stack
-docker logs otel-agent 2>&1 | grep -iE "scrape|prometheus" | tail -5
+docker logs otel-remote 2>&1 | grep -iE "scrape|prometheus" | tail -5
 ```
 Causas comuns: firewall do servidor remoto (seção 1.2), `node_exporter`
 parado, IP/porta errados no `targets`.
 
 **Template não carregado**
-O arquivo precisa ter extensão `.yaml` e estar em `otel-agent/pull.d/`; reinicie
-o `otel-agent` após qualquer alteração.
+O arquivo precisa ter extensão `.yaml` e estar em `otel-remote/pull.d/`; reinicie
+o `otel-remote` após qualquer alteração.
 
 ---
 🔙 Voltar: [README Principal](../../../README.md)

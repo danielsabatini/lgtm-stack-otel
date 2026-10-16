@@ -43,10 +43,10 @@ for vol in "${VOLUMES[@]}"; do
     busybox tar czf "/backup/$(basename "${FILENAME}")" -C /data .
 done
 
-# Coletas pull (otel-agent/pull.d/*.yaml): não versionadas, contêm os alvos do ambiente
-if compgen -G "otel-agent/pull.d/*.yaml" > /dev/null; then
-  echo "   - Backup de otel-agent/pull.d..."
-  tar czf "${BACKUP_DIR}/otel-agent-pull.d-${DATE}.tar.gz" otel-agent/pull.d/*.yaml
+# Coletas pull (otel-remote/pull.d/*.yaml): não versionadas, contêm os alvos do ambiente
+if compgen -G "otel-remote/pull.d/*.yaml" > /dev/null; then
+  echo "   - Backup de otel-remote/pull.d..."
+  tar czf "${BACKUP_DIR}/otel-remote-pull.d-${DATE}.tar.gz" otel-remote/pull.d/*.yaml
 fi
 
 # 3. Subir a stack novamente

@@ -1,21 +1,21 @@
 # =============================================================================
 # PULL — Cluster de DNS interno (CoreDNS + etcd + node_exporter, 3 nós)
 # =============================================================================
-# Carregado pelo otel-agent da stack: copie para otel-agent/pull.d/dns-hosts.yaml,
-# ajuste os nós e reinicie (docker compose restart otel-agent).
+# Carregado pelo otel-remote da stack: copie para otel-remote/pull.d/dns-hosts.yaml,
+# ajuste os nós e reinicie (docker compose restart otel-remote).
 #
 # Cada nó do cluster expõe três exporters:
 #   :9100/metrics -> node_exporter (SO)        job/service.name: node-exporter
 #   :9153/metrics -> CoreDNS (resolução DNS)   job/service.name: coredns
 #   :2379/metrics -> etcd (backend do CoreDNS) job/service.name: etcd
-# O otel-agent faz o scrape, converte para OTLP com a identidade OpenTelemetry
+# O otel-remote faz o scrape, converte para OTLP com a identidade OpenTelemetry
 # de cada nó e envia ao otel-gateway (que continua só OTLP).
 #
 # Os nós e a identidade são declarados UMA vez (âncora &dns_nodes); cada job só
 # troca a porta do alvo.
 #
 # Formato: as métricas do node_exporter são convertidas para system.* (mesmo
-# formato do agente, processors *_node_semconv em otel-agent/pull-semconv.yaml).
+# formato do agente, processors *_node_semconv em otel-remote/pull-semconv.yaml).
 # CoreDNS e etcd não têm OTel Semantic Conventions: mantêm os nomes dos
 # exporters (coredns_*, etcd_*). Histogramas
 # de latência (CoreDNS e etcd) chegam ao Mimir como native histograms: o nome
