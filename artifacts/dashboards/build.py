@@ -26,6 +26,7 @@ TARGETS = [
     ("windows_mssql.py", "Hosts + Database/windows-hosts-mssql.json"),
     ("lgtm_stack.py", "LGTM/lgtm-stack.json"),
     ("dns.py", "DNS/mgc-internal-dns.json"),  # regera a linha Linux; CoreDNS/etcd vêm do próprio arquivo
+    ("opnsense.py", "Firewall/opnsense-firewall.json"),
 ]
 
 

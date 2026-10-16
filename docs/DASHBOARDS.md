@@ -38,6 +38,8 @@ grafana/provisioning/dashboards/          ← JSONs gerados por artifacts/dashbo
 │   └── windows-hosts-mssql.json          Windows + SQL Server (sqlserver.*) — agente e coletor mssql
 ├── DNS/
 │   └── mgc-internal-dns.json             Linux (system.*) + CoreDNS + etcd (nomes dos exporters)
+├── Firewall/
+│   └── opnsense-firewall.json            OPNsense Firewall: FreeBSD & ZFS, PF & IPsec, Unbound DNS, WAN/Ping/NTP
 ├── LGTM/
 │   └── lgtm-stack.json                   Self-monitoring: pipeline OTel (otelcol_*), containers (container.*) e servidor da stack
 └── dashboards.yaml                       Provider (recarga a cada 30 s)
@@ -52,7 +54,7 @@ grafana/provisioning/dashboards/          ← JSONs gerados por artifacts/dashbo
                        │
                        ▼
   [2. python3 artifacts/dashboards/build.py]
-      regenera os 7 JSONs + verifica a metodologia (saída não-zero se violar)
+      regenera os 8 JSONs + verifica a metodologia (saída não-zero se violar)
                        │
                        ▼
   [3. Conferir no Grafana (recarrega em até 30 s; recarregue a página)]
@@ -65,7 +67,7 @@ grafana/provisioning/dashboards/          ← JSONs gerados por artifacts/dashbo
 |---|---|
 | `lib.py` | Construtores de painéis (gauge, stat, timeseries, logs, traces), variáveis e o layout (linhas/abas, renderização condicional) no schema `dashboard.grafana.app/v2` |
 | `hosts.py` | Linha de host Linux/Windows (5 pilares, modos single e multi-host), aba Logs, linha Aplicações (OBI) e a variável de host com exclusão dos servidores com dashboard dedicado |
-| `linux_hosts.py`, `windows_hosts.py`, `linux_mysql.py`, `linux_pgsql.py`, `windows_mssql.py`, `lgtm_stack.py`, `dns.py` | Um gerador por dashboard (o `dns.py` regera a linha Linux e mantém as linhas CoreDNS/etcd do próprio arquivo) |
+| `linux_hosts.py`, `windows_hosts.py`, `linux_mysql.py`, `linux_pgsql.py`, `windows_mssql.py`, `lgtm_stack.py`, `dns.py`, `opnsense.py` | Um gerador por dashboard (o `dns.py` regera a linha Linux e mantém as linhas CoreDNS/etcd do próprio arquivo) |
 | `build.py` | Roda todos os geradores e o verificador `artifacts/scripts/check-dashboards-methodology.py` |
 
 ---

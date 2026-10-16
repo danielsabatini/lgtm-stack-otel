@@ -491,10 +491,11 @@ processors:
           - set(datapoint.attributes["speedtest.server.id"], datapoint.attributes["server_id"]) where IsMatch(metric.name, "^network\\.speedtest\\.") and datapoint.attributes["server_id"] != nil
           - set(datapoint.attributes["speedtest.mode"], datapoint.attributes["test_mode"]) where IsMatch(metric.name, "^network\\.speedtest\\.") and datapoint.attributes["test_mode"] != nil
           - delete_matching_keys(datapoint.attributes, "^(source|server_id|test_mode)$") where IsMatch(metric.name, "^network\\.speedtest\\.")
-          # ZFS Pool: renomeia atributos para convenção OTel
+          # ZFS Pool: renomeia atributos para convenção OTel e remove tags de resumo do ARC/ZFetch
           - set(datapoint.attributes["zfs.pool.name"], datapoint.attributes["pool"]) where IsMatch(metric.name, "^zfs\\.pool\\.") and datapoint.attributes["pool"] != nil
           - set(datapoint.attributes["zfs.pool.health"], datapoint.attributes["health"]) where IsMatch(metric.name, "^zfs\\.pool\\.") and datapoint.attributes["health"] != nil
           - delete_matching_keys(datapoint.attributes, "^(pool|health)$") where IsMatch(metric.name, "^zfs\\.pool\\.")
+          - delete_matching_keys(datapoint.attributes, "^(datasets|pools)$") where IsMatch(metric.name, "^zfs\\.(arc|zfetch)\\.")
 
       - context: metric
         statements:
